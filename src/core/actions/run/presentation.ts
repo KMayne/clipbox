@@ -1,5 +1,11 @@
 import { presentationInterpreter } from '../../interpreters/presentation';
-import { deckImages, slidesJson, slidesMarkdown } from '../../presentation/output';
+import { isImageFormatsService } from '../../../modules/imageformats/types';
+import {
+  deckImages,
+  slidesJson,
+  slidesMarkdown,
+  type LegacyConverter,
+} from '../../presentation/output';
 import {
   presentationExtractImages,
   presentationExtractText,
@@ -15,12 +21,19 @@ export const presentationImpls = [
   implement(presentationExtractImages, {
     value,
     applies: ({ value }) => value.media.length > 0,
-    async run({ value }, { slides }) {
+    async run({ value }, { slides, convert }, ctx) {
       const picked = parseRange(slides, value.slides.length, 'slide');
+      let converter: LegacyConverter | undefined;
+      if (convert) {
+        const service = await ctx.service('imageformats', isImageFormatsService);
+        if (!service) throw new Error('The image formats module is unavailable');
+        converter = (bytes, name) => service.toPng(bytes, name);
+      }
       const { images, truncated } = await deckImages(
         value,
         picked ? new Set(picked) : undefined,
         MAX_EXTRACTED,
+        converter,
       );
       return truncated ? [...images, truncatedNote('slide')] : images;
     },

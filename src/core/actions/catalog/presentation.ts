@@ -7,8 +7,15 @@ export const presentationExtractImages = defineAction({
   title: 'Extract images',
   group: 'Extract',
   kinds: ['presentation'],
-  params: z.object({ slides: rangeParam('Slides') }),
-  label: p => (p.slides.trim() ? `Extract images (slides ${p.slides.trim()})` : 'Extract images'),
+  params: z.object({
+    slides: rangeParam('Slides'),
+    convert: z.boolean().default(false).meta({
+      title: 'Convert vector/legacy images to PNG',
+      description: 'EMF, WMF and TIFF pictures as PNG renders instead of the original files',
+    }),
+  }),
+  label: p =>
+    `Extract images${p.slides.trim() ? ` (slides ${p.slides.trim()})` : ''}${p.convert ? ' as PNG' : ''}`,
 });
 
 export const presentationExtractText = defineAction({

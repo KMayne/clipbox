@@ -53,8 +53,10 @@ test('Extract images makes one capture holding every picture', async ({ page }) 
   await expect(page.getByTestId('capture')).toHaveCount(2);
   const derived = page.getByTestId('capture').first();
   await expect(derived.getByTestId('derived-from')).toContainText('Extract images');
-  await expect(derived.locator('[data-kind=image]')).toHaveCount(3);
+  // The EMF comes out as itself, previewed by the imageformats module
+  await expect(derived.locator('[data-kind=image]')).toHaveCount(4);
   await expect(derived).toContainText('slide-01-image1.png');
+  await expect(derived).toContainText('slide-02-image1.emf');
   await expect(derived).toContainText('unused-image1.png');
 });
 
