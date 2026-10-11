@@ -1,6 +1,6 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
-import { modulesManifest } from './vite/modulesManifest';
+import { modulesManifest } from './vite/modulesManifest.ts';
 
 const manifest = modulesManifest();
 

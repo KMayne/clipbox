@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { transformWithOxc, type Plugin, type Rolldown } from 'vite';
-import type { ModulesManifest } from '../src/swProtocol';
+import type { ModulesManifest } from '../src/swProtocol.ts';
 
 /** Lazily-loaded module entry points: src/modules/<id>/{worker,ui}.ts(x). */
 const MODULE_ENTRY = /[\\/]src[\\/]modules[\\/]([\w-]+)[\\/](worker|ui)\.tsx?$/;
