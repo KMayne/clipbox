@@ -56,4 +56,55 @@ export const jsonTypes = defineAction({
   label: p => `TypeScript types (${p.rootName})`,
 });
 
-export const jsonActions = [jsonFormat, jsonMinify, jsonSortKeys, jsonToYaml, jsonTypes];
+export const jsonToNdjson = defineAction({
+  id: 'json.toNdjson',
+  title: 'To NDJSON',
+  group: 'Convert',
+  kinds: ['json'],
+  params: z.object({}),
+});
+
+export const jsonFlatten = defineAction({
+  id: 'json.flatten',
+  title: 'Flatten to paths',
+  group: 'Format',
+  kinds: ['json'],
+  params: z.object({
+    separator: z.string().min(1, 'Enter a separator').default('.').meta({ title: 'Separator' }),
+    arrays: z
+      .enum(['dot', 'bracket'])
+      .default('dot')
+      .meta({
+        title: 'Array indices',
+        optionLabels: { dot: 'As keys (a.0.b)', bracket: 'In brackets (a[0].b)' },
+      }),
+  }),
+  label: p => `Flatten (${p.arrays === 'dot' ? `a${p.separator}0` : 'a[0]'})`,
+});
+
+export const jsonPick = defineAction({
+  id: 'json.pick',
+  title: 'Pick by path',
+  group: 'Extract',
+  kinds: ['json'],
+  params: z.object({
+    path: z.string().default('$').meta({
+      title: 'JSONPath',
+      hint: 'regex',
+      description: "e.g. $.items[*].name, $..id, $.list[0:5], $['a key']",
+    }),
+    wrap: z.boolean().default(false).meta({ title: 'Always return an array' }),
+  }),
+  label: p => `Pick ${p.path}`,
+});
+
+export const jsonActions = [
+  jsonFormat,
+  jsonMinify,
+  jsonSortKeys,
+  jsonFlatten,
+  jsonToYaml,
+  jsonToNdjson,
+  jsonTypes,
+  jsonPick,
+];

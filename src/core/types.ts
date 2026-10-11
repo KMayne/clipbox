@@ -85,6 +85,8 @@ export interface DerivedContent {
   mime: string;
   name?: string;
   bytes: Uint8Array<ArrayBuffer>;
+  /** Actions: a short note appended to the result's label, e.g. "3 invalid lines skipped". */
+  note?: string;
 }
 
 /**

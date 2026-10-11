@@ -142,6 +142,8 @@ describe('Engine actions', () => {
       'json.sortKeys',
       'json.toYaml',
       'json.types',
+      'json.flatten',
+      'json.pick',
       'any.hash',
     ]);
     const text = await engine.actions('en-1', 'text');

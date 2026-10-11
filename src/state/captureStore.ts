@@ -258,7 +258,8 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
       const info = actionById(actionId);
       if (!info) throw new Error(`Unknown action '${actionId}'`);
       const result = await engine.runAction(from.entryId, from.kind, actionId, params);
-      addDerived(from, result, actionLabel(info, params));
+      const note = result.find(r => r.note)?.note;
+      addDerived(from, result, actionLabel(info, params) + (note ? ` · ${note}` : ''));
     },
 
     remove(captureId) {

@@ -6,6 +6,10 @@ import { mediaImpls } from './media';
 import { pdfImpls } from './pdf';
 import { presentationImpls } from './presentation';
 import { textImpls } from './text';
+import { xmlImpls } from './xml';
+import { yamlImpls } from './yaml';
+import { ndjsonImpls } from './ndjson';
+import { recordsImpls } from './records';
 
 /**
  * Worker-side implementations, one file per area (mirroring `catalog/`). Only the engine imports
@@ -14,6 +18,10 @@ import { textImpls } from './text';
 export const actionImpls: AnyActionImpl[] = [
   ...jsonImpls,
   ...textImpls,
+  ...xmlImpls,
+  ...yamlImpls,
+  ...ndjsonImpls,
+  ...recordsImpls,
   ...imageImpls,
   ...mediaImpls,
   ...presentationImpls,
