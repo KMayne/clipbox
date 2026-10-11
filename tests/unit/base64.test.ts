@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toBase64 } from '../../src/core/format';
-import { getInterpreter } from '../../src/core/interpreters';
+import { detectKinds, getInterpreter } from '../../src/core/interpreters';
 import type { InterpretContext } from '../../src/core/interpreter';
 import { bytesContent, pngHeader, textContent } from './helpers';
 
@@ -39,6 +39,26 @@ describe('base64 detection', () => {
     const wrapped = long.match(/.{1,76}/g)?.join('\n') ?? '';
     expect(wrapped).toContain('\n');
     expect(confidence(wrapped)).toBe(0.6);
+  });
+
+  it('accepts short unpadded tokens that decode to words', () => {
+    expect(confidence('aGVsbG8gd29ybGQ')).toBe(0.5); // "hello world"
+    expect(confidence('YWRtaW46c2VjcmV0')).toBe(0.6); // "admin:secret", 16 chars
+    expect(confidence('YWRtaW46cGFzcw')).toBe(0.5); // "admin:pass"
+    expect(detectKinds(textContent('aGVsbG8gd29ybGQ'))[0]?.kind).toBe('base64');
+  });
+
+  it.each([
+    'Constructor1',
+    'readonlyArray',
+    'toLocaleString',
+    'getElementById',
+    'TildeToken',
+    'big-endian',
+    'Administrator',
+    '1700000000000',
+  ])('does not take the short word %s for base64', word => {
+    expect(confidence(word)).toBe(0);
   });
 
   it('rejects words, hex, short strings, JSON and bad padding', () => {
