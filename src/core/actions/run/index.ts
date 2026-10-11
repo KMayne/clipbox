@@ -6,11 +6,16 @@ import { colourImpls } from './colour';
 import { imageImpls } from './image';
 import { jsonImpls } from './json';
 import { jwtImpls } from './jwt';
+import { archiveImpls } from './archive';
+import { htmlImpls } from './html';
+import { markdownImpls } from './markdown';
 import { mediaImpls } from './media';
 import { pdfImpls } from './pdf';
 import { pemImpls } from './pem';
 import { presentationImpls } from './presentation';
 import { executableImpls } from './executable';
+import { spreadsheetImpls } from './spreadsheet';
+import { sqliteImpls } from './sqlite';
 import { textImpls } from './text';
 import { xmlImpls } from './xml';
 import { yamlImpls } from './yaml';
@@ -44,6 +49,11 @@ export const actionImpls: AnyActionImpl[] = [
   ...base64Impls,
   ...binaryImpls,
   ...pemImpls,
+  ...htmlImpls,
+  ...markdownImpls,
+  ...spreadsheetImpls,
+  ...sqliteImpls,
+  ...archiveImpls,
   ...anyImpls,
 ];
 

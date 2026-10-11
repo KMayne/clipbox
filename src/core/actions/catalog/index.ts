@@ -6,11 +6,16 @@ import { colourActions } from './colour';
 import { imageActions } from './image';
 import { jsonActions } from './json';
 import { jwtActions } from './jwt';
+import { archiveActions } from './archive';
+import { htmlActions } from './html';
+import { markdownActions } from './markdown';
 import { mediaActions } from './media';
 import { pdfActions } from './pdf';
 import { pemActions } from './pem';
 import { presentationActions } from './presentation';
 import { executableActions } from './executable';
+import { spreadsheetActions } from './spreadsheet';
+import { sqliteActions } from './sqlite';
 import { textActions } from './text';
 import { xmlActions } from './xml';
 import { yamlActions } from './yaml';
@@ -45,6 +50,11 @@ export const catalog: ActionInfo[] = [
   ...base64Actions,
   ...binaryActions,
   ...pemActions,
+  ...htmlActions,
+  ...markdownActions,
+  ...spreadsheetActions,
+  ...sqliteActions,
+  ...archiveActions,
   ...anyActions,
 ];
 

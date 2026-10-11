@@ -46,6 +46,16 @@ export interface PdfImageService {
 export const isPdfImageService = (s: unknown): s is PdfImageService =>
   isRecord(s) && typeof s.extractImages === 'function';
 
+// --- Metadata (the "Metadata as JSON" action) ---
+
+export interface PdfMetadataService {
+  /** Info dictionary, XMP, page sizes, outline and attachments as plain JSON data. */
+  metadata(value: unknown): Promise<Record<string, unknown>>;
+}
+
+export const isPdfMetadataService = (s: unknown): s is PdfMetadataService =>
+  isRecord(s) && typeof s.metadata === 'function';
+
 /** The part of a pdf value the core action reads, checked without importing pdf.js. */
 export interface PdfValueInfo {
   kind: 'pdf';

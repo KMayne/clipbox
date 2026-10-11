@@ -48,3 +48,27 @@ export interface AudioTools {
 
 export const isAudioTools = (s: unknown): s is AudioTools =>
   isRecord(s) && typeof s.normalise === 'function';
+
+// --- Video frames ("Video frame as PNG") ---
+
+export interface FrameOptions {
+  /** Seconds from the start of the media, or a fraction (0–1) of the way through. */
+  at: { seconds: number } | { fraction: number };
+  signal?: AbortSignal;
+}
+
+export interface FrameResult {
+  /** PNG, at the video's display size. */
+  bytes: Uint8Array<ArrayBuffer>;
+  width: number;
+  height: number;
+  /** The decoded frame's presentation time, seconds. */
+  timestamp: number;
+}
+
+export interface VideoFrameTool {
+  videoFrame(bytes: Uint8Array<ArrayBuffer>, options: FrameOptions): Promise<FrameResult>;
+}
+
+export const isVideoFrameTool = (s: unknown): s is VideoFrameTool =>
+  isRecord(s) && typeof s.videoFrame === 'function';

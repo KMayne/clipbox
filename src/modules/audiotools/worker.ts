@@ -1,5 +1,6 @@
+import { videoFrame } from './frame';
 import { normalise } from './normalise';
-import type { AudioTools } from './service';
+import type { AudioTools, VideoFrameTool } from './service';
 
-/** Audio processing for actions (Normalise audio); it owns no kinds. */
-export const service: AudioTools = { normalise };
+/** Media processing for actions (Normalise audio, Video frame as PNG); it owns no kinds. */
+export const service: AudioTools & VideoFrameTool = { normalise, videoFrame };

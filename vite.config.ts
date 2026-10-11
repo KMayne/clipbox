@@ -25,6 +25,7 @@ export default defineConfig({
       'reflect-metadata',
       'music-metadata',
       'mediabunny',
+      'jsqr',
       'xlsx',
       'sql.js',
       'pdfjs-dist',
