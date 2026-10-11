@@ -31,7 +31,7 @@ blockquote { margin: 0; padding: 0 1em; color: ${theme.muted}; border-left: 3px 
 table { border-collapse: collapse; display: block; overflow: auto; }
 th, td { border: 1px solid ${theme.border}; padding: 4px 10px; }
 th { background: ${theme.panel}; }
-tr:nth-child(2n) td { background: #252525; }
+tr:nth-child(2n) td { background: ${theme.rowBorder}; }
 img { max-width: 100%; }
 hr { border: none; border-top: 1px solid ${theme.subtle}; }
 li > input[type=checkbox] { margin-right: 0.4em; }

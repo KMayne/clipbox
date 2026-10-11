@@ -19,7 +19,7 @@ injectGlobal`
   }
   button { font: inherit; color: inherit; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+  ::-webkit-scrollbar-thumb { background: ${theme.scrollbar}; border-radius: 5px; }
   ::-webkit-scrollbar-corner { background: transparent; }
 `;
 

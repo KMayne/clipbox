@@ -41,7 +41,7 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
 - `src/capture/` — capture sources (paste, read, drop, file) → `captureStore.add()`.
 - `src/state/` — Zustand stores (`captureStore`, `moduleStore`, `uiStore`).
 - `src/state/persistence.ts` — saves captures to IndexedDB (idb-keyval). Metadata and blobs live in separate databases, and blobs are keyed by SHA-256 and garbage-collected. It's on by default with a 7-day expiry (Settings → History). Records are validated with Zod on read. It talks to the store through the `CaptureHost` interface, so it doesn't import the store (that would start the worker in Node tests).
-- `src/components/` — Emotion CSS, with dark theme tokens in `src/theme.ts`. Previews live in `components/previews/`. `ModulePreview` lazy-loads a module's preview and falls back to the core one.
+- `src/components/` — Emotion CSS. The theme is Gruvbox dark: `src/theme.ts` holds the raw `gruvbox` palette plus the semantic `theme`, `syntax` and `kindColors` tokens. Components use the tokens and never hard-code colours. Previews live in `components/previews/`. `ModulePreview` lazy-loads a module's preview and falls back to the core one.
 
 ## Conventions
 - **No type assertions:** `as` (other than `as const`) and non-null `!` are lint errors. Instead:

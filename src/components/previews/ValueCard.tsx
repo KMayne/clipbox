@@ -33,17 +33,17 @@ const styles = {
     border-radius: 6px;
     /* checkerboard so alpha is visible */
     background-image:
-      linear-gradient(45deg, #666 25%, transparent 25%),
-      linear-gradient(-45deg, #666 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #666 75%),
-      linear-gradient(-45deg, transparent 75%, #666 75%);
+      linear-gradient(45deg, ${theme.border} 25%, transparent 25%),
+      linear-gradient(-45deg, ${theme.border} 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, ${theme.border} 75%),
+      linear-gradient(-45deg, transparent 75%, ${theme.border} 75%);
     background-size: 16px 16px;
     background-position:
       0 0,
       0 8px,
       8px -8px,
       -8px 0;
-    background-color: #999;
+    background-color: ${theme.muted};
   `,
   grid: css`
     display: grid;

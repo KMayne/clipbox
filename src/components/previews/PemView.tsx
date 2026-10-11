@@ -72,7 +72,7 @@ const styles = {
     margin-left: auto;
     padding: 1px 8px;
     border-radius: 10px;
-    color: #1e1e1e;
+    color: ${theme.onAccent};
     font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
@@ -93,7 +93,11 @@ const styles = {
 };
 
 type Tone = 'expired' | 'expiring' | 'valid';
-const TONES: Record<Tone, string> = { expired: theme.error, expiring: '#e5c07b', valid: '#98c379' };
+const TONES: Record<Tone, string> = {
+  expired: theme.error,
+  expiring: theme.warning,
+  valid: theme.success,
+};
 
 function ExpiryBadge({
   notAfter,

@@ -24,7 +24,7 @@ const styles = {
     left: 0;
     display: flex;
     height: ${ROW}px;
-    border-bottom: 1px solid #2c2c2c;
+    border-bottom: 1px solid ${theme.rowBorder};
   `,
   cell: css`
     flex: none;
@@ -33,7 +33,7 @@ const styles = {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    border-right: 1px solid #2c2c2c;
+    border-right: 1px solid ${theme.rowBorder};
   `,
   headCell: css`
     display: flex;
@@ -47,11 +47,11 @@ const styles = {
     font-size: 11px;
   `,
   index: css`
-    color: #6a6a6a;
+    color: ${theme.faint};
     text-align: right;
   `,
   null: css`
-    color: #6a6a6a;
+    color: ${theme.faint};
     font-style: italic;
   `,
 };

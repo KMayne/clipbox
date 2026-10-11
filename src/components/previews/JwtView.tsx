@@ -32,16 +32,16 @@ const styles = {
     border-radius: 10px;
     font-size: 12px;
     font-weight: 600;
-    color: #1e1e1e;
+    color: ${theme.onAccent};
   `,
   expired: css`
     background: ${theme.error};
   `,
   pending: css`
-    background: #e5c07b;
+    background: ${theme.warning};
   `,
   valid: css`
-    background: #98c379;
+    background: ${theme.success};
   `,
   table: css`
     border-collapse: collapse;

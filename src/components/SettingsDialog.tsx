@@ -71,7 +71,7 @@ const styles = {
     }
   `,
   focused: css`
-    background: rgba(78, 161, 255, 0.1);
+    background: ${theme.accentSoft};
   `,
   description: css`
     color: ${theme.muted};
@@ -94,7 +94,7 @@ const styles = {
   `,
   activePolicy: css`
     background: ${theme.accent} !important;
-    color: #111;
+    color: ${theme.onAccent};
   `,
   section: css`
     margin-bottom: 20px;
@@ -189,7 +189,10 @@ function Settings() {
             <tr>
               <td>
                 Core
-                <div className={styles.description}>JSON, Records, Text, HTML, Image, Binary</div>
+                <div className={styles.description}>
+                  JSON, Records, Text, HTML, Image, YAML, XML, Markdown, NDJSON, Base64, JWT, small
+                  values, zip/gzip/tar
+                </div>
               </td>
               <td className={ui.muted}>built-in</td>
               <td>ready</td>

@@ -36,7 +36,7 @@ const styles = {
     right: 0;
     display: flex;
     height: ${ROW}px;
-    border-bottom: 1px solid #2c2c2c;
+    border-bottom: 1px solid ${theme.rowBorder};
     &:hover {
       background: ${theme.hover};
     }

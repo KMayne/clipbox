@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ValueHandle } from '../../core/types';
 import { pdfLayoutSchema, type PageSize } from '../../modules/pdf/types';
-import { theme } from '../../theme';
+import { gruvbox, theme } from '../../theme';
 import { ui } from '../ui';
 import { useAsync } from '../useAsync';
 import { preview } from './styles';
@@ -34,7 +34,7 @@ const styles = {
   `,
   pageError: css`
     padding: 12px;
-    color: #a00;
+    color: ${gruvbox.redDim};
     font-size: 12px;
   `,
   active: css`

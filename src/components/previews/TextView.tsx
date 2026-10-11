@@ -21,7 +21,7 @@ const styles = {
     flex: none;
     padding: 0 10px 0 12px;
     text-align: right;
-    color: #6a6a6a;
+    color: ${theme.faint};
     user-select: none;
     border-right: 1px solid ${theme.subtle};
   `,

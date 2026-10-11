@@ -52,7 +52,7 @@ const styles = {
   kind: css`
     padding: 0 6px;
     border-radius: 3px;
-    color: #1e1e1e;
+    color: ${theme.onAccent};
     font-weight: 600;
     font-size: 12px;
     text-transform: uppercase;

@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { theme } from '../theme';
+import { theme, withAlpha } from '../theme';
 
 const overlay = css`
   position: fixed;
@@ -9,7 +9,7 @@ const overlay = css`
   justify-content: center;
   border: 2px dashed ${theme.accent};
   border-radius: 8px;
-  background: rgba(30, 30, 30, 0.85);
+  background: ${withAlpha(theme.bg, 0.85)};
   font-size: 18px;
   pointer-events: none;
   z-index: 100;

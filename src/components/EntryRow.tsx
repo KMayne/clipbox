@@ -72,7 +72,7 @@ const styles = {
   `,
   selected: css`
     border-color: ${theme.accent};
-    background: rgba(78, 161, 255, 0.15);
+    background: ${theme.accentSoft};
   `,
   dot: css`
     width: 7px;

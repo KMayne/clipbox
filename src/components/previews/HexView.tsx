@@ -17,7 +17,7 @@ const styles = {
     line-height: 18px;
   `,
   offset: css`
-    color: #6a6a6a;
+    color: ${theme.faint};
   `,
   ascii: css`
     color: ${theme.muted};
