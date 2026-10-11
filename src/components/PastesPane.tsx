@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { mdiChevronDown, mdiChevronRight, mdiClose } from '@mdi/js';
+import { mdiArrowTopRight, mdiChevronDown, mdiChevronRight, mdiClose } from '@mdi/js';
 import { Icon } from '@mdi/react';
 import { kindName } from '../core/kinds';
 import { useCaptureStore, type CaptureView } from '../state/captureStore';
@@ -68,6 +68,9 @@ const styles = {
   `,
   credit: css`
     margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
     font-size: 11px;
     color: ${theme.faint};
     text-decoration: none;
@@ -118,8 +121,15 @@ export function PastesPane() {
             Clear all
           </button>
         )}
-        <a className={styles.credit} href={SITE_URL}>
+        <a
+          className={styles.credit}
+          href={SITE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Opens in a new tab"
+        >
           KianMayne.co.uk
+          <Icon path={mdiArrowTopRight} size={0.45} />
         </a>
       </div>
     </section>
