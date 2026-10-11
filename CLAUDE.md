@@ -9,7 +9,8 @@ Progress and remaining work: `docs/PROGRESS.md`. Original plan: `~/.claude/plans
 - `pnpm test` — Vitest unit tests (`tests/unit`)
 - `pnpm test:e2e` — Playwright, two projects:
   - `dev`: dev server, synthetic `ClipboardEvent`/`DragEvent`
-  - `preview`: production build plus `vite preview`, for Service Worker, offline and background-download tests (`offline.spec.ts`, `background.spec.ts`)
+  - `preview`: production build plus `vite preview`, for Service Worker, offline, background-download and PWA tests (`offline.spec.ts`, `background.spec.ts`, `pwa.spec.ts`)
+  - `mobile.spec.ts` runs in `dev` as a Pixel 7 (`test.use(devices['Pixel 7'])`).
 - `pnpm typecheck` (main tsconfig plus `tsconfig.sw.json` for the service worker), `pnpm lint` (zero warnings), `pnpm build`
 
 Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
@@ -47,7 +48,13 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
   - `form.ts`: settings forms generated from `z.toJSONSchema(params)` (string with `hint: 'multiline' | 'regex'`, number with min/max, boolean, enum with `optionLabels`), and `actionLabel` for the derived capture's parent label.
   - Engine: `actions(entryId, kind)` lists applicable ids; `runAction(entryId, kind, id, params)` validates `params` in the worker, then runs. `captureStore.runAction` adds the result as a `'derived'` capture.
   - UI: `components/Sidebar.tsx` is the right sidebar (toggled with `A` or the top bar's panel icon), with three collapsible sections: Info (the value's stats, `I` toggles it), Actions (`components/ActionsPane.tsx` `ActionsSection`) and Schema (collapsed by default). Open state and expanded sections are in localStorage `clipbox.sidebarOpen` / `clipbox.sidebarSections`. The Inspector has a view switcher, Preview / Split / Raw (1–3). Split puts the source beside the preview: raw text, or a hex dump for binary kinds (`isBinaryKind` in `core/kinds.ts`; bytes via `engine.rawBytes`). The view is remembered per class in `clipbox.inspectorView` (`state/views.ts`): text-based kinds default to Split, binary ones to Preview. Plain text and plain binary don't split, since their preview already is the source. Palette entries come from `commands.ts` `selectionCommands`. Derivations show in the sidebar's Open group. Candidate actions and what's done: `docs/ACTIONS.md`.
-- `src/capture/` — capture sources (paste, read, drop, file) → `captureStore.add()`.
+- **PWA** (installable, Chromium):
+  - `vite/pwa.ts` builds the web app manifest from Vite's `base` (`id`, `start_url`, `scope`, `share_target`, `file_handlers`, `launch_handler: navigate-existing`, `handle_links`), emits it and the icons in `vite/icons/` into the bundle (so the SW precaches them with the core), and injects the head tags (manifest, `theme-color`, icons, iOS meta). The dev server serves the same files.
+  - The icons are committed PNGs. `node scripts/icons.ts` regenerates them from the top bar's MDI mark in Nord, using Playwright's Chromium.
+  - Install UX: `state/install.ts` keeps the deferred `beforeinstallprompt`. "Install app" shows in the palette and Settings → App until `appinstalled` or `display-mode: standalone`. `src/pwa.d.ts` types the Chromium-only APIs.
+  - **Share target:** Android's share sheet POSTs multipart form data to `<base>share-target`. `sw.ts` stashes each field in the `clipbox-share` cache (headers carry the field and file name) and redirects to `?share=<id>`. At startup `capture/share.ts` reads the stash (validated in `sharePayload.ts`), adds a `'share'` capture and deletes it. The shared string constants are typed with literal types in `swProtocol.ts`, so the SW's copies can't drift. Files opened with the installed desktop app arrive through `launchQueue` as `'file'` captures.
+- **Mobile layout:** below 768 px (`MOBILE_QUERY` in `components/ui.ts`, `useIsMobile()`), `App` swaps the resizable panes for `MobileLayout`: one pane at a time (`uiStore.pane`: Pastes, Inspector, or the sidebar as "Actions") above a bottom navigation bar. A new capture (`state/mobileNav.ts`, on `added`) or choosing a chip or collection goes to the Inspector. The top bar is compact (Read clipboard as the primary button; icon buttons for Open file, Commands and Settings). Use `media.touch` for 40 px touch targets and show hover-only controls on touch; the bars pad for `env(safe-area-inset-*)` (`viewport-fit=cover`).
+- `src/capture/` — capture sources (paste, read, drop, file, share) → `captureStore.add()`.
 - **Collections** — a capture with 2+ entries (a multi-file drop, or an action's several results as one `'derived'` capture).
   - `captureStore.collection` (exclusive with `selection`) shows `components/CollectionView.tsx` in the Inspector: a tile grid (lazy `<img>` thumbnails from `thumbUrl`, arrows/Home/End/Enter), count, total size and parent link. Selected by clicking the capture header (the chevron collapses), by `j`/`k`/arrows (`navOrder` puts collection headers before their chips), and auto-selected for multi-result derived captures. Enter in the Pastes pane focuses the grid.
   - The Pastes pane lists the first `ENTRY_PREVIEW_LIMIT` entries (compact rows past 4) until "Show all"; `select()` expands a capture so the chosen entry is visible.
@@ -84,5 +91,6 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
   - It can't route the browser's Service Worker update check; tests edit `dist/sw.js` instead.
 - `@vscode/vscode-languagedetection` is patched (`patches/`): its webpack chunk `require` is made static so Rolldown can bundle it.
 - The user's shell exports `NODE_ENV=development`, so `pnpm build` pins `NODE_ENV=production`. Without it you get the development build of React.
+- Monaco only parses hex colours in themes; an `rgba()` string renders red.
 - Lazily-imported dependencies must be listed in `optimizeDeps.include`. Otherwise the dev server reloads the page on first use, which makes the e2e tests flaky.
 - The SW looks up the cache with `ignoreVary` (files are content-hashed). `vite preview` sends `Vary: Origin`, which would otherwise cause cache misses.
