@@ -66,13 +66,29 @@ const styles = {
       text-decoration: underline;
     }
   `,
+  credit: css`
+    margin-left: auto;
+    font-size: 11px;
+    color: ${theme.faint};
+    text-decoration: none;
+    &:hover {
+      color: ${theme.muted};
+      text-decoration: underline;
+    }
+  `,
   footer: css`
+    display: flex;
+    align-items: center;
+    min-height: 44px;
     padding: 8px 10px;
     border-top: 1px solid ${theme.subtle};
   `,
 };
 
 const time = (at: number) => new Date(at).toLocaleTimeString('en-GB');
+
+/** The author's site: its root when deployed under a subpath (e.g. /clipbox/), else the live URL. */
+const SITE_URL = import.meta.env.BASE_URL !== '/' ? '/' : 'https://kianmayne.co.uk/';
 
 export function PastesPane() {
   const captures = useCaptureStore(s => s.captures);
@@ -96,13 +112,16 @@ export function PastesPane() {
           <CaptureItem key={c.id} capture={c} />
         ))}
       </div>
-      {captures.length > 0 && (
-        <div className={styles.footer}>
+      <div className={styles.footer}>
+        {captures.length > 0 && (
           <button className={ui.button} onClick={clear}>
             Clear all
           </button>
-        </div>
-      )}
+        )}
+        <a className={styles.credit} href={SITE_URL}>
+          KianMayne.co.uk
+        </a>
+      </div>
     </section>
   );
 }
