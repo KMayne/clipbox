@@ -4,7 +4,7 @@ export type EntryId = `en-${string}`;
 /** Open set: interpreters register their own kinds. */
 export type Kind = 'text' | 'json' | 'records' | 'html' | 'image' | 'binary' | (string & {});
 
-export type CaptureSourceId = 'paste' | 'read' | 'drop' | 'file' | 'derived';
+export type CaptureSourceId = 'paste' | 'read' | 'drop' | 'file' | 'share' | 'derived';
 
 /** One clipboard format / dropped file, before any interpretation. */
 export interface RawEntry {

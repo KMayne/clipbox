@@ -315,6 +315,20 @@ function CaptureItem({ capture }: { capture: CaptureView }) {
   );
 }
 
-/** Pastes hold one entry per clipboard format; drops and derived captures hold files. */
-const countLabel = (source: CaptureView['source'], n: number) =>
-  source === 'paste' || source === 'read' ? plural(n, 'format') : plural(n, 'file');
+/**
+ * Pastes hold one entry per clipboard format; drops and derived captures hold files; shares hold
+ * text, a link and files.
+ */
+const countLabel = (source: CaptureView['source'], n: number) => {
+  switch (source) {
+    case 'paste':
+    case 'read':
+      return plural(n, 'format');
+    case 'share':
+      return plural(n, 'item');
+    case 'drop':
+    case 'file':
+    case 'derived':
+      return plural(n, 'file');
+  }
+};

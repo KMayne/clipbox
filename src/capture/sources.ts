@@ -15,7 +15,7 @@ export function isEditable(target: EventTarget | null): boolean {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
 
-const fileEntry = (file: File): NewEntry => ({
+export const fileEntry = (file: File): NewEntry => ({
   mime: file.type || 'application/octet-stream',
   name: file.name,
   size: file.size,

@@ -2,6 +2,7 @@ import { injectGlobal } from '@emotion/css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { consumeShares, startFileHandling } from './capture/share';
 import { onCaptureEvent, useCaptureStore } from './state/captureStore';
 import { startBackgroundDownloads } from './state/backgroundDownloads';
 import { startInstallPrompt } from './state/install';
@@ -50,6 +51,10 @@ void startPersistence(
   },
   () => useCaptureStore.getState().clear(),
 );
+
+// After the listeners above, so a shared item opens in the Inspector
+void consumeShares();
+startFileHandling();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');

@@ -62,6 +62,59 @@ test('the manifest is valid, its icons load, and Chromium finds the app installa
   expect(installabilityErrors).toEqual([]);
 });
 
+test('sharing text, a link and a file posts to the service worker and becomes a capture', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await waitForServiceWorker(page);
+  // What Android's share sheet sends: a multipart POST to the manifest's share_target action
+  await page.evaluate(() => {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = 'share-target';
+    form.enctype = 'multipart/form-data';
+    for (const [name, value] of [
+      ['title', 'A page'],
+      ['text', '{"shared": true}'],
+      ['url', 'https://example.com/page'],
+    ]) {
+      const input = document.createElement('input');
+      input.name = name ?? '';
+      input.value = value ?? '';
+      form.append(input);
+    }
+    const files = document.createElement('input');
+    files.type = 'file';
+    files.name = 'files';
+    files.id = 'share-files';
+    files.multiple = true;
+    form.append(files);
+    document.body.append(form);
+  });
+  await page.setInputFiles('#share-files', [
+    { name: 'people.csv', mimeType: 'text/csv', buffer: Buffer.from('id,name\n1,Ada\n2,Linus\n') },
+  ]);
+  await page.evaluate(() => document.querySelector('form')?.submit());
+
+  // Redirected back to the app, which drops ?share= once it has ingested the share
+  await expect(page.getByTestId('capture-count')).toHaveText('share · 3 items');
+  await expect(page).toHaveURL(/\/$/);
+  const entries = page.getByTestId('entry');
+  await expect(entries).toHaveCount(3);
+  await expect(entries.nth(0)).toContainText('{"shared": true}');
+  await expect(entries.nth(1)).toContainText('https://example.com/page');
+  await expect(entries.nth(2)).toContainText('people.csv');
+  await expect(entries.nth(2).getByTestId('chip').first()).toHaveText('Records 2×2');
+  await expect(page.getByTestId('json-tree')).toBeVisible();
+
+  // The stash is emptied, so a reload doesn't add it again
+  expect(
+    await page.evaluate(async () => (await (await caches.open('clipbox-share')).keys()).length),
+  ).toBe(0);
+  await page.reload();
+  await expect(page.getByTestId('capture')).toHaveCount(1);
+});
+
 test('the installed app starts offline from its start_url', async ({ page, context }) => {
   await page.goto('/');
   await waitForServiceWorker(page);
