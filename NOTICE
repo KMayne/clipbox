@@ -1,0 +1,30 @@
+Clipbox
+Copyright (c) 2026 Kian Mayne
+Licensed under the MIT License (see LICENSE).
+
+This product includes third-party software licensed under the Apache License,
+Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0):
+
+- SheetJS Community Edition (xlsx), used by the Spreadsheets module
+  Copyright (C) 2012-present SheetJS LLC
+  https://sheetjs.com
+
+- PDF.js (pdfjs-dist), used by the PDF module
+  Copyright Mozilla Foundation
+  https://mozilla.github.io/pdf.js/
+
+- TensorFlow.js, bundled in @vscode/vscode-languagedetection and used by the
+  Language detection module
+  Copyright Google LLC
+  https://www.tensorflow.org/js
+
+- Comlink
+  Copyright Google LLC
+  https://github.com/GoogleChromeLabs/comlink
+
+- idb-keyval
+  Copyright Jake Archibald
+  https://github.com/jakearchibald/idb-keyval
+
+Other dependencies are under MIT, ISC or BSD licences; see each package's
+licence file in node_modules or its published package.
