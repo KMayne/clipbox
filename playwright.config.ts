@@ -11,13 +11,13 @@ export default defineConfig({
   projects: [
     {
       name: 'dev',
-      testIgnore: /offline\.spec/,
+      testIgnore: /(offline|background)\.spec/,
       use: { ...devices['Desktop Chrome'], baseURL: DEV },
     },
     {
       // Service worker only exists in production builds
       name: 'preview',
-      testMatch: /offline\.spec/,
+      testMatch: /(offline|background)\.spec/,
       use: { ...devices['Desktop Chrome'], baseURL: PREVIEW, serviceWorkers: 'allow' },
     },
   ],

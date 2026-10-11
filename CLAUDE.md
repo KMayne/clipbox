@@ -9,7 +9,7 @@ Plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md`. Done: Deliverable 1a 
 - `pnpm test` — Vitest unit tests (`tests/unit`)
 - `pnpm test:e2e` — Playwright, two projects:
   - `dev`: dev server, synthetic `ClipboardEvent`/`DragEvent`
-  - `preview`: production build plus `vite preview`, for Service Worker and offline tests (`offline.spec.ts`)
+  - `preview`: production build plus `vite preview`, for Service Worker, offline and background-download tests (`offline.spec.ts`, `background.spec.ts`)
 - `pnpm typecheck` (main tsconfig plus `tsconfig.sw.json` for the service worker), `pnpm lint` (zero warnings), `pnpm build`
 
 Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
@@ -37,6 +37,7 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
     - `pdf`: pdf.js in fake-worker mode inside the engine worker, rendering pages to PNG with `OffscreenCanvas`.
     - `libarchive`: 7z, RAR, tar.xz, tar.bz2 and zstd, owning the same `archive` kind as core.
   - Every module except `editor` is worker-only; their previews live in core.
+- `src/state/backgroundDownloads.ts` (with the pure rules in `modules/backgroundPolicy.ts`) — on a fast, apparently unmetered connection (4G-class, at least 5 Mbps, Data Saver off, not cellular, read from `navigator.connection`), downloads Auto-policy modules into the SW cache while idle, smallest first. Modules the user removes by hand are skipped. Toggle and status are in Settings → Modules. The e2e tests fake `navigator.connection` with `addInitScript`.
 - `src/sw.ts` + `vite/modulesManifest.ts` — the plugin maps each module's entry to its files (chunks, workers, assets), emits `modules-manifest.json`, and emits `sw.js` with the manifest inlined. The SW precaches the core files and handles per-module download, remove and update. It only runs in production builds. `src/swClient.ts` is the page side.
 - `src/capture/` — capture sources (paste, read, drop, file) → `captureStore.add()`.
 - `src/state/` — Zustand stores (`captureStore`, `moduleStore`, `uiStore`).

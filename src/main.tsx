@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { onCaptureEvent, useCaptureStore } from './state/captureStore';
+import { startBackgroundDownloads } from './state/backgroundDownloads';
 import { useModuleStore } from './state/moduleStore';
 import { startPersistence } from './state/persistence';
 import { sw } from './swClient';
@@ -30,6 +31,7 @@ injectGlobal`
 
 sw.register();
 useModuleStore.getState().init();
+startBackgroundDownloads();
 void startPersistence(
   {
     captures: () => useCaptureStore.getState().captures,

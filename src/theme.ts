@@ -44,8 +44,8 @@ export const theme = {
   panel: g.bg0h,
   raised: g.bg1,
   hover: g.bg2,
-  text: g.fg1,
-  muted: g.fg4,
+  text: g.fg3,
+  muted: g.gray,
   /** De-emphasised text: line numbers, row indexes, offsets. */
   faint: g.bg4,
   border: g.bg3,

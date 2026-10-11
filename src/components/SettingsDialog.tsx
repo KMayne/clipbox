@@ -1,8 +1,9 @@
 import { css, cx } from '@emotion/css';
 import { useCallback, useEffect, useState } from 'react';
 import { formatBytes } from '../core/format';
-import { modules } from '../modules/registry';
+import { moduleInfo, modules } from '../modules/registry';
 import type { ModuleInfo, Policy } from '../modules/types';
+import { useBackgroundDownloads, type BackgroundStatus } from '../state/backgroundDownloads';
 import { useModuleStore } from '../state/moduleStore';
 import { storageUsed, useHistoryStore, type KeepFor } from '../state/persistence';
 import { useUiStore } from '../state/uiStore';
@@ -124,6 +125,12 @@ const styles = {
     gap: 8px;
     color: ${theme.error};
   `,
+  backgroundToggle: css`
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  `,
   footer: css`
     display: flex;
     justify-content: space-between;
@@ -206,8 +213,16 @@ function Settings() {
         </table>
         {sw.supported && (
           <div className={styles.footer}>
-            <span />
-            <button className={ui.button} onClick={() => modules.forEach(m => void download(m.id))}>
+            <BackgroundDownloads />
+            <button
+              className={ui.button}
+              onClick={() =>
+                modules.forEach(m => {
+                  useBackgroundDownloads.getState().unskip(m.id);
+                  void download(m.id);
+                })
+              }
+            >
               Download all
             </button>
           </div>
@@ -261,20 +276,62 @@ function ModuleRow({ info, size, focused }: { info: ModuleInfo; size: number; fo
       <td>
         {sw.supported &&
           (cache?.state === 'cached' ? (
-            <button className={ui.button} onClick={() => void remove(info.id)}>
+            <button
+              className={ui.button}
+              onClick={() => {
+                // A manual removal shouldn't be undone by background downloads
+                useBackgroundDownloads.getState().skip(info.id);
+                void remove(info.id);
+              }}
+            >
               Remove
             </button>
           ) : (
             <button
               className={ui.button}
               disabled={cache?.state === 'downloading'}
-              onClick={() => void download(info.id)}
+              onClick={() => {
+                useBackgroundDownloads.getState().unskip(info.id);
+                void download(info.id);
+              }}
             >
               Download
             </button>
           ))}
       </td>
     </tr>
+  );
+}
+
+function backgroundStatusText(s: BackgroundStatus): string {
+  switch (s.state) {
+    case 'unsupported':
+      return 'unavailable here';
+    case 'off':
+      return 'off';
+    case 'waiting':
+      return 'waiting for the app to be idle';
+    case 'paused':
+      return `paused: ${s.reason}`;
+    case 'downloading':
+      return `downloading ${moduleInfo(s.module)?.title ?? s.module}…`;
+    case 'done':
+      return 'all modules downloaded';
+  }
+}
+
+function BackgroundDownloads() {
+  const enabled = useBackgroundDownloads(s => s.enabled);
+  const status = useBackgroundDownloads(s => s.status);
+  const setEnabled = useBackgroundDownloads(s => s.setEnabled);
+  return (
+    <label className={styles.backgroundToggle}>
+      <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} />
+      Download modules in the background on fast connections
+      <span className={ui.muted} data-testid="background-status">
+        ({backgroundStatusText(status)})
+      </span>
+    </label>
   );
 }
 
