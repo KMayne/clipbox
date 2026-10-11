@@ -144,6 +144,7 @@ describe('Engine actions', () => {
       'json.types',
       'json.flatten',
       'json.pick',
+      'query.jq',
       'any.hash',
       'any.hexDump',
     ]);
