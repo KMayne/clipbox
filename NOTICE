@@ -26,6 +26,14 @@ Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0):
   Copyright Jake Archibald
   https://github.com/jakearchibald/idb-keyval
 
+This product includes third-party software licensed under the Mozilla Public
+License, Version 2.0 (https://mozilla.org/MPL/2.0/):
+
+- Mediabunny, used unmodified by the Audio tools module
+  Copyright (c) 2026-present, Vanilagy and contributors
+  Source code: https://github.com/Vanilagy/mediabunny (also published on npm
+  as "mediabunny", with its sources included in the package)
+
 The colour schemes are based on these palettes, all under the MIT License:
 - Nord (default), Arctic Ice Studio, https://www.nordtheme.com
 - Tokyo Night, enkia, https://github.com/enkia/tokyo-night-vscode-theme
