@@ -22,6 +22,7 @@ const NAMES: Record<string, string> = {
   pdf: 'PDF',
   archive: 'Archive',
   presentation: 'PowerPoint',
+  executable: 'Executable',
 };
 
 export const kindName = (kind: Kind) => NAMES[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);
@@ -37,6 +38,7 @@ const BINARY_KINDS = new Set([
   'spreadsheet',
   'sqlite',
   'presentation',
+  'executable',
 ]);
 
 export const isBinaryKind = (kind: Kind) => BINARY_KINDS.has(kind);

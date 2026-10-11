@@ -3,6 +3,7 @@ import { register, type AnyInterpreter } from '../interpreter';
 import type { Kind } from '../types';
 import { archiveCoreInterpreter } from './archive';
 import { presentationInterpreter } from './presentation';
+import { executableInterpreter } from './executable';
 import { base64Interpreter } from './base64';
 import { binaryInterpreter } from './binary';
 import { colourInterpreter } from './colour';
@@ -32,6 +33,7 @@ export const interpreters: AnyInterpreter[] = [
   register(htmlInterpreter),
   register(imageInterpreter),
   register(presentationInterpreter),
+  register(executableInterpreter),
   register(archiveCoreInterpreter),
   register(timestampInterpreter),
   register(uuidInterpreter),
