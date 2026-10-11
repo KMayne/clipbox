@@ -2,7 +2,7 @@
 
 Paste anything (text/JSON/CSV/HTML/image/file), inspect it (interpretations, preview, stats, schema), and later transform it with a typed node graph. Web app, Chromium only, no backend.
 
-Plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md`. Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Batch B is done: persistence, YAML/XML, Markdown/NDJSON, derived captures ("Open as…") + base64/JWT, value decoders (timestamp/uuid/url/colour) and the lazy `x509` PEM module. Next: Batch C (binary formats: archives, PDF, audio, video, spreadsheets, SQLite); archives open entries as derived captures.
+Plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md`. Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Batches A–C are done. The kinds are: core (JSON, records, text, HTML, image, binary, YAML, XML, Markdown, NDJSON, base64, JWT, timestamp, UUID, URL, colour, archive for zip/gzip/tar) plus lazy modules. Next: Deliverable 1b (canvas and graph) / Deliverable 2 (ops).
 
 ## Commands
 - `pnpm dev` — Vite dev server
@@ -27,7 +27,16 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
   - `workerLoaders.ts` / `uiLoaders.ts`: the `import()` for each half. These are kept separate so the worker build doesn't pull in UI chunks and vice versa.
   - Policies are Auto, Preload or Off, stored in localStorage under `clipbox.modules`.
   - Interpreters use module services through `ctx.service(id)`, which returns null when the module is off or fails to load.
-  - Current modules: `editor` (Monaco, UI only), `langdetect` (VS Code's ML model, worker only) and `x509` (PEM certificates and keys, worker only, `@peculiar/x509`).
+  - Current modules:
+    - `editor`: Monaco, UI only.
+    - `langdetect`: VS Code's ML model.
+    - `x509`: PEM, using `@peculiar/x509`.
+    - `media`: audio and video, using music-metadata.
+    - `sheets`: SheetJS, from the CDN tarball, Apache-2.0.
+    - `sqlite`: sql.js WASM, read-only.
+    - `pdf`: pdf.js in fake-worker mode inside the engine worker, rendering pages to PNG with `OffscreenCanvas`.
+    - `libarchive`: 7z, RAR, tar.xz, tar.bz2 and zstd, owning the same `archive` kind as core.
+  - Every module except `editor` is worker-only; their previews live in core.
 - `src/sw.ts` + `vite/modulesManifest.ts` — the plugin maps each module's entry to its files (chunks, workers, assets), emits `modules-manifest.json`, and emits `sw.js` with the manifest inlined. The SW precaches the core files and handles per-module download, remove and update. It only runs in production builds. `src/swClient.ts` is the page side.
 - `src/capture/` — capture sources (paste, read, drop, file) → `captureStore.add()`.
 - `src/state/` — Zustand stores (`captureStore`, `moduleStore`, `uiStore`).
@@ -45,9 +54,11 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
   - Write an `Interpreter<V>` whose value is tagged `{ kind: '<kind>', … }`, with `isValue: v => hasKind(v, '<kind>')`, and add it with `register()`. The registry stores type-erased `AnyInterpreter`s that check values on every call.
   - Previews read data through the typed `ValueHandle` methods (`lines`, `rows`, `children`, `bytes`, `text`, `image`, `json`).
 - **Derivations:** interpreters can offer `derivations`/`derive` ("Open as…"). The engine returns the bytes, and `captureStore.derive` adds a `'derived'` capture with a `parent` link, which persistence also stores.
+- **Multi-table values** (spreadsheet sheets, SQLite tables) use `Summary.tables` plus `rows(from, to, table?)`. `components/previews/tableHandle.ts` adapts one table into a single-table handle for `RecordsTable`.
 - **Bytes** are `Uint8Array<ArrayBuffer>` throughout. `crypto.subtle` and `Blob` need ArrayBuffer-backed bytes.
 
 ## Gotchas
+- **Subpath deploys:** set `BASE_PATH` (e.g. `/clipbox/`) at build time. The SW and its client resolve URLs against the base.
 - Import `{ Icon }` from `@mdi/react` (named), the default import breaks under Vite 8.
 - TypeScript pinned to 6.x: typescript-eslint doesn't support TS 7 yet.
 - Playwright:
