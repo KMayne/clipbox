@@ -34,8 +34,8 @@ test('paste shows every format with interpretations and stats', async ({ page })
   await expect(stat(page, 'Top-level type')).toHaveText('array');
   await expect(stat(page, 'Length')).toHaveText('42');
 
-  await page.keyboard.press('2');
-  await expect(page.getByRole('tabpanel')).toContainText('id: number;');
+  await page.getByRole('button', { name: 'SCHEMA' }).click();
+  await expect(page.getByRole('region', { name: 'Schema' })).toContainText('id: number;');
 });
 
 test('records interpretation renders a table', async ({ page }) => {

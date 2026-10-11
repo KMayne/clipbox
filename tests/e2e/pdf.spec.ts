@@ -46,7 +46,7 @@ test('dropped PDF renders pages and extracts text as a derived capture', async (
   await expect(stat(page, 'Author')).toHaveText('Ada Lovelace');
   await expect(stat(page, 'Page size')).toHaveText('A4');
   await expect(stat(page, 'Section 1.1')).toHaveText('p. 1');
-  await page.getByRole('tab', { name: 'preview' }).click();
+  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Preview' }).click();
 
   await actionsPane(page).getByRole('button', { name: 'Extract text' }).click();
   await expect(page.getByTestId('capture')).toHaveCount(2);
@@ -55,7 +55,7 @@ test('dropped PDF renders pages and extracts text as a derived capture', async (
     'from PDF · 2 pages · A4 › Extract text',
   );
   await expect(derived.locator('[data-kind=text]')).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('tabpanel')).toContainText('Hello from page one');
+  await expect(page.getByRole('region', { name: 'View' })).toContainText('Hello from page one');
 });
 
 test('encrypted PDF shows an error instead of crashing', async ({ page }) => {

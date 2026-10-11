@@ -3,11 +3,11 @@ import { isEditable, openFile } from './capture/sources';
 import { copySelection } from './capture/copyToClipboard';
 import { removeSelectedCapture } from './commands';
 import { navOrder, useCaptureStore } from './state/captureStore';
-import { useUiStore, type InspectorTab } from './state/uiStore';
+import { useUiStore, type InspectorView } from './state/uiStore';
 
-const TABS: Record<string, InspectorTab> = {
+const VIEWS: Record<string, InspectorView> = {
   '1': 'preview',
-  '2': 'schema',
+  '2': 'split',
   '3': 'raw',
 };
 
@@ -38,7 +38,7 @@ export function useGlobalShortcuts() {
         return;
       }
       if (ui.paletteOpen || isEditable(e.target)) return;
-      const tab = TABS[e.key];
+      const view = VIEWS[e.key];
       if (mod && e.key.toLowerCase() === 'o') {
         e.preventDefault();
         openFile();
@@ -48,8 +48,8 @@ export function useGlobalShortcuts() {
         void copySelection(useCaptureStore.getState().selection);
       } else if (mod || e.altKey) {
         return;
-      } else if (tab) {
-        ui.setTab(tab);
+      } else if (view) {
+        ui.setView(view);
       } else if (e.key === 'w') {
         ui.toggleWrap();
       } else if (e.key === 'a') {

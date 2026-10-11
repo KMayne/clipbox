@@ -45,7 +45,7 @@ test('PDF Extract images pulls each distinct picture out as PNG', async ({ page 
   await expect(tiles).toHaveCount(2);
   await tiles.first().click();
   await expect(images.nth(0)).toHaveAttribute('aria-pressed', 'true');
-  const img = page.getByRole('tabpanel').locator('img');
+  const img = page.getByRole('region', { name: 'View' }).locator('img');
   expect(await naturalSize(img)).toEqual([50, 40]);
   const pixel = await img.evaluate(el => {
     if (!(el instanceof HTMLImageElement)) return [];

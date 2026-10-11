@@ -26,7 +26,7 @@ Claude Code context that lives outside the repo and won't come with it:
 
 - **Deliverable 1a: paste intake and the Inspector.**
   - Capture from paste, Read clipboard, drag and drop, and Open file.
-  - The Inspector shows every clipboard format's interpretations, with Preview, Schema and Raw
+  - The Inspector shows every clipboard format's interpretations, with Preview, Split and Raw views
     tabs.
   - Command palette (Ctrl+K) and keyboard navigation.
 - **Batch A:**
@@ -76,7 +76,9 @@ Claude Code context that lives outside the repo and won't come with it:
   - Catalog and worker implementations in `src/core/actions/`, engine `actions`/`runAction`, settings
     validated in the worker, forms generated from the Zod settings schemas.
   - A right sidebar (toggle with `A` or the top bar's panel icon) with collapsible **Info** (the
-    stats, moved out of the Inspector's tabs; `I` toggles it) and **Actions** sections. Palette entries
+    stats; `I` toggles it), **Actions** and **Schema** sections.
+  - The Inspector's tabs became a **Preview / Split / Raw** view switcher (1–3, remembered); Split
+    shows the raw text beside the preview for text-based kinds. Palette entries
     "<Group>: <Title>", and derivations moved into the Actions Open group (the Open as menu is gone).
   - Actions can return several results, which arrive as one collection capture.
   - Ten proof actions: JSON format, minify, sort keys, to YAML and TypeScript types; text change case,

@@ -3,8 +3,8 @@ import { actionsPane, paste } from './helpers';
 
 /** The selected value's raw text (Raw tab). */
 async function expectRaw(page: Page, text: string) {
-  await page.getByRole('tab', { name: 'raw' }).click();
-  await expect(page.getByRole('tabpanel').locator('pre')).toHaveText(text);
+  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Raw' }).click();
+  await expect(page.getByRole('region', { name: 'View' }).locator('pre')).toHaveText(text);
 }
 
 const derivedFrom = (page: Page) => page.getByTestId('capture').first().getByTestId('derived-from');
@@ -153,7 +153,11 @@ test('the sidebar shows Info and Actions, each collapsible and remembered', asyn
 
   // Info holds the stats; the Inspector has no Stats tab any more
   await expect(info.getByTestId('stats').first()).toContainText('Top-level type');
-  await expect(page.getByRole('tab')).toHaveText(['preview', 'schema', 'raw']);
+  await expect(page.getByRole('group', { name: 'View' }).getByRole('button')).toHaveText([
+    'Preview',
+    'Split',
+    'Raw',
+  ]);
 
   await infoToggle.click();
   await expect(infoToggle).toHaveAttribute('aria-expanded', 'false');
@@ -178,4 +182,43 @@ test('the sidebar shows Info and Actions, each collapsible and remembered', asyn
   await toggle.click();
   await expect(sidebar).toBeVisible();
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('the view switcher shows raw text, the preview, or both side by side', async ({ page }) => {
+  await paste(page, { 'text/plain': '{"name":"Ada","langs":["en","fr"]}' });
+  const views = page.getByRole('group', { name: 'View' });
+  const view = page.getByRole('region', { name: 'View' });
+  await expect(views.getByRole('button', { name: 'Preview' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(view.getByTestId('json-tree')).toBeVisible();
+
+  // Split (2): the raw text beside the tree
+  await page.keyboard.press('2');
+  await expect(views.getByRole('button', { name: 'Split' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(view.locator('pre')).toHaveText('{"name":"Ada","langs":["en","fr"]}');
+  await expect(view.getByTestId('json-tree')).toBeVisible();
+
+  // Remembered across reloads
+  await page.reload();
+  await paste(page, { 'text/plain': '[1,2,3]' });
+  await expect(views.getByRole('button', { name: 'Split' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  // Plain text's preview is already its source, so Split falls back to Preview
+  await paste(page, { 'text/plain': 'just some words' });
+  await expect(views.getByRole('button', { name: 'Split' })).toBeDisabled();
+  await expect(views.getByRole('button', { name: 'Preview' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  await page.keyboard.press('3');
+  await expect(view.locator('pre')).toHaveText('just some words');
 });

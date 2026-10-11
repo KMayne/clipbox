@@ -1,12 +1,13 @@
 import { css, cx } from '@emotion/css';
 import { mdiContentCopy, mdiDownload } from '@mdi/js';
 import { Icon } from '@mdi/react';
+import { Group, Panel, Separator } from 'react-resizable-panels';
 import { copySelection } from '../capture/copyToClipboard';
 import { downloadEntry } from '../capture/saveFiles';
-import type { ValueHandle } from '../core/types';
+import type { Kind, ValueHandle } from '../core/types';
 import { getHandle } from '../engine/valueHandle';
 import { findEntry, useCaptureStore, type Selection } from '../state/captureStore';
-import { useUiStore, type InspectorTab } from '../state/uiStore';
+import { useUiStore, type InspectorView } from '../state/uiStore';
 import { kindColor, theme } from '../theme';
 import { HexView } from './previews/HexView';
 import { HtmlView } from './previews/HtmlView';
@@ -28,14 +29,33 @@ import { SqliteView } from './previews/SqliteView';
 import { TextView } from './previews/TextView';
 import { ValueCard } from './previews/ValueCard';
 import { RawView } from './RawView';
-import { SchemaView } from './SchemaView';
 import { ui } from './ui';
 import { useAsync } from './useAsync';
 
 /** Above this, Monaco gets sluggish; use the lightweight virtualised view. */
 const MONACO_MAX_BYTES = 20 * 1024 * 1024;
 
-const TABS: InspectorTab[] = ['preview', 'schema', 'raw'];
+const VIEWS: { view: InspectorView; label: string; key: string }[] = [
+  { view: 'preview', label: 'Preview', key: '1' },
+  { view: 'split', label: 'Split', key: '2' },
+  { view: 'raw', label: 'Raw', key: '3' },
+];
+
+/** Kinds whose raw content isn't text worth reading beside the preview. */
+const BINARY_KINDS = new Set([
+  'image',
+  'binary',
+  'audio',
+  'video',
+  'pdf',
+  'archive',
+  'spreadsheet',
+  'sqlite',
+  'presentation',
+]);
+
+/** Split needs readable source, and plain text's preview already is its source. */
+const canSplit = (kind: Kind) => kind !== 'text' && !BINARY_KINDS.has(kind);
 
 const styles = {
   inspector: css`
@@ -51,6 +71,7 @@ const styles = {
     border-bottom: 1px solid ${theme.subtle};
   `,
   kind: css`
+    flex-shrink: 0;
     padding: 0 6px;
     border-radius: 3px;
     color: ${theme.onAccent};
@@ -58,38 +79,71 @@ const styles = {
     font-size: 12px;
     text-transform: uppercase;
   `,
+  label: css`
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
   source: css`
+    flex: 0 1 auto;
+    min-width: 0;
     color: ${theme.muted};
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   `,
   actions: css`
+    flex-shrink: 0;
     margin-left: auto;
     display: flex;
     gap: 6px;
   `,
-  tabs: css`
-    display: flex;
-    gap: 2px;
-    padding: 0 8px;
-    border-bottom: 1px solid ${theme.subtle};
+  views: css`
+    display: inline-flex;
+    border: 1px solid ${theme.border};
+    border-radius: 4px;
+    overflow: hidden;
   `,
-  tab: css`
-    padding: 6px 10px;
+  viewButton: css`
+    padding: 3px 10px;
     background: none;
     border: none;
-    border-bottom: 2px solid transparent;
     color: ${theme.muted};
+    font-size: 12px;
     cursor: pointer;
-    text-transform: capitalize;
-    &:hover {
+    & + & {
+      border-left: 1px solid ${theme.border};
+    }
+    &:hover:enabled {
       color: ${theme.text};
+      background: ${theme.hover};
+    }
+    &:disabled {
+      opacity: 0.45;
+      cursor: default;
     }
   `,
-  activeTab: css`
+  activeView: css`
     color: ${theme.text};
-    border-bottom-color: ${theme.accent};
+    background: ${theme.raised};
+  `,
+  split: css`
+    height: 100%;
+  `,
+  /** Previews size themselves against their container, so each half must be one. */
+  pane: css`
+    position: relative;
+    height: 100%;
+  `,
+  separator: css`
+    width: 1px;
+    background: ${theme.subtle};
+    &[data-separator='hover'],
+    &[data-separator='active'] {
+      background: ${theme.accent};
+    }
   `,
   body: css`
     flex: 1;
@@ -116,8 +170,10 @@ export function Inspector() {
 }
 
 function SelectionInspector({ selection }: { selection: Selection }) {
-  const tab = useUiStore(s => s.tab);
-  const setTab = useUiStore(s => s.setTab);
+  const chosen = useUiStore(s => s.view);
+  const setView = useUiStore(s => s.setView);
+  const splittable = canSplit(selection.kind);
+  const view = chosen === 'split' && !splittable ? 'preview' : chosen;
   const entry = useCaptureStore(s => findEntry(s.captures, selection.entryId)?.entry);
   const handle = useAsync(`${selection.entryId}:${selection.kind}`, () =>
     getHandle(selection.entryId, selection.kind),
@@ -129,9 +185,32 @@ function SelectionInspector({ selection }: { selection: Selection }) {
         <span className={styles.kind} style={{ background: kindColor(selection.kind) }}>
           {selection.kind}
         </span>
-        <span>{handle.status === 'ok' ? handle.value.summary.label : '…'}</span>
+        <span className={styles.label}>
+          {handle.status === 'ok' ? handle.value.summary.label : '…'}
+        </span>
         <span className={styles.source}>{entry?.name ?? entry?.mime}</span>
         <span className={styles.actions}>
+          <span className={styles.views} role="group" aria-label="View">
+            {VIEWS.map(v => {
+              const disabled = v.view === 'split' && !splittable;
+              return (
+                <button
+                  key={v.view}
+                  className={cx(styles.viewButton, view === v.view && styles.activeView)}
+                  aria-pressed={view === v.view}
+                  disabled={disabled}
+                  title={
+                    disabled
+                      ? 'Split shows raw text beside the preview; not for this kind'
+                      : `${v.label} (${v.key})`
+                  }
+                  onClick={() => setView(v.view)}
+                >
+                  {v.label}
+                </button>
+              );
+            })}
+          </span>
           <button className={ui.button} onClick={() => void copySelection(selection)}>
             <Icon path={mdiContentCopy} size={0.6} />
             Copy
@@ -146,47 +225,47 @@ function SelectionInspector({ selection }: { selection: Selection }) {
           </button>
         </span>
       </div>
-      <div className={styles.tabs} role="tablist">
-        {TABS.map((t, i) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={tab === t}
-            title={`Shortcut: ${i + 1}`}
-            className={cx(styles.tab, tab === t && styles.activeTab)}
-            onClick={() => setTab(t)}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-      <div className={styles.body} role="tabpanel">
+      <div className={styles.body} role="region" aria-label="View">
         {handle.status === 'loading' && <div className={ui.empty}>Loading…</div>}
         {handle.status === 'error' && <div className={ui.empty}>{handle.error}</div>}
         {handle.status === 'ok' && (
-          <TabBody tab={tab} handle={handle.value} selection={selection} />
+          <ViewBody view={view} handle={handle.value} selection={selection} />
         )}
       </div>
     </section>
   );
 }
 
-function TabBody({
-  tab,
+function ViewBody({
+  view,
   handle,
   selection,
 }: {
-  tab: InspectorTab;
+  view: InspectorView;
   handle: ValueHandle;
   selection: Selection;
 }) {
-  switch (tab) {
-    case 'schema':
-      return <SchemaView schema={handle.summary.schema} />;
+  switch (view) {
     case 'raw':
       return <RawView entryId={selection.entryId} />;
     case 'preview':
       return <Preview handle={handle} selection={selection} />;
+    case 'split':
+      return (
+        <Group className={styles.split}>
+          <Panel id="raw" defaultSize="50" minSize={160}>
+            <div className={styles.pane}>
+              <RawView entryId={selection.entryId} />
+            </div>
+          </Panel>
+          <Separator className={styles.separator} />
+          <Panel id="preview" minSize={160}>
+            <div className={styles.pane}>
+              <Preview handle={handle} selection={selection} />
+            </div>
+          </Panel>
+        </Group>
+      );
   }
 }
 

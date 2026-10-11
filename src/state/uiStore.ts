@@ -2,10 +2,11 @@ import { z } from 'zod';
 import { create } from 'zustand';
 import type { EntryId, Kind } from '../core/types';
 
-export type InspectorTab = 'preview' | 'schema' | 'raw';
+/** How the Inspector shows a value: rendered, raw text, or both side by side. */
+export type InspectorView = 'preview' | 'split' | 'raw';
 
 /** The sidebar's collapsible sections. */
-export type SidebarSection = 'info' | 'actions';
+export type SidebarSection = 'info' | 'actions' | 'schema';
 
 interface NoticeAction {
   label: string;
@@ -26,7 +27,8 @@ export interface ActiveTable {
 }
 
 interface UiState {
-  tab: InspectorTab;
+  /** Remembered per browser. */
+  view: InspectorView;
   wrap: boolean;
   paletteOpen: boolean;
   /** The right sidebar, Info and Actions (toggled with `A`); remembered per browser. */
@@ -39,7 +41,7 @@ interface UiState {
   notice: Notice | null;
   /** Only the inspected value's; other values show (and copy) their first table. */
   activeTable: ActiveTable | null;
-  setTab(tab: InspectorTab): void;
+  setView(view: InspectorView): void;
   toggleWrap(): void;
   setPaletteOpen(open: boolean): void;
   setSidebarOpen(open: boolean): void;
@@ -64,9 +66,20 @@ const SIDEBAR_KEY = 'clipbox.sidebarOpen';
 /** Before the sidebar held Info too, it was the Actions sidebar. */
 const OLD_SIDEBAR_KEY = 'clipbox.actionsOpen';
 const SECTIONS_KEY = 'clipbox.sidebarSections';
+const VIEW_KEY = 'clipbox.inspectorView';
 
-const sectionsSchema = z.object({ info: z.boolean(), actions: z.boolean() });
-const DEFAULT_SECTIONS: Record<SidebarSection, boolean> = { info: true, actions: true };
+// Schema arrived later, so older saves don't have it
+const sectionsSchema = z.object({
+  info: z.boolean(),
+  actions: z.boolean(),
+  schema: z.boolean().default(false),
+});
+const DEFAULT_SECTIONS: Record<SidebarSection, boolean> = {
+  info: true,
+  actions: true,
+  schema: false,
+};
+const viewSchema = z.enum(['preview', 'split', 'raw']);
 
 function load<T>(key: string, parse: (raw: string | null) => T | undefined): T | undefined {
   try {
@@ -98,6 +111,11 @@ const parseSections = (raw: string | null) => {
   }
 };
 
+const parseView = (raw: string | null) => {
+  const parsed = viewSchema.safeParse(raw);
+  return parsed.success ? parsed.data : undefined;
+};
+
 /** Open by default. */
 const loadSidebarOpen = () =>
   load(SIDEBAR_KEY, parseBool) ?? load(OLD_SIDEBAR_KEY, parseBool) ?? true;
@@ -105,7 +123,7 @@ const loadSidebarOpen = () =>
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useUiStore = create<UiState>((set, get) => ({
-  tab: 'preview',
+  view: load(VIEW_KEY, parseView) ?? 'preview',
   wrap: false,
   paletteOpen: false,
   sidebarOpen: loadSidebarOpen(),
@@ -114,7 +132,10 @@ export const useUiStore = create<UiState>((set, get) => ({
   settings: { open: false },
   notice: null,
   activeTable: null,
-  setTab: tab => set({ tab }),
+  setView(view) {
+    save(VIEW_KEY, view);
+    set({ view });
+  },
   toggleWrap: () => set(s => ({ wrap: !s.wrap })),
   setPaletteOpen: paletteOpen => set({ paletteOpen }),
   setSidebarOpen(sidebarOpen) {

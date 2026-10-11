@@ -4,7 +4,7 @@ import { openFile, readClipboard } from './capture/sources';
 import { hasSettings } from './core/actions/types';
 import { runAction, runDerivation, selectionActions } from './state/actions';
 import { useCaptureStore, type Selection } from './state/captureStore';
-import { useUiStore, type InspectorTab } from './state/uiStore';
+import { useUiStore, type InspectorView } from './state/uiStore';
 
 export interface Command {
   id: string;
@@ -15,11 +15,11 @@ export interface Command {
   run(): void;
 }
 
-const tabCommand = (tab: InspectorTab, key: string): Command => ({
-  id: `tab.${tab}`,
-  title: `Show ${tab.charAt(0).toUpperCase()}${tab.slice(1)}`,
+const viewCommand = (view: InspectorView, title: string, key: string): Command => ({
+  id: `view.${view}`,
+  title,
   shortcut: key,
-  run: () => useUiStore.getState().setTab(tab),
+  run: () => useUiStore.getState().setView(view),
 });
 
 export function removeSelectedCapture(): void {
@@ -97,9 +97,14 @@ export const commands: Command[] = [
     run: () => useUiStore.getState().toggleSection('actions'),
   },
   { id: 'settings.open', title: 'Settings', run: () => useUiStore.getState().openSettings() },
-  tabCommand('preview', '1'),
-  tabCommand('schema', '2'),
-  tabCommand('raw', '3'),
+  viewCommand('preview', 'Show Preview', '1'),
+  viewCommand('split', 'Show Split view (raw and preview)', '2'),
+  viewCommand('raw', 'Show Raw', '3'),
+  {
+    id: 'view.schema',
+    title: 'Toggle Schema section',
+    run: () => useUiStore.getState().toggleSection('schema'),
+  },
   {
     id: 'view.wrap',
     title: 'Toggle line wrap',

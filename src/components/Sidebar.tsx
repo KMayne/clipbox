@@ -10,6 +10,7 @@ import { useCaptureStore, type Selection } from '../state/captureStore';
 import { useUiStore, type SidebarSection } from '../state/uiStore';
 import { theme } from '../theme';
 import { ActionsSection } from './ActionsPane';
+import { SchemaView } from './SchemaView';
 import { StatsGrid } from './StatsGrid';
 import { ui } from './ui';
 import { useAsync } from './useAsync';
@@ -82,6 +83,9 @@ export function Sidebar() {
       </Section>
       <Section id="actions" title="Actions" className={cx(sections.actions && styles.grow)}>
         <ActionsSection />
+      </Section>
+      <Section id="schema" title="Schema" className={styles.info}>
+        <SchemaSection />
       </Section>
     </aside>
   );
@@ -158,4 +162,19 @@ function CollectionInfo({ captureId }: { captureId: CaptureId }) {
     },
   ];
   return <StatsGrid rows={rows} compact />;
+}
+
+function SchemaSection() {
+  const selection = useCaptureStore(s => s.selection);
+  if (!selection) return <div className={ui.empty}>Select a value to see its schema</div>;
+  return <SelectionSchema key={`${selection.entryId}:${selection.kind}`} selection={selection} />;
+}
+
+function SelectionSchema({ selection }: { selection: Selection }) {
+  const handle = useAsync(`${selection.entryId}:${selection.kind}`, () =>
+    getHandle(selection.entryId, selection.kind),
+  );
+  if (handle.status === 'loading') return <div className={ui.empty}>Loading…</div>;
+  if (handle.status === 'error') return <div className={ui.empty}>{handle.error}</div>;
+  return <SchemaView schema={handle.value.summary.schema} />;
 }

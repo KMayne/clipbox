@@ -7,7 +7,7 @@ import { ui } from './ui';
 const pre = css`
   height: 100%;
   margin: 0;
-  padding: 12px 16px;
+  padding: 4px 10px 10px;
   overflow: auto;
   font-family: ${theme.mono};
   font-size: 12px;
