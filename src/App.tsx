@@ -8,6 +8,8 @@ import { MobileLayout } from './components/MobileLayout';
 import { Notice } from './components/Notice';
 import { PastesPane } from './components/PastesPane';
 import { Sidebar } from './components/Sidebar';
+import { SiteLinks } from './components/SiteLinks';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { SettingsDialog } from './components/SettingsDialog';
 import { TopBar } from './components/TopBar';
 import { useIsMobile } from './components/useMediaQuery';
@@ -26,6 +28,14 @@ const styles = {
   main: css`
     flex: 1;
     min-height: 0;
+  `,
+  /** Below the panes: the source and author links. */
+  footer: css`
+    display: flex;
+    justify-content: flex-end;
+    padding: 3px 12px;
+    background: ${theme.panel};
+    border-top: 1px solid ${theme.subtle};
   `,
   separator: css`
     width: 1px;
@@ -48,7 +58,13 @@ export function App() {
     <div className={styles.app}>
       <TopBar compact={mobile} />
       {mobile ? <MobileLayout /> : <Desktop sidebarOpen={sidebarOpen} />}
+      {!mobile && (
+        <footer className={styles.footer}>
+          <SiteLinks />
+        </footer>
+      )}
       <CommandPalette />
+      <ConfirmDialog />
       <SettingsDialog />
       <Notice />
       {dragging && <DropOverlay />}
@@ -56,14 +72,19 @@ export function App() {
   );
 }
 
-/** Three resizable panes: Pastes | Inspector | Sidebar (Info and Actions). */
+/** Resizable panes: Pastes | Inspector | Sidebar (Info and Actions); the outer two collapse. */
 function Desktop({ sidebarOpen }: { sidebarOpen: boolean }) {
+  const pastesOpen = useUiStore(s => s.pastesOpen);
   return (
     <Group className={styles.main}>
-      <Panel id="pastes" defaultSize="30" minSize={220}>
-        <PastesPane />
-      </Panel>
-      <Separator className={styles.separator} />
+      {pastesOpen && (
+        <>
+          <Panel id="pastes" defaultSize="30" minSize={220}>
+            <PastesPane />
+          </Panel>
+          <Separator className={styles.separator} />
+        </>
+      )}
       <Panel id="inspector" minSize={320}>
         <Inspector />
       </Panel>

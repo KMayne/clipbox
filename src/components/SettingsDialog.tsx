@@ -17,9 +17,15 @@ import { sw, type CacheState, type ModulesManifest } from '../swClient';
 import { type SchemeId, schemeId, schemes, setScheme, theme } from '../theme';
 import { InstallSection } from './InstallSection';
 import { media, ui } from './ui';
+import { SiteLinks } from './SiteLinks';
 import { useAsync } from './useAsync';
 
 const styles = {
+  siteLinks: css`
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+  `,
   backdrop: css`
     position: fixed;
     inset: 0;
@@ -292,6 +298,9 @@ function Settings() {
           </table>
           <AppFooter version={built?.version ?? null} />
         </section>
+        <div className={styles.siteLinks}>
+          <SiteLinks />
+        </div>
       </div>
     </div>
   );

@@ -2,7 +2,6 @@ import { css } from '@emotion/css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ValueHandle } from '../../core/types';
 import { theme } from '../../theme';
-import { StatsGrid } from '../StatsGrid';
 import { ui } from '../ui';
 import { useAsync } from '../useAsync';
 import { channelData, computePeaks, decodeAudio } from './waveform';
@@ -62,12 +61,6 @@ const styles = {
     max-width: 100%;
     max-height: 100%;
   `,
-  side: css`
-    position: relative;
-    width: 300px;
-    flex: none;
-    border-left: 1px solid ${theme.subtle};
-  `,
 };
 
 /** Object URL for `blob`, revoked on change or unmount. */
@@ -90,7 +83,7 @@ export function MediaView({ handle }: { handle: ValueHandle }) {
   if (media.status === 'error') return <div className={ui.empty}>{media.error}</div>;
   const { bytes, mime } = media.value;
   return mime.startsWith('video/') ? (
-    <VideoPane handle={handle} bytes={bytes} mime={mime} />
+    <VideoPane bytes={bytes} mime={mime} />
   ) : (
     <AudioPane handle={handle} bytes={bytes} mime={mime} />
   );
@@ -106,7 +99,7 @@ function useBlob(bytes: Uint8Array<ArrayBuffer> | null, mime: string): Blob | nu
   return useMemo(() => (bytes ? new Blob([bytes], { type: mime }) : null), [bytes, mime]);
 }
 
-function VideoPane({ handle, bytes, mime }: PaneProps) {
+function VideoPane({ bytes, mime }: Omit<PaneProps, 'handle'>) {
   const url = useObjectUrl(useBlob(bytes, mime));
   const [failed, setFailed] = useState(false);
   return (
@@ -126,9 +119,6 @@ function VideoPane({ handle, bytes, mime }: PaneProps) {
             />
           )
         )}
-      </div>
-      <div className={styles.side}>
-        <StatsGrid rows={handle.summary.stats} />
       </div>
     </div>
   );

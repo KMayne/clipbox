@@ -48,6 +48,8 @@ export function useGlobalShortcuts() {
         ui.toggleWrap();
       } else if (e.key === 'a') {
         ui.toggleSidebar();
+      } else if (e.key === 'p') {
+        ui.togglePastes();
       } else if (e.key === 'i') {
         ui.toggleSection('info');
       } else if (e.key === 'j' || e.key === 'k') {

@@ -1,12 +1,12 @@
 import { css, cx } from '@emotion/css';
 import {
-  mdiArrowTopRight,
   mdiChevronDown,
   mdiChevronRight,
   mdiClipboardArrowDownOutline,
   mdiClose,
+  mdiContentPaste,
+  mdiDeleteSweepOutline,
   mdiFileUploadOutline,
-  mdiGithub,
 } from '@mdi/js';
 import { Icon } from '@mdi/react';
 import { openFile, readClipboard } from '../capture/sources';
@@ -19,6 +19,7 @@ import {
 } from '../state/captureStore';
 import { useUiStore } from '../state/uiStore';
 import { theme } from '../theme';
+import { confirmClearAll } from '../commands';
 import { moveSelection } from '../useGlobalShortcuts';
 import { EntryRow } from './EntryRow';
 import { ParentLink } from './ParentLink';
@@ -34,11 +35,38 @@ const styles = {
     outline: none;
   `,
   heading: css`
-    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-height: 32px;
+    padding: 2px 6px 2px 10px;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.06em;
     color: ${theme.muted};
+    border-bottom: 1px solid ${theme.subtle};
+    & > span:first-child {
+      margin-right: auto;
+    }
+  `,
+  tools: css`
+    display: flex;
+    gap: 2px;
+    & > button {
+      padding: 4px;
+    }
+    & > button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+    ${media.mobile} {
+      & > button {
+        min-width: 40px;
+        min-height: 40px;
+        justify-content: center;
+        align-items: center;
+      }
+    }
   `,
   list: css`
     flex: 1;
@@ -96,27 +124,6 @@ const styles = {
       text-decoration: underline;
     }
   `,
-  links: css`
-    margin-left: auto;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 4px 10px;
-  `,
-  credit: css`
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    font-size: 11px;
-    white-space: nowrap;
-    /* Subtle but at least 4.5:1 against the panel in every scheme. */
-    color: color-mix(in srgb, ${theme.muted}, ${theme.text} 30%);
-    text-decoration: none;
-    &:hover {
-      color: ${theme.text};
-      text-decoration: underline;
-    }
-  `,
   /** Phones have no Ctrl+V: offer the clipboard and files directly. */
   start: css`
     display: flex;
@@ -131,25 +138,12 @@ const styles = {
       justify-content: center;
     }
   `,
-  footer: css`
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px 10px;
-    min-height: 44px;
-    padding: 8px 10px;
-    border-top: 1px solid ${theme.subtle};
-  `,
 };
 
 /** Captures with more entries than this list them as compact one-line rows. */
 const COMPACT_FROM = 4;
 
 const time = (at: number) => new Date(at).toLocaleTimeString('en-GB');
-
-/** The author's site: its root when deployed under a subpath (e.g. /clipbox/), else the live URL. */
-const SITE_URL = import.meta.env.BASE_URL !== '/' ? '/' : 'https://kianmayne.co.uk/';
-const REPO_URL = 'https://github.com/KMayne/clipbox';
 
 /** Moves focus into the collection grid if one is shown (Enter on a selected collection). */
 function focusCollectionGrid(): boolean {
@@ -163,7 +157,6 @@ function focusCollectionGrid(): boolean {
 
 export function PastesPane() {
   const captures = useCaptureStore(s => s.captures);
-  const clear = useCaptureStore(s => s.clear);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -180,42 +173,41 @@ export function PastesPane() {
 
   return (
     <section className={styles.pane} tabIndex={0} onKeyDown={onKeyDown} aria-label="Pastes">
-      <div className={styles.heading}>PASTES</div>
+      <div className={styles.heading}>
+        <span>PASTES</span>
+        <span className={styles.tools} role="toolbar" aria-label="Pastes">
+          <button
+            className={ui.iconButton}
+            title="Paste from the clipboard (Ctrl+V)"
+            aria-label="Read clipboard"
+            onClick={() => void readClipboard()}
+          >
+            <Icon path={mdiContentPaste} size={0.7} />
+          </button>
+          <button
+            className={ui.iconButton}
+            title="Open file (Ctrl+O)"
+            aria-label="Open file"
+            onClick={openFile}
+          >
+            <Icon path={mdiFileUploadOutline} size={0.7} />
+          </button>
+          <button
+            className={ui.iconButton}
+            title="Clear all pastes"
+            aria-label="Clear all"
+            disabled={captures.length === 0}
+            onClick={confirmClearAll}
+          >
+            <Icon path={mdiDeleteSweepOutline} size={0.7} />
+          </button>
+        </span>
+      </div>
       <div className={styles.list}>
         {captures.length === 0 && <EmptyPastes />}
         {captures.map(c => (
           <CaptureItem key={c.id} capture={c} />
         ))}
-      </div>
-      <div className={styles.footer}>
-        {captures.length > 0 && (
-          <button className={ui.button} onClick={clear}>
-            Clear all
-          </button>
-        )}
-        <div className={styles.links}>
-          <a
-            className={styles.credit}
-            href={REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Source on GitHub (opens in a new tab)"
-          >
-            <Icon path={mdiGithub} size={0.5} />
-            Source
-            <Icon path={mdiArrowTopRight} size={0.45} />
-          </a>
-          <a
-            className={styles.credit}
-            href={SITE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Opens in a new tab"
-          >
-            KianMayne.co.uk
-            <Icon path={mdiArrowTopRight} size={0.45} />
-          </a>
-        </div>
       </div>
     </section>
   );

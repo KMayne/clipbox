@@ -118,10 +118,15 @@ test('touch targets are at least 40px', async ({ page }) => {
   expect(small).toEqual([]);
 });
 
-test('the top bar keeps Read clipboard, Open file, Commands and Settings', async ({ page }) => {
+test('the top bar keeps Commands and Settings; Pastes has Paste, Open file and Clear all', async ({
+  page,
+}) => {
   const bar = page.getByRole('banner');
-  for (const name of ['Read clipboard', 'Open file', 'Commands', 'Settings'])
+  for (const name of ['Commands', 'Settings'])
     await expect(bar.getByRole('button', { name })).toBeInViewport();
+  const tools = page.getByRole('toolbar', { name: 'Pastes' });
+  for (const name of ['Read clipboard', 'Open file', 'Clear all'])
+    await expect(tools.getByRole('button', { name })).toBeInViewport();
   await expect(bar.getByText('Ctrl+V')).toHaveCount(0);
 
   await bar.getByRole('button', { name: 'Commands' }).tap();
@@ -135,11 +140,11 @@ test('the top bar keeps Read clipboard, Open file, Commands and Settings', async
 test('Read clipboard pastes on a phone', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.evaluate(() => navigator.clipboard.writeText('{"from":"the clipboard"}'));
-  // The empty Pastes pane offers it too; use the top bar's
-  await expect(
-    page.getByRole('region', { name: 'Pastes' }).getByRole('button', { name: 'Read clipboard' }),
-  ).toBeVisible();
-  await page.getByRole('banner').getByRole('button', { name: 'Read clipboard' }).tap();
+  // The empty Pastes pane offers it too; use the heading's
+  await page
+    .getByRole('toolbar', { name: 'Pastes' })
+    .getByRole('button', { name: 'Read clipboard' })
+    .tap();
   await expectPane(page, 'Inspector');
   await expect(page.getByTestId('json-tree')).toContainText('the clipboard');
   await tab(page, 'Pastes').tap();

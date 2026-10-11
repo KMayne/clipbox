@@ -77,6 +77,9 @@ Claude Code context that lives outside the repo and won't come with it:
     validated in the worker, forms generated from the Zod settings schemas.
   - A right sidebar (toggle with `A` or the top bar's panel icon) with collapsible **Info** (the
     stats; `I` toggles it), **Actions** and **Schema** sections.
+  - Layout: Paste, Open file and Clear all (with a confirmation) in the Pastes heading; the Pastes
+    panel collapses (`P`); keyboard shortcuts listed in a sidebar section; source and site links in
+    a page footer. The video preview no longer repeats the stats beside the player.
   - The Inspector's tabs became **per-kind view buttons**: e.g. HTML has Text | Preview | Split |
     Hex dump, JSON Text | Tree | Split | Hex dump, images Image | Hex dump. Text-based kinds open in
     Split, binary ones in their rendered view; each class remembers its choice (1–4 by position).

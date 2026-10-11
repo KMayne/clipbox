@@ -11,6 +11,7 @@ import { useUiStore, type SidebarSection } from '../state/uiStore';
 import { theme } from '../theme';
 import { ActionsSection } from './ActionsPane';
 import { SchemaView } from './SchemaView';
+import { ShortcutsList } from './ShortcutsList';
 import { StatsGrid } from './StatsGrid';
 import { media, ui } from './ui';
 import { useAsync } from './useAsync';
@@ -92,6 +93,9 @@ export function Sidebar() {
       </Section>
       <Section id="schema" title="Schema" className={styles.info}>
         <SchemaSection />
+      </Section>
+      <Section id="shortcuts" title="Shortcuts" className={styles.info}>
+        <ShortcutsList />
       </Section>
     </aside>
   );

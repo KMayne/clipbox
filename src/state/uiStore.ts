@@ -16,7 +16,7 @@ export type ViewClass = 'text' | 'binary';
 export type MobilePane = 'pastes' | 'inspector' | 'sidebar';
 
 /** The sidebar's collapsible sections. */
-export type SidebarSection = 'info' | 'actions' | 'schema';
+export type SidebarSection = 'info' | 'actions' | 'schema' | 'shortcuts';
 
 interface NoticeAction {
   label: string;
@@ -36,6 +36,14 @@ export interface ActiveTable {
   index: number;
 }
 
+export interface ConfirmRequest {
+  title: string;
+  message: string;
+  /** The confirm button's text, e.g. "Clear all". */
+  confirmLabel: string;
+  onConfirm(): void;
+}
+
 interface UiState {
   /**
    * The view for each class of kind, remembered per browser. Text-based kinds open in Split (raw
@@ -46,6 +54,10 @@ interface UiState {
   paletteOpen: boolean;
   /** The right sidebar, Info and Actions (toggled with `A`); remembered per browser. */
   sidebarOpen: boolean;
+  /** The left Pastes panel (toggled with `P`, desktop only); remembered per browser. */
+  pastesOpen: boolean;
+  /** A pending "are you sure?" question, shown by `ConfirmDialog`. */
+  confirm: ConfirmRequest | null;
   /** Which sidebar sections are expanded; remembered per browser. */
   sections: Record<SidebarSection, boolean>;
   /** An action whose settings form the sidebar should expand and focus (from the palette). */
@@ -60,6 +72,11 @@ interface UiState {
   toggleWrap(): void;
   setPaletteOpen(open: boolean): void;
   setSidebarOpen(open: boolean): void;
+  setPastesOpen(open: boolean): void;
+  togglePastes(): void;
+  /** Asks the user to confirm before `onConfirm` runs (e.g. Clear all). */
+  askConfirm(request: ConfirmRequest): void;
+  closeConfirm(): void;
   toggleSidebar(): void;
   /** Expands or collapses one section, opening the sidebar if it's hidden. */
   setSection(section: SidebarSection, expanded: boolean): void;
@@ -79,6 +96,7 @@ export const tableIndexFor = (active: ActiveTable | null, entryId: EntryId, kind
   active && active.entryId === entryId && active.kind === kind ? active.index : 0;
 
 const SIDEBAR_KEY = 'clipbox.sidebarOpen';
+const PASTES_KEY = 'clipbox.pastesOpen';
 /** Before the sidebar held Info too, it was the Actions sidebar. */
 const OLD_SIDEBAR_KEY = 'clipbox.actionsOpen';
 const SECTIONS_KEY = 'clipbox.sidebarSections';
@@ -89,11 +107,13 @@ const sectionsSchema = z.object({
   info: z.boolean(),
   actions: z.boolean(),
   schema: z.boolean().default(false),
+  shortcuts: z.boolean().default(false),
 });
 const DEFAULT_SECTIONS: Record<SidebarSection, boolean> = {
   info: true,
   actions: true,
   schema: false,
+  shortcuts: false,
 };
 const viewSchema = z.enum(['rendered', 'text', 'split', 'hex']);
 const DEFAULT_VIEWS: Record<ViewClass, InspectorView> = { text: 'split', binary: 'rendered' };
@@ -163,6 +183,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   wrap: false,
   paletteOpen: false,
   sidebarOpen: loadSidebarOpen(),
+  pastesOpen: load(PASTES_KEY, parseBool) ?? true,
+  confirm: null,
   sections: load(SECTIONS_KEY, parseSections) ?? DEFAULT_SECTIONS,
   focusedAction: null,
   settings: { open: false },
@@ -181,6 +203,13 @@ export const useUiStore = create<UiState>((set, get) => ({
     set({ sidebarOpen });
   },
   toggleSidebar: () => get().setSidebarOpen(!get().sidebarOpen),
+  setPastesOpen(pastesOpen) {
+    save(PASTES_KEY, String(pastesOpen));
+    set({ pastesOpen });
+  },
+  togglePastes: () => get().setPastesOpen(!get().pastesOpen),
+  askConfirm: confirm => set({ confirm }),
+  closeConfirm: () => set({ confirm: null }),
   setSection(section, expanded) {
     const sections = { ...get().sections, [section]: expanded };
     save(SECTIONS_KEY, JSON.stringify(sections));

@@ -36,6 +36,20 @@ const viewCommand = (view: InspectorView, title: string): Command => ({
   run: () => showView(view),
 });
 
+/** Clears every capture after the user confirms (it can't be undone). */
+export function confirmClearAll(): void {
+  const { captures, clear } = useCaptureStore.getState();
+  const ui = useUiStore.getState();
+  if (!captures.length) return ui.notify('Nothing to clear');
+  const n = captures.length;
+  ui.askConfirm({
+    title: 'Clear all pastes?',
+    message: `This removes ${n === 1 ? 'the 1 paste' : `all ${n} pastes`} and their saved history. It can't be undone.`,
+    confirmLabel: 'Clear all',
+    onConfirm: clear,
+  });
+}
+
 export function removeSelectedCapture(): void {
   const capture = currentCapture();
   if (capture) useCaptureStore.getState().remove(capture.id);
@@ -107,6 +121,12 @@ export const commands: Command[] = [
     run: () => useUiStore.getState().toggleSidebar(),
   },
   {
+    id: 'view.pastes',
+    title: 'Toggle Pastes panel',
+    shortcut: 'P',
+    run: () => useUiStore.getState().togglePastes(),
+  },
+  {
     id: 'view.info',
     title: 'Toggle Info section',
     shortcut: 'I',
@@ -141,7 +161,7 @@ export const commands: Command[] = [
   },
   {
     id: 'capture.clear',
-    title: 'Clear all captures',
-    run: () => useCaptureStore.getState().clear(),
+    title: 'Clear all captures…',
+    run: confirmClearAll,
   },
 ];

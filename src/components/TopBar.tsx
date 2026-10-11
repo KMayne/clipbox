@@ -1,13 +1,6 @@
 import { css, cx } from '@emotion/css';
-import {
-  mdiCogOutline,
-  mdiClipboardArrowDownOutline,
-  mdiConsoleLine,
-  mdiFileUploadOutline,
-  mdiPackageVariantClosed,
-} from '@mdi/js';
+import { mdiCogOutline, mdiConsoleLine, mdiPackageVariantClosed } from '@mdi/js';
 import { Icon } from '@mdi/react';
-import { openFile, readClipboard } from '../capture/sources';
 import { useUiStore } from '../state/uiStore';
 import { theme } from '../theme';
 import { ui } from './ui';
@@ -42,29 +35,14 @@ const styles = {
     align-items: center;
     color: ${theme.muted};
   `,
-  /** The Ctrl+K hint doubles as the palette's button. */
-  paletteHint: css`
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 4px;
-    background: none;
-    border: none;
-    border-radius: 3px;
-    color: inherit;
-    cursor: pointer;
-    &:hover {
-      color: ${theme.text};
-      background: ${theme.hover};
-    }
-  `,
 };
 
 const openPalette = () => useUiStore.getState().setPaletteOpen(true);
 
 /**
- * Read clipboard, Open file, the palette and Settings. `compact` (phones) drops the title and the
- * keyboard hints and makes Read clipboard the primary button, since there's no Ctrl+V.
+ * The panel toggles, the palette and Settings. Paste, Open file and Clear all live in the Pastes
+ * panel's heading, and keyboard shortcuts in the sidebar. `compact` (phones) drops the title and
+ * the panel toggles.
  */
 export function TopBar({ compact = false }: { compact?: boolean }) {
   return (
@@ -73,46 +51,17 @@ export function TopBar({ compact = false }: { compact?: boolean }) {
         <Icon path={mdiPackageVariantClosed} size={0.8} color={theme.accent} />
         {!compact && 'Clipbox'}
       </span>
-      <button className={cx(ui.button, compact && ui.primary)} onClick={() => void readClipboard()}>
-        <Icon path={mdiClipboardArrowDownOutline} size={0.7} />
-        Read clipboard
-      </button>
-      {compact ? (
+      {!compact && <PastesToggle />}
+      <span className={styles.hints}>
         <button
           className={ui.iconButton}
-          title="Open file"
-          aria-label="Open file"
-          onClick={openFile}
+          title="Commands (Ctrl+K)"
+          aria-label="Commands"
+          onClick={openPalette}
         >
-          <Icon path={mdiFileUploadOutline} size={0.8} />
+          <Icon path={mdiConsoleLine} size={0.8} />
         </button>
-      ) : (
-        <button className={ui.button} onClick={openFile}>
-          <Icon path={mdiFileUploadOutline} size={0.7} />
-          Open file
-        </button>
-      )}
-      <span className={styles.hints}>
-        {compact ? (
-          <button
-            className={ui.iconButton}
-            title="Commands"
-            aria-label="Commands"
-            onClick={openPalette}
-          >
-            <Icon path={mdiConsoleLine} size={0.8} />
-          </button>
-        ) : (
-          <>
-            <span>
-              <kbd className={ui.kbd}>Ctrl+V</kbd> paste
-            </span>
-            <button className={styles.paletteHint} aria-label="Commands" onClick={openPalette}>
-              <kbd className={ui.kbd}>Ctrl+K</kbd> commands
-            </button>
-            <SidebarToggle />
-          </>
-        )}
+        {!compact && <SidebarToggle />}
         <button
           className={ui.iconButton}
           title="Settings"
@@ -123,6 +72,22 @@ export function TopBar({ compact = false }: { compact?: boolean }) {
         </button>
       </span>
     </header>
+  );
+}
+
+/** Shows or hides the left Pastes panel. */
+function PastesToggle() {
+  const open = useUiStore(s => s.pastesOpen);
+  return (
+    <button
+      className={ui.iconButton}
+      title={`${open ? 'Hide' : 'Show'} pastes (P)`}
+      aria-label="Pastes panel"
+      aria-pressed={open}
+      onClick={() => useUiStore.getState().togglePastes()}
+    >
+      <PanelIcon side="left" open={open} />
+    </button>
   );
 }
 
@@ -138,17 +103,26 @@ function SidebarToggle() {
       aria-pressed={open}
       onClick={() => useUiStore.getState().toggleSidebar()}
     >
-      <PanelRightIcon open={open} />
+      <PanelIcon side="right" open={open} />
     </button>
   );
 }
 
-/** The usual "toggle right panel" glyph: a window outline with a divider; the panel fills in when open. */
-function PanelRightIcon({ open }: { open: boolean }) {
+/** The usual panel-toggle glyph: a window outline with a divider; the panel fills in when open. */
+function PanelIcon({ side, open }: { side: 'left' | 'right'; open: boolean }) {
+  const divider = side === 'left' ? 9 : 15;
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
       {open && (
-        <rect x="15" y="4" width="6" height="16" rx="1" fill="currentColor" opacity="0.35" />
+        <rect
+          x={side === 'left' ? 3 : 15}
+          y="4"
+          width="6"
+          height="16"
+          rx="1"
+          fill="currentColor"
+          opacity="0.35"
+        />
       )}
       <rect
         x="3"
@@ -160,7 +134,7 @@ function PanelRightIcon({ open }: { open: boolean }) {
         stroke="currentColor"
         strokeWidth="1.8"
       />
-      <line x1="15" y1="4" x2="15" y2="20" stroke="currentColor" strokeWidth="1.8" />
+      <line x1={divider} y1="4" x2={divider} y2="20" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   );
 }
