@@ -243,3 +243,28 @@ describe('engine runs', () => {
     expect(reports[0]?.fraction).toBeLessThan(0.1);
   });
 });
+
+describe('query actions: progress and cancel', () => {
+  it('Group by reports grouping then summarising, and finishes', async () => {
+    const engine = await engineWithCsv();
+    const reports: RunProgress[] = [];
+    engine.onProgress(p => reports.push(p));
+    const params = { field: 'score', aggregates: 'sum:id' };
+    const [out] = await engine.runAction('en-1', 'records', 'query.groupBy', params, 'run-g');
+    // A header plus one row per score
+    expect(new TextDecoder().decode(out?.bytes).trim().split('\n')).toHaveLength(101);
+    expect(reports[0]).toMatchObject({ fraction: 0, message: 'Grouping 20,000 items' });
+    expect(reports.some(r => r.message === 'Summarising 100 groups')).toBe(true);
+  });
+
+  it.each(['query.groupBy', 'query.countBy', 'query.distinct'])(
+    '%s can be cancelled mid-way',
+    async actionId => {
+      const engine = await engineWithCsv();
+      engine.onProgress(p => engine.cancelAction(p.runId));
+      await expect(
+        engine.runAction('en-1', 'records', actionId, { field: 'name' }, 'run-q'),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+    },
+  );
+});

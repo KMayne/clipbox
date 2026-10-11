@@ -1,11 +1,13 @@
 import { isJqService } from '../../../modules/jq/service';
 import type { EntryContent } from '../../content';
 import { toCsv } from '../../csv';
+import { formatCount } from '../../format';
 import { isRecord } from '../../guards';
 import { jsonInterpreter } from '../../interpreters/json';
 import { ndjsonInterpreter } from '../../interpreters/ndjson';
 import { recordsInterpreter, type RecordsValue } from '../../interpreters/records';
 import { yamlInterpreter } from '../../interpreters/yaml';
+import { loop, type TaskContext } from '../../progress';
 import { inferSchema } from '../../schema';
 import type { DerivedContent, Schema } from '../../types';
 import { queryCountBy, queryDistinct, queryGroupBy, queryJq } from '../catalog/query';
@@ -134,27 +136,29 @@ function compareKeys(a: Group, b: Group): number {
   return collator.compare(a.text, b.text);
 }
 
-export function groupItems(
+/** Groups `items` by `field`, reporting progress and staying cancellable through `task`. */
+export async function groupItems(
   items: readonly unknown[],
   field: Field,
   { missing, sort }: { missing: 'none' | 'skip'; sort: GroupSort },
-): Group[] {
+  task?: TaskContext,
+): Promise<Group[]> {
   const groups = new Map<string, Group>();
   let none: Group | null = null;
-  // progress: one pass over the items
-  for (const item of items) {
+  await loop(items.length, task, `Grouping ${formatCount(items.length)} items`, i => {
+    const item = items[i];
     const v = field.get(item);
     if (v === undefined) {
-      if (missing === 'skip') continue;
+      if (missing === 'skip') return;
       none ??= { key: NONE_KEY, text: NONE_KEY, missing: true, items: [] };
       none.items.push(item);
-      continue;
+      return;
     }
     const text = keyText(v);
     let g = groups.get(text);
     if (!g) groups.set(text, (g = { key: v, text, missing: false, items: [] }));
     g.items.push(item);
-  }
+  });
   const out = [...groups.values()];
   // Array.prototype.sort is stable, so ties keep first-seen order
   if (sort === 'keyAsc') out.sort(compareKeys);
@@ -296,18 +300,35 @@ function tableResult(
   );
 }
 
-function summaryRows(groups: Group[], keyColumn: string, aggregates: Aggregate[]) {
+async function summaryRows(
+  groups: Group[],
+  keyColumn: string,
+  aggregates: Aggregate[],
+  task: TaskContext,
+) {
   const columns = [keyColumn, 'count', ...aggregates.map(a => a.column)];
   const unique = new Set(columns);
   if (unique.size !== columns.length) {
     const dup = columns.find((c, i) => columns.indexOf(c) !== i);
     throw new Error(`Column "${dup ?? ''}" appears twice in the summary`);
   }
-  const rows = groups.map(g => {
-    const row: Record<string, unknown> = { [keyColumn]: g.key, count: g.items.length };
-    for (const a of aggregates) row[a.column] = aggregate(a.fn, g.items.map(a.field.get));
-    return row;
-  });
+  const rows: Record<string, unknown>[] = [];
+  // Every `every` groups; with aggregates each group is a pass over its items, so check more often
+  const every = aggregates.length ? 256 : 2048;
+  const message = `Summarising ${formatCount(groups.length)} groups`;
+  await loop(
+    groups.length,
+    task,
+    message,
+    i => {
+      const g = groups[i];
+      if (!g) return;
+      const row: Record<string, unknown> = { [keyColumn]: g.key, count: g.items.length };
+      for (const a of aggregates) row[a.column] = aggregate(a.fn, g.items.map(a.field.get));
+      rows.push(row);
+    },
+    every,
+  );
   return { columns, rows };
 }
 
@@ -395,10 +416,10 @@ export const queryImpls = [
   implement(queryGroupBy, {
     value: isSource,
     applies: appliesTo,
-    run({ value, content }, { field: ref, output, aggregates, sort, missing }) {
+    async run({ value, content }, { field: ref, output, aggregates, sort, missing }, ctx) {
       const field = resolveField(value, ref);
       const aggs = output === 'summary' ? parseAggregates(aggregates, value) : [];
-      const groups = groupItems(itemsOf(value), field, { missing, sort });
+      const groups = await groupItems(itemsOf(value), field, { missing, sort }, ctx);
       if (!groups.length) throw new Error(`No item has ${field.name}`);
       const suffix = `by-${field.name}`;
       if (output === 'object') {
@@ -416,30 +437,35 @@ export const queryImpls = [
           fileName(content, suffix, 'json'),
         );
       }
-      const { columns, rows } = summaryRows(groups, field.name, aggs);
+      const { columns, rows } = await summaryRows(groups, field.name, aggs, ctx);
       return tableResult(value, columns, rows, content, suffix);
     },
   }),
   implement(queryCountBy, {
     value: isSource,
     applies: appliesTo,
-    run({ value, content }, { field: ref, missing }) {
+    async run({ value, content }, { field: ref, missing }, ctx) {
       const field = resolveField(value, ref);
-      const groups = groupItems(itemsOf(value), field, { missing, sort: 'countDesc' });
+      const groups = await groupItems(itemsOf(value), field, { missing, sort: 'countDesc' }, ctx);
       if (!groups.length) throw new Error(`No item has ${field.name}`);
-      const { columns, rows } = summaryRows(groups, field.name, []);
+      const { columns, rows } = await summaryRows(groups, field.name, [], ctx);
       return tableResult(value, columns, rows, content, `count-by-${field.name}`);
     },
   }),
   implement(queryDistinct, {
     value: isSource,
     applies: appliesTo,
-    run({ value, content }, { field: ref, sort }) {
+    async run({ value, content }, { field: ref, sort }, ctx) {
       const field = resolveField(value, ref);
-      const groups = groupItems(itemsOf(value), field, {
-        missing: 'skip',
-        sort: sort === 'asc' ? 'keyAsc' : sort === 'count' ? 'countDesc' : 'first',
-      });
+      const groups = await groupItems(
+        itemsOf(value),
+        field,
+        {
+          missing: 'skip',
+          sort: sort === 'asc' ? 'keyAsc' : sort === 'count' ? 'countDesc' : 'first',
+        },
+        ctx,
+      );
       if (!groups.length) throw new Error(`No item has ${field.name}`);
       return textResult(
         JSON.stringify(
