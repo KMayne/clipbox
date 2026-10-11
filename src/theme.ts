@@ -20,6 +20,8 @@ export const kindColors: Record<string, string> = {
   html: '#e06c75',
   image: '#c678dd',
   binary: '#56b6c2',
+  yaml: '#d19a66',
+  xml: '#61afef',
 };
 
 export const kindColor = (kind: string) => kindColors[kind] ?? theme.muted;

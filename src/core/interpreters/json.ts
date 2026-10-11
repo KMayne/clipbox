@@ -1,10 +1,9 @@
 import { createMemo } from '../content';
-import { formatBytes, formatCount, formatPercent, plural } from '../format';
+import { formatCount, plural } from '../format';
 import { hasKind } from '../guards';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
 import { jsonChildCount, jsonChildren, jsonTypeOf } from '../jsonSlice';
-import { describeSchema, inferSchema } from '../schema';
-import type { StatRow } from '../types';
+import { jsonStats } from '../jsonStats';
 
 type ParseResult = { ok: true; value: unknown } | { ok: false };
 
@@ -47,32 +46,7 @@ export const jsonInterpreter: Interpreter<JsonValue> = {
     if (type === 'object') return `JSON object · ${plural(jsonChildCount(json), 'key')}`;
     return `JSON ${type}`;
   },
-  summarise({ json, bytes }) {
-    const schema = inferSchema(json);
-    const type = jsonTypeOf(json);
-    const stats: StatRow[] = [
-      { label: 'Top-level type', value: type },
-      { label: 'Size', value: formatBytes(bytes) },
-    ];
-    if (Array.isArray(json)) {
-      stats.push({ label: 'Length', value: formatCount(json.length) });
-      stats.push({ label: 'Element types', value: elementTypes(json) });
-    }
-    const objectSchema = schema.t === 'array' ? schema.of : schema;
-    const fields = objectSchema.t === 'object' ? Object.entries(objectSchema.fields) : [];
-    if (fields.length > 0) {
-      stats.push({
-        label: Array.isArray(json) ? 'Element keys' : 'Keys',
-        value: formatCount(fields.length),
-        children: fields.map(([k, f]) => ({
-          label: k,
-          value: `${describeSchema(f.schema)} · ${formatPercent(f.presence)}`,
-        })),
-      });
-    }
-    stats.push({ label: 'Max depth', value: String(maxDepth(json)) });
-    return { stats, schema, extent: jsonChildCount(json) };
-  },
+  summarise: ({ json, bytes }) => ({ ...jsonStats(json, bytes), extent: jsonChildCount(json) }),
   slice({ json }, req) {
     if (req.type === 'children') return jsonChildren(json, req.path, req.from, req.to);
     if (req.type === 'json') return json;
@@ -80,28 +54,3 @@ export const jsonInterpreter: Interpreter<JsonValue> = {
   },
   export: ({ json }) => ({ text: JSON.stringify(json, null, 2) }),
 };
-
-function elementTypes(arr: unknown[]): string {
-  const counts = new Map<string, number>();
-  for (const v of arr) {
-    const t = jsonTypeOf(v);
-    counts.set(t, (counts.get(t) ?? 0) + 1);
-  }
-  return [...counts]
-    .sort((a, b) => b[1] - a[1])
-    .map(([t, n]) => `${t} ${formatCount(n)}`)
-    .join(', ');
-}
-
-function maxDepth(root: unknown): number {
-  let max = 0;
-  const stack: [unknown, number][] = [[root, 0]];
-  let visited = 0;
-  for (let item = stack.pop(); item && visited++ < 1_000_000; item = stack.pop()) {
-    const [v, d] = item;
-    if (v === null || typeof v !== 'object') continue;
-    max = Math.max(max, d + 1);
-    for (const child of Object.values(v)) stack.push([child, d + 1]);
-  }
-  return max;
-}

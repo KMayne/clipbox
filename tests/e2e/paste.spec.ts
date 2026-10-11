@@ -120,3 +120,20 @@ test('large paste keeps the UI responsive', async ({ page }) => {
   await expect(page.locator('[data-kind=json]')).toHaveText('JSON array · 200,000');
   expect(maxGap).toBeLessThan(250);
 });
+
+test('YAML paste shows a chip and a JSON tree', async ({ page }) => {
+  await paste(page, {
+    'text/plain':
+      'name: clipbox\nversion: 3\nservers:\n  - host: a.example.com\n  - host: b.example.com\n',
+  });
+  await expect(page.getByTestId('chip').first()).toHaveText('YAML · mapping · 3 keys');
+  await expect(page.getByTestId('json-tree')).toContainText('servers');
+});
+
+test('XML paste shows a chip and a JSON tree', async ({ page }) => {
+  await paste(page, {
+    'text/plain': '<?xml version="1.0"?>\n<feed><entry id="1"><title>One</title></entry></feed>',
+  });
+  await expect(page.getByTestId('chip').first()).toHaveText('XML · <feed> · 3 elements');
+  await expect(page.getByTestId('json-tree')).toContainText('feed');
+});

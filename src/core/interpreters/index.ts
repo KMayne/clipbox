@@ -7,10 +7,14 @@ import { imageInterpreter } from './image';
 import { jsonInterpreter } from './json';
 import { recordsInterpreter } from './records';
 import { textInterpreter } from './text';
+import { xmlInterpreter } from './xml';
+import { yamlInterpreter } from './yaml';
 
 export const interpreters: AnyInterpreter[] = [
   register(jsonInterpreter),
   register(recordsInterpreter),
+  register(yamlInterpreter),
+  register(xmlInterpreter),
   register(htmlInterpreter),
   register(imageInterpreter),
   register(textInterpreter),

@@ -171,6 +171,8 @@ function TabBody({
 function Preview({ handle }: { handle: ValueHandle }) {
   switch (handle.summary.kind) {
     case 'json':
+    case 'yaml':
+    case 'xml':
       return <JsonTree handle={handle} />;
     case 'records':
       return <RecordsTable handle={handle} />;
