@@ -1,5 +1,8 @@
 import { create } from 'zustand';
+import { actionById } from '../core/actions/catalog';
+import { actionLabel } from '../core/actions/form';
 import type {
+  DerivedContent,
   Capture,
   CaptureId,
   CaptureSourceId,
@@ -65,6 +68,11 @@ interface CaptureState {
   restore(captures: Capture[]): void;
   /** Runs a derivation on `from` and adds the result as a new, auto-selected capture. */
   derive(from: Selection, derivation: Derivation): Promise<void>;
+  /**
+   * Runs an action on `from` (settings are validated in the worker) and adds the result as a new,
+   * auto-selected capture labelled with the action and a summary of its settings.
+   */
+  runAction(from: Selection, actionId: string, params?: Record<string, unknown>): Promise<void>;
   /** Resolves with the content hash, or undefined if the entry is gone or ingest failed. */
   ingest(entryId: EntryId): Promise<string | undefined>;
   remove(captureId: CaptureId): void;
@@ -124,6 +132,17 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
         ),
       })),
     }));
+
+  /** Adds a derivation's or action's result as a capture linked to `from`. */
+  const addDerived = (from: Selection, { mime, name, bytes }: DerivedContent, label: string) => {
+    const blob = new Blob([bytes], { type: mime });
+    // add() collapses older captures; autoSelect picks the new one's best interpretation
+    get().add('derived', [{ mime, name, size: blob.size, blob }], {
+      entryId: from.entryId,
+      kind: from.kind,
+      label,
+    });
+  };
 
   const resolve = async (entryId: EntryId, kind: Kind) => {
     try {
@@ -205,14 +224,18 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
     },
 
     async derive(from, derivation) {
-      const { mime, name, bytes } = await engine.derive(from.entryId, from.kind, derivation.id);
-      const blob = new Blob([bytes], { type: mime });
-      // add() collapses older captures; autoSelect picks the new one's best interpretation
-      get().add('derived', [{ mime, name, size: blob.size, blob }], {
-        entryId: from.entryId,
-        kind: from.kind,
-        label: derivation.label,
-      });
+      addDerived(
+        from,
+        await engine.derive(from.entryId, from.kind, derivation.id),
+        derivation.label,
+      );
+    },
+
+    async runAction(from, actionId, params = {}) {
+      const info = actionById(actionId);
+      if (!info) throw new Error(`Unknown action '${actionId}'`);
+      const result = await engine.runAction(from.entryId, from.kind, actionId, params);
+      addDerived(from, result, actionLabel(info, params));
     },
 
     remove(captureId) {

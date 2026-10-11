@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { makePdf, samplePdf } from '../fixtures/pdf';
-import { dropFile, stat } from './helpers';
+import { actionsPane, dropFile, stat } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -49,8 +49,7 @@ test('dropped PDF renders pages and extracts text as a derived capture', async (
   await expect(stat(page, 'Section 1.1')).toHaveText('p. 1');
   await page.getByRole('tab', { name: 'preview' }).click();
 
-  await page.getByRole('button', { name: 'Open as' }).click();
-  await page.getByRole('menuitem', { name: 'Extract text' }).click();
+  await actionsPane(page).getByRole('button', { name: 'Extract text' }).click();
   await expect(page.getByTestId('capture')).toHaveCount(2);
   const derived = page.getByTestId('capture').first();
   await expect(derived.getByTestId('derived-from')).toHaveText(

@@ -47,6 +47,8 @@ export function useGlobalShortcuts() {
         ui.setTab(tab);
       } else if (e.key === 'w') {
         ui.toggleWrap();
+      } else if (e.key === 'a') {
+        ui.toggleActions();
       } else if (e.key === 'j' || e.key === 'k') {
         moveSelection(e.key === 'j' ? 1 : -1);
       } else if (e.key === 'Delete') {

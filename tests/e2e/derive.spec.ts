@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { lastCopy, paste, recordClipboard, stat } from './helpers';
+import { actionsPane, lastCopy, paste, recordClipboard, stat } from './helpers';
 
 const b64url = (s: string) =>
   Buffer.from(s).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -42,8 +42,7 @@ test('base64 JSON opens as a derived capture via Open as → Decode', async ({ p
   await expect(chip).toHaveText(`Base64 · JSON · ${json.length} B`);
   await expect(chip).toHaveAttribute('aria-pressed', 'true');
 
-  await page.getByRole('button', { name: 'Open as' }).click();
-  await page.getByRole('menuitem', { name: 'Decode' }).click();
+  await actionsPane(page).getByRole('button', { name: 'Decode' }).click();
 
   await expect(page.getByTestId('capture')).toHaveCount(2);
   const derived = page.getByTestId('capture').first();
@@ -60,13 +59,12 @@ test('base64 JSON opens as a derived capture via Open as → Decode', async ({ p
   await expect(chip).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('command palette opens the Open as menu', async ({ page }) => {
+test('command palette runs a derivation', async ({ page }) => {
   await paste(page, { 'text/plain': 'name,age\nAda,36\nLinus,54\nGrace,85' });
   await expect(page.locator('[data-kind=records]')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Control+k');
-  await page.keyboard.type('Open as');
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('menuitem', { name: 'As JSON' })).toBeFocused();
+  await page.keyboard.type('As JSON');
+  await expect(page.getByRole('option').first()).toHaveText('Open: As JSON');
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('capture').first().locator('[data-kind=json]')).toHaveText(
     'JSON array · 3',

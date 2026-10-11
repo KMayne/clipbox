@@ -20,6 +20,9 @@ export async function dropFile(page: Page, name: string, type: string, content: 
   );
 }
 
+/** The Actions sidebar. */
+export const actionsPane = (page: Page) => page.getByRole('region', { name: 'Actions' });
+
 export const stat = (page: Page, label: string) =>
   page.getByTestId('stats').locator(`span:text-is("${label}") + span`).first();
 
