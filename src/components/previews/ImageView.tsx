@@ -64,7 +64,14 @@ export function ImageView({ handle }: { handle: ValueHandle }) {
       </div>
       <div className={preview.fill}>
         <div className={styles.stage}>
-          {url && <img src={url} alt="" className={cx(styles.img, fit && styles.fit)} />}
+          {url && (
+            <img
+              src={url}
+              alt=""
+              data-testid="image-view"
+              className={cx(styles.img, fit && styles.fit)}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -154,10 +154,13 @@ export function buildManifest(
   }
 
   const coreFiles = [...core].sort();
-  const version = createHash('sha256')
-    .update(JSON.stringify([coreFiles, modules]))
-    .digest('hex')
-    .slice(0, 12);
+  const hash = createHash('sha256').update(JSON.stringify([coreFiles, modules]));
+  // Files whose names carry no content hash (the web app manifest, icons) change the version too
+  for (const o of outputs) {
+    if (core.has(o.fileName) && !o.fileName.startsWith('assets/'))
+      hash.update(o.type === 'chunk' ? o.code : o.source);
+  }
+  const version = hash.digest('hex').slice(0, 12);
   return { version, core: coreFiles, modules };
 }
 

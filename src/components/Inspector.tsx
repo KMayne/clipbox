@@ -31,8 +31,9 @@ import { SqliteView } from './previews/SqliteView';
 import { TextView } from './previews/TextView';
 import { ValueCard } from './previews/ValueCard';
 import { RawView } from './RawView';
-import { ui } from './ui';
+import { media, TOUCH_TARGET, ui } from './ui';
 import { useAsync } from './useAsync';
+import { useIsMobile } from './useMediaQuery';
 
 /** Above this, Monaco gets sluggish; use the lightweight virtualised view. */
 const MONACO_MAX_BYTES = 20 * 1024 * 1024;
@@ -55,6 +56,9 @@ const styles = {
     gap: 8px;
     padding: 8px 12px;
     border-bottom: 1px solid ${theme.subtle};
+    ${media.mobile} {
+      flex-wrap: wrap;
+    }
   `,
   kind: css`
     flex-shrink: 0;
@@ -85,6 +89,12 @@ const styles = {
     margin-left: auto;
     display: flex;
     gap: 6px;
+    ${media.mobile} {
+      flex-shrink: 1;
+      min-width: 0;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
   `,
   views: css`
     display: inline-flex;
@@ -94,6 +104,9 @@ const styles = {
   `,
   viewButton: css`
     padding: 3px 10px;
+    ${media.touch} {
+      min-height: ${TOUCH_TARGET};
+    }
     background: none;
     border: none;
     color: ${theme.muted};
@@ -126,6 +139,11 @@ const styles = {
   separator: css`
     width: 1px;
     background: ${theme.subtle};
+    /* Phones split top and bottom */
+    ${media.mobile} {
+      width: auto;
+      height: 1px;
+    }
     &[data-separator='hover'],
     &[data-separator='active'] {
       background: ${theme.accent};
@@ -229,6 +247,8 @@ function ViewBody({
   handle: ValueHandle;
   selection: Selection;
 }) {
+  // Phones stack the source above the preview
+  const mobile = useIsMobile();
   switch (view) {
     case 'raw':
       return <RawView entryId={selection.entryId} />;
@@ -236,7 +256,7 @@ function ViewBody({
       return <Preview handle={handle} selection={selection} />;
     case 'split':
       return (
-        <Group className={styles.split}>
+        <Group className={styles.split} orientation={mobile ? 'vertical' : 'horizontal'}>
           <Panel id="raw" defaultSize="50" minSize={160}>
             <div className={styles.pane}>
               <RawView entryId={selection.entryId} />

@@ -75,6 +75,7 @@ const SOURCES = [
   'read',
   'drop',
   'file',
+  'share',
   'derived',
 ] as const satisfies readonly CaptureSourceId[];
 

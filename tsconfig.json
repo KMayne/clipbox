@@ -30,6 +30,7 @@
     "src",
     "tests",
     "vite",
+    "scripts",
     "vite.config.ts",
     "playwright.config.ts",
     "eslint.config.js"

@@ -1,11 +1,12 @@
 import { css, cx } from '@emotion/css';
 import Fuse from 'fuse.js';
 import { useMemo, useState } from 'react';
-import { commands, selectionCommands, type Command } from '../commands';
+import { commands, installCommand, selectionCommands, type Command } from '../commands';
 import { useCaptureStore } from '../state/captureStore';
+import { canInstall, useInstallStore } from '../state/install';
 import { useUiStore } from '../state/uiStore';
 import { theme } from '../theme';
-import { ui } from './ui';
+import { media, TOUCH_TARGET, ui } from './ui';
 import { useAsync } from './useAsync';
 
 /** An action's own title ranks above its group, so "Format" finds Format before Minify. */
@@ -26,6 +27,9 @@ const styles = {
     align-items: flex-start;
     padding-top: 15vh;
     z-index: 150;
+    ${media.mobile} {
+      padding-top: max(12px, env(safe-area-inset-top));
+    }
   `,
   dialog: css`
     width: min(520px, 90vw);
@@ -33,6 +37,9 @@ const styles = {
     border: 1px solid ${theme.border};
     border-radius: 6px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 70vh;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   `,
   input: css`
@@ -48,8 +55,15 @@ const styles = {
   item: css`
     display: flex;
     justify-content: space-between;
+    align-items: center;
     padding: 6px 12px;
     cursor: pointer;
+    ${media.touch} {
+      min-height: ${TOUCH_TARGET};
+    }
+  `,
+  list: css`
+    overflow-y: auto;
   `,
   active: css`
     background: ${theme.hover};
@@ -70,9 +84,14 @@ function Palette() {
   const dynamic = useAsync(key, () =>
     selection ? selectionCommands(selection) : Promise.resolve(NO_COMMANDS),
   );
+  const installable = useInstallStore(canInstall);
   const all = useMemo(
-    () => (dynamic.status === 'ok' ? [...commands, ...dynamic.value] : commands),
-    [dynamic],
+    () => [
+      ...(installable ? [installCommand] : []),
+      ...commands,
+      ...(dynamic.status === 'ok' ? dynamic.value : []),
+    ],
+    [dynamic, installable],
   );
   const fuse = useMemo(
     () =>
@@ -116,7 +135,7 @@ function Palette() {
           }}
           onKeyDown={onKeyDown}
         />
-        <div role="listbox">
+        <div role="listbox" className={styles.list}>
           {results.map((cmd, i) => (
             <div
               key={cmd.id}

@@ -8,6 +8,9 @@ export type InspectorView = 'preview' | 'split' | 'raw';
 /** Views are remembered separately for text-based and binary kinds. */
 export type ViewClass = 'text' | 'binary';
 
+/** The pane shown in the phone layout (one at a time, chosen with the bottom navigation). */
+export type MobilePane = 'pastes' | 'inspector' | 'sidebar';
+
 /** The sidebar's collapsible sections. */
 export type SidebarSection = 'info' | 'actions' | 'schema';
 
@@ -44,6 +47,8 @@ interface UiState {
   /** An action whose settings form the sidebar should expand and focus (from the palette). */
   focusedAction: { id: string; seq: number } | null;
   settings: { open: boolean };
+  /** Only used by the phone layout. */
+  pane: MobilePane;
   notice: Notice | null;
   /** Only the inspected value's; other values show (and copy) their first table. */
   activeTable: ActiveTable | null;
@@ -59,6 +64,7 @@ interface UiState {
   focusAction(actionId: string): void;
   openSettings(): void;
   closeSettings(): void;
+  showPane(pane: MobilePane): void;
   notify(message: string, tone?: Notice['tone'], action?: NoticeAction): void;
   dismissNotice(): void;
   setActiveTable(table: ActiveTable): void;
@@ -148,6 +154,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   sections: load(SECTIONS_KEY, parseSections) ?? DEFAULT_SECTIONS,
   focusedAction: null,
   settings: { open: false },
+  pane: 'pastes',
   notice: null,
   activeTable: null,
   setView(viewClass, view) {
@@ -171,10 +178,12 @@ export const useUiStore = create<UiState>((set, get) => ({
   toggleSection: section => get().setSection(section, !get().sections[section]),
   focusAction(id) {
     get().setSection('actions', true);
-    set(s => ({ focusedAction: { id, seq: (s.focusedAction?.seq ?? 0) + 1 } }));
+    // The phone layout shows the sidebar's pane for it
+    set(s => ({ focusedAction: { id, seq: (s.focusedAction?.seq ?? 0) + 1 }, pane: 'sidebar' }));
   },
   openSettings: () => set({ settings: { open: true } }),
   closeSettings: () => set({ settings: { open: false } }),
+  showPane: pane => set({ pane }),
   notify(message, tone = 'info', action) {
     clearTimeout(noticeTimer);
     set({ notice: { message, tone, action } });

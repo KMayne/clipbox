@@ -3,7 +3,7 @@ import 'monaco-editor/languages/definitions/register.all';
 import 'monaco-editor/languages/features/json/register';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import JsonWorker from 'monaco-editor/language/json/json.worker?worker';
-import { palette, theme, withAlpha } from '../../theme';
+import { palette, theme } from '../../theme';
 
 self.MonacoEnvironment = {
   getWorker: (_id: string, label: string) =>
@@ -55,7 +55,9 @@ monaco.editor.defineTheme('clipbox-dark', {
     'editorIndentGuide.background1': theme.raised,
     'editorWhitespace.foreground': theme.hover,
     'minimap.background': theme.bg,
-    'scrollbarSlider.background': withAlpha(theme.hover, 0.6),
+    // Monaco only parses hex colours (an rgba() string renders red): #rrggbb plus 60% alpha
+    'scrollbarSlider.background': `${theme.hover}99`,
+    'scrollbarSlider.activeBackground': theme.border,
     'scrollbarSlider.hoverBackground': theme.border,
   },
 });

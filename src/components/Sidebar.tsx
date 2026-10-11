@@ -12,7 +12,7 @@ import { theme } from '../theme';
 import { ActionsSection } from './ActionsPane';
 import { SchemaView } from './SchemaView';
 import { StatsGrid } from './StatsGrid';
-import { ui } from './ui';
+import { media, ui } from './ui';
 import { useAsync } from './useAsync';
 
 const styles = {
@@ -44,6 +44,9 @@ const styles = {
     display: flex;
     align-items: center;
     min-height: 32px;
+    ${media.touch} {
+      min-height: 44px;
+    }
   `,
   toggle: css`
     flex: 1;
@@ -62,6 +65,9 @@ const styles = {
     &:hover,
     &:focus-visible {
       color: ${theme.text};
+    }
+    ${media.touch} {
+      align-self: stretch;
     }
   `,
   body: css`

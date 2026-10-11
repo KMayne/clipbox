@@ -7,8 +7,9 @@ import { kindName } from '../core/kinds';
 import { moduleInfo } from '../modules/registry';
 import type { Interpretation } from '../core/types';
 import { useCaptureStore, type EntryView } from '../state/captureStore';
+import { useUiStore } from '../state/uiStore';
 import { kindColor, theme } from '../theme';
-import { ui } from './ui';
+import { media, TOUCH_TARGET, ui } from './ui';
 
 const styles = {
   entry: css`
@@ -21,6 +22,12 @@ const styles = {
     &:hover .download,
     & .download:focus-visible {
       visibility: visible;
+    }
+    /* No hover on touch screens */
+    ${media.touch} {
+      & .download {
+        visibility: visible;
+      }
     }
   `,
   /** Large captures: tighter rows, a tiny inline thumbnail and no preview line. */
@@ -82,6 +89,9 @@ const styles = {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
+    ${media.touch} {
+      gap: 6px;
+    }
   `,
   chip: css`
     display: inline-flex;
@@ -95,6 +105,11 @@ const styles = {
     cursor: pointer;
     &:hover {
       background: ${theme.hover};
+    }
+    ${media.touch} {
+      min-height: ${TOUCH_TARGET};
+      padding: 1px 12px;
+      border-radius: 20px;
     }
   `,
   inactive: css`
@@ -202,7 +217,10 @@ function InterpretationChip({ interpretation: i }: { interpretation: Interpretat
       data-kind={i.kind}
       data-status={i.status}
       title={title}
-      onClick={() => select({ entryId: i.entryId, kind: i.kind })}
+      onClick={() => {
+        select({ entryId: i.entryId, kind: i.kind });
+        useUiStore.getState().showPane('inspector');
+      }}
     >
       <span className={styles.dot} style={{ background: kindColor(i.kind) }} />
       {chipText(i)}

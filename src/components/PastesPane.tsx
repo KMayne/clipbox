@@ -1,6 +1,15 @@
 import { css, cx } from '@emotion/css';
-import { mdiArrowTopRight, mdiChevronDown, mdiChevronRight, mdiClose, mdiGithub } from '@mdi/js';
+import {
+  mdiArrowTopRight,
+  mdiChevronDown,
+  mdiChevronRight,
+  mdiClipboardArrowDownOutline,
+  mdiClose,
+  mdiFileUploadOutline,
+  mdiGithub,
+} from '@mdi/js';
 import { Icon } from '@mdi/react';
+import { openFile, readClipboard } from '../capture/sources';
 import { formatBytes, formatCount, plural } from '../core/format';
 import {
   isCollection,
@@ -8,11 +17,13 @@ import {
   visibleEntries,
   type CaptureView,
 } from '../state/captureStore';
+import { useUiStore } from '../state/uiStore';
 import { theme } from '../theme';
 import { moveSelection } from '../useGlobalShortcuts';
 import { EntryRow } from './EntryRow';
 import { ParentLink } from './ParentLink';
-import { ui } from './ui';
+import { media, ui } from './ui';
+import { useIsMobile } from './useMediaQuery';
 
 const styles = {
   pane: css`
@@ -52,6 +63,13 @@ const styles = {
     }
     &:hover > .remove {
       visibility: visible;
+    }
+    /* No hover on touch screens */
+    ${media.touch} {
+      min-height: 44px;
+      & > .remove {
+        visibility: visible;
+      }
     }
   `,
   selectedHeader: css`
@@ -97,6 +115,20 @@ const styles = {
     &:hover {
       color: ${theme.text};
       text-decoration: underline;
+    }
+  `,
+  /** Phones have no Ctrl+V: offer the clipboard and files directly. */
+  start: css`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 16px;
+    color: ${theme.muted};
+    text-align: center;
+    & > button {
+      min-width: 200px;
+      justify-content: center;
     }
   `,
   footer: css`
@@ -150,9 +182,7 @@ export function PastesPane() {
     <section className={styles.pane} tabIndex={0} onKeyDown={onKeyDown} aria-label="Pastes">
       <div className={styles.heading}>PASTES</div>
       <div className={styles.list}>
-        {captures.length === 0 && (
-          <div className={ui.empty}>Paste (Ctrl+V) or drop a file to start</div>
-        )}
+        {captures.length === 0 && <EmptyPastes />}
         {captures.map(c => (
           <CaptureItem key={c.id} capture={c} />
         ))}
@@ -191,6 +221,25 @@ export function PastesPane() {
   );
 }
 
+function EmptyPastes() {
+  const mobile = useIsMobile();
+  if (!mobile) return <div className={ui.empty}>Paste (Ctrl+V) or drop a file to start</div>;
+  return (
+    <div className={styles.start}>
+      Nothing here yet. Copy something, then:
+      <button className={`${ui.button} ${ui.primary}`} onClick={() => void readClipboard()}>
+        <Icon path={mdiClipboardArrowDownOutline} size={0.8} />
+        Read clipboard
+      </button>
+      <button className={ui.button} onClick={openFile}>
+        <Icon path={mdiFileUploadOutline} size={0.8} />
+        Open file
+      </button>
+      <span>You can also share text, links and files to Clipbox once it's installed.</span>
+    </div>
+  );
+}
+
 function CaptureItem({ capture }: { capture: CaptureView }) {
   const toggle = useCaptureStore(s => s.toggle);
   const remove = useCaptureStore(s => s.remove);
@@ -209,9 +258,11 @@ function CaptureItem({ capture }: { capture: CaptureView }) {
         data-testid="capture-header"
         aria-current={selected || undefined}
         title={collection ? 'Show as a collection' : undefined}
-        onClick={() =>
-          collection ? useCaptureStore.getState().selectCollection(capture.id) : toggle(capture.id)
-        }
+        onClick={() => {
+          if (!collection) return toggle(capture.id);
+          useCaptureStore.getState().selectCollection(capture.id);
+          useUiStore.getState().showPane('inspector');
+        }}
       >
         <button
           className={ui.iconButton}
@@ -264,6 +315,20 @@ function CaptureItem({ capture }: { capture: CaptureView }) {
   );
 }
 
-/** Pastes hold one entry per clipboard format; drops and derived captures hold files. */
-const countLabel = (source: CaptureView['source'], n: number) =>
-  source === 'paste' || source === 'read' ? plural(n, 'format') : plural(n, 'file');
+/**
+ * Pastes hold one entry per clipboard format; drops and derived captures hold files; shares hold
+ * text, a link and files.
+ */
+const countLabel = (source: CaptureView['source'], n: number) => {
+  switch (source) {
+    case 'paste':
+    case 'read':
+      return plural(n, 'format');
+    case 'share':
+      return plural(n, 'item');
+    case 'drop':
+    case 'file':
+    case 'derived':
+      return plural(n, 'file');
+  }
+};

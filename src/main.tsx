@@ -2,8 +2,11 @@ import { injectGlobal } from '@emotion/css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { consumeShares, startFileHandling } from './capture/share';
 import { onCaptureEvent, useCaptureStore } from './state/captureStore';
 import { startBackgroundDownloads } from './state/backgroundDownloads';
+import { startInstallPrompt } from './state/install';
+import { startMobileNavigation } from './state/mobileNav';
 import { useModuleStore } from './state/moduleStore';
 import { startPersistence } from './state/persistence';
 import { sw } from './swClient';
@@ -17,6 +20,9 @@ injectGlobal`
     color: ${theme.text};
     font: 13px/1.4 ${theme.sans};
     color-scheme: dark;
+    /* App-like on phones: no pull-to-refresh or rubber-banding, no grey tap flashes */
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
     /* Native controls (checkboxes, radios, ranges) */
     accent-color: ${theme.accent};
   }
@@ -30,6 +36,10 @@ injectGlobal`
 `;
 
 sw.register();
+// The browser UI (title bar, Android status bar) follows the chosen scheme, not just Nord
+document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.panel);
+startInstallPrompt();
+startMobileNavigation();
 useModuleStore.getState().init();
 startBackgroundDownloads();
 void startPersistence(
@@ -41,6 +51,10 @@ void startPersistence(
   },
   () => useCaptureStore.getState().clear(),
 );
+
+// After the listeners above, so a shared item opens in the Inspector
+void consumeShares();
+startFileHandling();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');

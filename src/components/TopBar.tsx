@@ -1,7 +1,8 @@
-import { css } from '@emotion/css';
+import { css, cx } from '@emotion/css';
 import {
   mdiCogOutline,
   mdiClipboardArrowDownOutline,
+  mdiConsoleLine,
   mdiFileUploadOutline,
   mdiPackageVariantClosed,
 } from '@mdi/js';
@@ -17,8 +18,15 @@ const styles = {
     align-items: center;
     gap: 8px;
     padding: 6px 10px;
+    /* Under a translucent status bar (iOS home screen, viewport-fit=cover) */
+    padding-top: max(6px, env(safe-area-inset-top));
     background: ${theme.panel};
     border-bottom: 1px solid ${theme.subtle};
+  `,
+  compactBar: css`
+    gap: 4px;
+    padding-left: 8px;
+    padding-right: 4px;
   `,
   title: css`
     display: flex;
@@ -34,31 +42,77 @@ const styles = {
     align-items: center;
     color: ${theme.muted};
   `,
+  /** The Ctrl+K hint doubles as the palette's button. */
+  paletteHint: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    background: none;
+    border: none;
+    border-radius: 3px;
+    color: inherit;
+    cursor: pointer;
+    &:hover {
+      color: ${theme.text};
+      background: ${theme.hover};
+    }
+  `,
 };
 
-export function TopBar() {
+const openPalette = () => useUiStore.getState().setPaletteOpen(true);
+
+/**
+ * Read clipboard, Open file, the palette and Settings. `compact` (phones) drops the title and the
+ * keyboard hints and makes Read clipboard the primary button, since there's no Ctrl+V.
+ */
+export function TopBar({ compact = false }: { compact?: boolean }) {
   return (
-    <header className={styles.bar}>
+    <header className={cx(styles.bar, compact && styles.compactBar)}>
       <span className={styles.title}>
         <Icon path={mdiPackageVariantClosed} size={0.8} color={theme.accent} />
-        Clipbox
+        {!compact && 'Clipbox'}
       </span>
-      <button className={ui.button} onClick={() => void readClipboard()}>
+      <button className={cx(ui.button, compact && ui.primary)} onClick={() => void readClipboard()}>
         <Icon path={mdiClipboardArrowDownOutline} size={0.7} />
         Read clipboard
       </button>
-      <button className={ui.button} onClick={openFile}>
-        <Icon path={mdiFileUploadOutline} size={0.7} />
-        Open file
-      </button>
+      {compact ? (
+        <button
+          className={ui.iconButton}
+          title="Open file"
+          aria-label="Open file"
+          onClick={openFile}
+        >
+          <Icon path={mdiFileUploadOutline} size={0.8} />
+        </button>
+      ) : (
+        <button className={ui.button} onClick={openFile}>
+          <Icon path={mdiFileUploadOutline} size={0.7} />
+          Open file
+        </button>
+      )}
       <span className={styles.hints}>
-        <span>
-          <kbd className={ui.kbd}>Ctrl+V</kbd> paste
-        </span>
-        <span>
-          <kbd className={ui.kbd}>Ctrl+K</kbd> commands
-        </span>
-        <SidebarToggle />
+        {compact ? (
+          <button
+            className={ui.iconButton}
+            title="Commands"
+            aria-label="Commands"
+            onClick={openPalette}
+          >
+            <Icon path={mdiConsoleLine} size={0.8} />
+          </button>
+        ) : (
+          <>
+            <span>
+              <kbd className={ui.kbd}>Ctrl+V</kbd> paste
+            </span>
+            <button className={styles.paletteHint} aria-label="Commands" onClick={openPalette}>
+              <kbd className={ui.kbd}>Ctrl+K</kbd> commands
+            </button>
+            <SidebarToggle />
+          </>
+        )}
         <button
           className={ui.iconButton}
           title="Settings"

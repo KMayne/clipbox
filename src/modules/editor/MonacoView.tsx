@@ -1,5 +1,6 @@
 import { css } from '@emotion/css';
 import { useEffect, useRef } from 'react';
+import { MOBILE_QUERY } from '../../components/ui';
 import { useUiStore } from '../../state/uiStore';
 import { theme } from '../../theme';
 import { monaco } from './monaco';
@@ -27,7 +28,8 @@ export function MonacoView({ text, language }: { text: string; language: string 
       automaticLayout: true,
       fontFamily: theme.mono,
       fontSize: 12,
-      minimap: { enabled: true },
+      // No room for the minimap on a phone
+      minimap: { enabled: !matchMedia(MOBILE_QUERY).matches },
       scrollBeyondLastLine: false,
       wordWrap: useUiStore.getState().wrap ? 'on' : 'off',
       renderLineHighlight: 'none',

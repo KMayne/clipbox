@@ -3,7 +3,16 @@
  * offline use. Built by vite/modulesManifest.ts, which inlines the build manifest below.
  * Not bundled: only type imports are allowed (stripped by the build), so no Zod here.
  */
-import type { ModulesManifest, SwRequest, SwResponse } from './swProtocol';
+import type {
+  ModulesManifest,
+  ShareAction,
+  ShareCacheName,
+  ShareHeaders,
+  ShareParam,
+  SharePath,
+  SwRequest,
+  SwResponse,
+} from './swProtocol';
 
 // Type-checked separately with the WebWorker lib (tsconfig.sw.json)
 declare const self: ServiceWorkerGlobalScope;
@@ -37,6 +46,43 @@ const moduleCache = (id: string) => `${PREFIX}mod-${id}-${MANIFEST.version}`;
 /** Directory the app is served from (e.g. https://host/clipbox/), so it works under any base path. */
 const BASE = self.registration.scope;
 const url = (file: string) => new URL(file, BASE).href;
+
+// Share target: see swProtocol.ts
+const SHARE_ACTION: ShareAction = 'share-target';
+const SHARE_CACHE: ShareCacheName = 'clipbox-share';
+const SHARE_PATH: SharePath = '__clipbox/share/';
+const SHARE_PARAM: ShareParam = 'share';
+const SHARE_HEADERS: ShareHeaders = { field: 'x-clipbox-field', filename: 'x-clipbox-filename' };
+
+/**
+ * Stashes a share (multipart form: title, text, url, files) in Cache Storage, one response per
+ * non-empty field, then redirects to the app, which ingests it as a 'share' capture.
+ */
+async function stashShare(req: Request): Promise<Response> {
+  const id = crypto.randomUUID();
+  try {
+    const form = await req.formData();
+    const cache = await caches.open(SHARE_CACHE);
+    let i = 0;
+    for (const [field, value] of form) {
+      const headers = new Headers({ [SHARE_HEADERS.field]: field });
+      if (typeof value === 'string') {
+        if (value.trim() === '') continue;
+        headers.set('content-type', 'text/plain;charset=utf-8');
+      } else {
+        if (value.size === 0 && value.name === '') continue; // an empty file input
+        headers.set('content-type', value.type || 'application/octet-stream');
+        headers.set(SHARE_HEADERS.filename, encodeURIComponent(value.name));
+      }
+      await cache.put(url(`${SHARE_PATH}${id}/${i++}`), new Response(value, { headers }));
+    }
+  } catch {
+    // Not a form we can read: open the app anyway
+  }
+  const to = new URL(BASE);
+  to.searchParams.set(SHARE_PARAM, id);
+  return Response.redirect(to.href, 303);
+}
 
 async function readDownloaded(): Promise<string[]> {
   const res = await (await caches.open(META_CACHE)).match(DOWNLOADED_KEY);
@@ -108,6 +154,7 @@ self.addEventListener('activate', e => {
       const current = new Set([
         CORE_CACHE,
         META_CACHE,
+        SHARE_CACHE,
         ...Object.keys(MANIFEST.modules).map(moduleCache),
       ]);
       for (const name of await caches.keys()) {
@@ -124,6 +171,10 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const req = e.request;
+  if (req.method === 'POST' && req.url.split('?')[0] === url(SHARE_ACTION)) {
+    e.respondWith(stashShare(req));
+    return;
+  }
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   e.respondWith(
     (async () => {

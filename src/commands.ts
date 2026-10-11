@@ -4,6 +4,7 @@ import { openFile, readClipboard } from './capture/sources';
 import { hasSettings } from './core/actions/types';
 import { runAction, runDerivation, selectionActions } from './state/actions';
 import { useCaptureStore, type Selection } from './state/captureStore';
+import { useInstallStore } from './state/install';
 import { useUiStore, type InspectorView } from './state/uiStore';
 import { viewClassOf } from './state/views';
 
@@ -56,6 +57,13 @@ export async function selectionCommands(selection: Selection): Promise<Command[]
     })),
   ];
 }
+
+/** Listed only while the browser offers installation (state/install.ts). */
+export const installCommand: Command = {
+  id: 'app.install',
+  title: 'Install app',
+  run: () => void useInstallStore.getState().install(),
+};
 
 export const commands: Command[] = [
   { id: 'clipboard.read', title: 'Read clipboard', run: () => void readClipboard() },
