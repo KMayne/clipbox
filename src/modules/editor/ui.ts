@@ -1,8 +1,9 @@
 import type { UiModule } from '../types';
-import { HtmlSourcePreview, MarkdownSourcePreview, TextPreview } from './previews';
+import { MonacoView } from './MonacoView';
+import { TextPreview } from './previews';
 
 export const previews: UiModule['previews'] = {
   text: TextPreview,
-  html: HtmlSourcePreview,
-  markdown: MarkdownSourcePreview,
 };
+
+export const SourceView: UiModule['SourceView'] = MonacoView;

@@ -4,7 +4,7 @@ import type { ModuleId, PreviewProps } from '../modules/types';
 import { useModuleStore } from '../state/moduleStore';
 
 /** Renders `fallback` if the module fails to load (e.g. offline and not cached). */
-class FallbackBoundary extends Component<
+export class FallbackBoundary extends Component<
   { fallback: ReactNode; children: ReactNode },
   { failed: boolean }
 > {

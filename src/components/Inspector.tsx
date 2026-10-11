@@ -30,7 +30,8 @@ import { SpreadsheetView } from './previews/SpreadsheetView';
 import { SqliteView } from './previews/SqliteView';
 import { TextView } from './previews/TextView';
 import { ValueCard } from './previews/ValueCard';
-import { HexSource, RawView } from './RawView';
+import { HexSource } from './RawView';
+import { SourceText } from './SourceText';
 import { media, TOUCH_TARGET, ui } from './ui';
 import { useAsync } from './useAsync';
 import { useIsMobile } from './useMediaQuery';
@@ -243,7 +244,7 @@ function ViewBody({
       return selection.kind === 'text' ? (
         <Preview handle={handle} selection={selection} />
       ) : (
-        <RawView entryId={selection.entryId} />
+        <SourceText entryId={selection.entryId} kind={selection.kind} />
       );
     case 'hex':
       return <HexSource entryId={selection.entryId} />;
@@ -252,7 +253,7 @@ function ViewBody({
         <Group className={styles.split} orientation={mobile ? 'vertical' : 'horizontal'}>
           <Panel id="raw" defaultSize="50" minSize={160}>
             <div className={styles.pane}>
-              <RawView entryId={selection.entryId} />
+              <SourceText entryId={selection.entryId} kind={selection.kind} />
             </div>
           </Panel>
           <Separator className={styles.separator} />

@@ -2,20 +2,11 @@ import { expect, test, type Page } from '@playwright/test';
 import { solidPng } from '../fixtures/pptx';
 import { actionsPane, dropBytes, paste } from './helpers';
 
-/**
- * The selected value's text (Text view): a <pre> for structured kinds, the editor for plain text,
- * where it's checked line by line.
- */
+/** The selected value's text, in the Text view's highlighting editor, checked line by line. */
 async function expectRaw(page: Page, text: string) {
   await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Text' }).click();
-  const view = page.getByRole('region', { name: 'View' });
-  const editor = view.getByTestId('monaco-view');
-  await expect(view.locator('pre').or(editor).first()).toBeVisible();
-  if (await editor.count()) {
-    for (const line of text.split('\n')) await expect(editor).toContainText(line);
-  } else {
-    await expect(view.locator('pre')).toHaveText(text);
-  }
+  const editor = page.getByRole('region', { name: 'View' }).getByTestId('monaco-view');
+  for (const line of text.split('\n')) await expect(editor).toContainText(line);
 }
 
 const derivedFrom = (page: Page) => page.getByTestId('capture').first().getByTestId('derived-from');
@@ -209,12 +200,12 @@ test('each kind offers its own views; text-based ones open in Split', async ({ p
   // JSON: Text | Tree | Split | Hex dump, opening in Split (the text beside the tree)
   await expect(views.getByRole('button')).toHaveText(['Text', 'Tree', 'Split', 'Hex dump']);
   await pressed('Split');
-  await expect(view.locator('pre')).toHaveText('{"name":"Ada","langs":["en","fr"]}');
+  await expect(view.getByTestId('monaco-view')).toContainText('"langs":["en","fr"]');
   await expect(view.getByTestId('json-tree')).toBeVisible();
 
   // 2 is the second button: Tree alone, remembered across reloads
   await page.keyboard.press('2');
-  await expect(view.locator('pre')).toHaveCount(0);
+  await expect(view.getByTestId('monaco-view')).toHaveCount(0);
   await expect(view.getByTestId('json-tree')).toBeVisible();
   await page.reload();
   await paste(page, { 'text/plain': '[1,2,3]' });

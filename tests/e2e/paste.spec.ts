@@ -97,7 +97,7 @@ Paste **anything**, then [read the docs](https://example.com).
 - pnpm dev
 `;
 
-test('Markdown renders and toggles to source', async ({ page }) => {
+test('Markdown renders beside its highlighted source', async ({ page }) => {
   await paste(page, { 'text/plain': README });
   const chip = page.locator('[data-kind=markdown]');
   await expect(chip).toHaveText(/^Markdown · 2 headings · \d+ words$/);
@@ -106,7 +106,7 @@ test('Markdown renders and toggles to source', async ({ page }) => {
   await expect(frame.locator('h1')).toHaveText('Clipbox');
   await expect(frame.locator('li')).toHaveCount(2);
 
-  await page.getByRole('button', { name: 'Source' }).click();
+  // Markdown opens in Split: the highlighted source beside the rendering
   await expect(page.getByTestId('monaco-view')).toContainText('# Clipbox');
 
   await expect(stat(page, 'Headings')).toHaveText('2');

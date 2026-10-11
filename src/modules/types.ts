@@ -40,4 +40,6 @@ export interface PreviewProps {
 /** Lazily-imported UI half of a module. */
 export interface UiModule {
   previews?: Partial<Record<Kind, ComponentType<PreviewProps>>>;
+  /** Shows source text highlighted as `language` (the editor module's Text view). */
+  SourceView?: ComponentType<{ text: string; language: string }>;
 }

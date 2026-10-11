@@ -5,7 +5,8 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'test-results', 'playwright-report'] },
+  // .claude/worktrees holds agents' in-progress checkouts
+  { ignores: ['dist', 'test-results', 'playwright-report', '.claude'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
