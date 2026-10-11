@@ -2,6 +2,7 @@ import type { AnyActionImpl } from '../types';
 import { anyImpls } from './any';
 import { imageImpls } from './image';
 import { jsonImpls } from './json';
+import { presentationImpls } from './presentation';
 import { textImpls } from './text';
 
 /**
@@ -12,6 +13,7 @@ export const actionImpls: AnyActionImpl[] = [
   ...jsonImpls,
   ...textImpls,
   ...imageImpls,
+  ...presentationImpls,
   ...anyImpls,
 ];
 

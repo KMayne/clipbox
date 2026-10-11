@@ -2,6 +2,7 @@ import type { ActionInfo } from '../types';
 import { anyActions } from './any';
 import { imageActions } from './image';
 import { jsonActions } from './json';
+import { presentationActions } from './presentation';
 import { textActions } from './text';
 
 /**
@@ -13,6 +14,7 @@ export const catalog: ActionInfo[] = [
   ...jsonActions,
   ...textActions,
   ...imageActions,
+  ...presentationActions,
   ...anyActions,
 ];
 

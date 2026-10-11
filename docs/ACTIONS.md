@@ -97,6 +97,14 @@ Legend:
 
 - **Extract text** ✓ · **Page as PNG** ✓ · **Metadata as JSON**
 
+### PowerPoint (.pptx)
+
+- **Extract images** ✅: every image in `ppt/media`, deduplicated by content, in order of first slide
+  use, then unused ones (`slide-03-image2.png`, `unused-image1.png`), one collection capture;
+  formats a browser can't show (EMF, WMF, TIFF) are skipped; setting: slide range
+- **Extract text** ✅: Markdown, `## Slide N: Title` with the text and `### Notes` beneath (setting:
+  include notes) · **Slides as JSON** ✅ (metadata, and each slide's title, text, notes and media)
+
 ### Audio / video
 
 - **Cover art** ✓ · **Metadata as JSON** · **Video frame as PNG** (at a time param)
@@ -118,8 +126,8 @@ Legend:
 - Actions that don't produce a new capture (Copy, Download, Open in new tab) don't fit
   `run → DerivedContent` yet; they need a small extension (e.g. a result type that the UI handles
   instead of adding a capture).
-- Multi-output actions (Extract palette → several colour captures, extract all) likewise need a
-  result with several entries.
+- Multi-output actions return `DerivedContent[]`, which becomes one collection capture (done; used
+  by PowerPoint Extract images). Extract palette and archive "extract all" can use it too.
 - Actions on lazy-module kinds (PDF, spreadsheet, SQLite, PEM, media) get a value the module has
   already parsed. Their `run/` file must not import the module's code (that would bundle it into the
   core worker chunk): narrow the value with a light guard (e.g. from the module's `types.ts`), and

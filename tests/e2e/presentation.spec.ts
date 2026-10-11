@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { samplePptx } from '../fixtures/pptx';
-import { dropBytes, naturalSize, stat } from './helpers';
+import { actionsPane, dropBytes, naturalSize, stat } from './helpers';
 
 const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
@@ -38,4 +38,37 @@ test('a dropped .pptx lists its slides, pictures and notes', async ({ page }) =>
   await page.getByRole('tab', { name: 'stats' }).click();
   await expect(stat(page, 'Author')).toHaveText('Ada Lovelace');
   await expect(stat(page, 'Slide size')).toHaveText('13.33 × 7.5 in (16:9)');
+});
+
+test('Extract images makes one capture holding every picture', async ({ page }) => {
+  await dropBytes(page, 'review.pptx', PPTX, samplePptx());
+  await expect(page.locator('[data-kind=presentation]')).toHaveAttribute('aria-pressed', 'true');
+
+  const pane = actionsPane(page);
+  await pane.getByRole('button', { name: 'Extract images' }).click();
+  await pane
+    .getByRole('form', { name: 'Extract images settings' })
+    .getByRole('button', { name: 'Run' })
+    .click();
+
+  await expect(page.getByTestId('capture')).toHaveCount(2);
+  const derived = page.getByTestId('capture').first();
+  await expect(derived.getByTestId('derived-from')).toContainText('Extract images');
+  await expect(derived.locator('[data-kind=image]')).toHaveCount(3);
+  await expect(derived).toContainText('slide-01-image1.png');
+  await expect(derived).toContainText('unused-image1.png');
+});
+
+test('Extract text gives the slides as Markdown', async ({ page }) => {
+  await dropBytes(page, 'review.pptx', PPTX, samplePptx());
+  await expect(page.locator('[data-kind=presentation]')).toHaveAttribute('aria-pressed', 'true');
+  const pane = actionsPane(page);
+  await pane.getByRole('button', { name: 'Extract text' }).click();
+  await pane
+    .getByRole('form', { name: 'Extract text settings' })
+    .getByRole('button', { name: 'Run' })
+    .click();
+  await expect(page.getByTestId('capture')).toHaveCount(2);
+  await page.getByRole('tab', { name: 'raw' }).click();
+  await expect(page.getByRole('tabpanel')).toContainText('## Slide 1: Welcome');
 });
