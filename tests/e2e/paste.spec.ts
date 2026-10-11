@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { dropFile, paste, stat } from './helpers';
 
 const USERS = JSON.stringify(
@@ -52,8 +52,8 @@ test('dropped CSV file becomes records', async ({ page }) => {
   await expect(page.getByTestId('capture')).toContainText('drop');
 });
 
-test('HTML preview blocks all network requests', async ({ page }) => {
-  // Playwright reports CSP-blocked requests too, so check that each one failed with 'csp'
+/** Records off-origin requests: Playwright reports CSP-blocked ones too, as failures with 'csp'. */
+function watchNetwork(page: Page) {
   const leaked: string[] = [];
   const blocked: string[] = [];
   page.on('requestfinished', r => {
@@ -63,6 +63,11 @@ test('HTML preview blocks all network requests', async ({ page }) => {
     if (r.failure()?.errorText === 'csp') blocked.push(r.url());
     else if (!r.url().startsWith('http://localhost')) leaked.push(r.url());
   });
+  return { leaked, blocked };
+}
+
+test('HTML preview blocks all network requests', async ({ page }) => {
+  const { leaked, blocked } = watchNetwork(page);
   await paste(page, {
     'text/html':
       '<p>hi</p><img src="https://example.com/pixel.png"><link rel="stylesheet" href="https://example.com/x.css">',
@@ -70,6 +75,59 @@ test('HTML preview blocks all network requests', async ({ page }) => {
   await expect(page.locator('iframe[title="HTML preview"]')).toBeVisible();
   await expect.poll(() => blocked.length).toBe(2);
   expect(leaked).toEqual([]);
+});
+
+test('Markdown preview blocks remote images', async ({ page }) => {
+  const { leaked, blocked } = watchNetwork(page);
+  await paste(page, {
+    'text/plain': '# Tracked\n\n![pixel](https://example.com/md-pixel.png)\n\n- [x] done\n',
+  });
+  await expect(page.getByTestId('chip').first()).toHaveText(/^Markdown/);
+  await expect(page.locator('iframe[title="Markdown preview"]')).toBeVisible();
+  await expect.poll(() => blocked).toEqual(['https://example.com/md-pixel.png']);
+  expect(leaked).toEqual([]);
+});
+
+const README = `# Clipbox
+
+Paste **anything**, then [read the docs](https://example.com).
+
+## Install
+
+- pnpm install
+- pnpm dev
+`;
+
+test('Markdown renders and toggles to source', async ({ page }) => {
+  await paste(page, { 'text/plain': README });
+  const chip = page.locator('[data-kind=markdown]');
+  await expect(chip).toHaveText(/^Markdown · 2 headings · \d+ words$/);
+  await expect(chip).toHaveAttribute('aria-pressed', 'true');
+  const frame = page.frameLocator('iframe[title="Markdown preview"]');
+  await expect(frame.locator('h1')).toHaveText('Clipbox');
+  await expect(frame.locator('li')).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Source' }).click();
+  await expect(page.getByTestId('monaco-view')).toContainText('# Clipbox');
+
+  await page.keyboard.press('2');
+  await expect(stat(page, 'Headings')).toHaveText('2');
+});
+
+test('NDJSON shows a tree and records', async ({ page }) => {
+  const ndjson = Array.from({ length: 3 }, (_, i) =>
+    JSON.stringify({ id: i, name: `user${i}` }),
+  ).join('\n');
+  await paste(page, { 'text/plain': ndjson });
+  const chips = page.getByTestId('chip');
+  await expect(chips.nth(0)).toHaveText('NDJSON · 3 lines');
+  await expect(chips.nth(1)).toHaveText('Records 3×2');
+  await expect(page.getByTestId('json-tree')).toContainText('{ id, name }');
+
+  await page.locator('[data-kind=records]').click();
+  await expect(page.getByTestId('records-table')).toContainText('user2');
+  await page.keyboard.press('2');
+  await expect(stat(page, 'Source')).toHaveText('NDJSON');
 });
 
 test('j/k move between chips and Delete removes the capture', async ({ page }) => {

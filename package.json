@@ -22,6 +22,7 @@
     "@vscode/vscode-languagedetection": "^1.0.23",
     "comlink": "^4.4.2",
     "fuse.js": "^7.5.0",
+    "marked": "^18.1.0",
     "monaco-editor": "^0.57.0",
     "papaparse": "^5.7.0",
     "react": "^19.3.0",

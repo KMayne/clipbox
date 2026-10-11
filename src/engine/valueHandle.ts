@@ -25,6 +25,7 @@ const schemas = {
   children: z.array(jsonChildSchema),
   bytes: bytesSchema,
   text: z.string(),
+  html: z.string(),
   image: z.object({ bytes: bytesSchema, mime: z.string() }) satisfies z.ZodType<ImageData>,
 };
 
@@ -41,6 +42,7 @@ function remoteHandle(entryId: EntryId, kind: Kind, summary: ValueHandle['summar
     text: async () => schemas.text.parse(await slice({ type: 'text' })),
     image: async () => schemas.image.parse(await slice({ type: 'image' })),
     json: () => slice({ type: 'json' }),
+    html: async () => schemas.html.parse(await slice({ type: 'html' })),
   };
 }
 

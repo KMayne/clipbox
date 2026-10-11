@@ -100,7 +100,9 @@ export type SliceRequest =
   /** Image bytes and MIME type. */
   | { type: 'image' }
   /** Whole JSON value (used for top-level scalars). */
-  | { type: 'json' };
+  | { type: 'json' }
+  /** Rendered HTML (Markdown). */
+  | { type: 'html' };
 
 export interface ImageData {
   bytes: Uint8Array<ArrayBuffer>;
@@ -117,6 +119,7 @@ export interface ValueHandle {
   text(): Promise<string>;
   image(): Promise<ImageData>;
   json(): Promise<unknown>;
+  html(): Promise<string>;
 }
 
 export interface RawView {

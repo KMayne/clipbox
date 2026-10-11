@@ -5,11 +5,15 @@ import { binaryInterpreter } from './binary';
 import { htmlInterpreter } from './html';
 import { imageInterpreter } from './image';
 import { jsonInterpreter } from './json';
+import { markdownInterpreter } from './markdown';
+import { ndjsonInterpreter } from './ndjson';
 import { recordsInterpreter } from './records';
 import { textInterpreter } from './text';
 
 export const interpreters: AnyInterpreter[] = [
   register(jsonInterpreter),
+  register(ndjsonInterpreter),
+  register(markdownInterpreter),
   register(recordsInterpreter),
   register(htmlInterpreter),
   register(imageInterpreter),

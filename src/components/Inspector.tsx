@@ -11,6 +11,7 @@ import { HexView } from './previews/HexView';
 import { HtmlView } from './previews/HtmlView';
 import { ImageView } from './previews/ImageView';
 import { JsonTree } from './previews/JsonTree';
+import { MarkdownView } from './previews/MarkdownView';
 import { ModulePreview } from './ModulePreview';
 import { RecordsTable } from './previews/RecordsTable';
 import { TextView } from './previews/TextView';
@@ -171,7 +172,10 @@ function TabBody({
 function Preview({ handle }: { handle: ValueHandle }) {
   switch (handle.summary.kind) {
     case 'json':
+    case 'ndjson':
       return <JsonTree handle={handle} />;
+    case 'markdown':
+      return <MarkdownView handle={handle} />;
     case 'records':
       return <RecordsTable handle={handle} />;
     case 'text':

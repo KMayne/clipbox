@@ -5,19 +5,12 @@ import { theme } from '../../theme';
 import { ModulePreview } from '../ModulePreview';
 import { ui } from '../ui';
 import { useAsync } from '../useAsync';
+import { SandboxedHtml } from './SandboxedHtml';
 import { preview } from './styles';
 
-// No scripts (sandbox) and no network: blocks tracking pixels and remote CSS in pasted HTML.
-const CSP = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; font-src data:">`;
 const SOURCE_LIMIT = 1024 * 1024;
 
 const styles = {
-  frame: css`
-    width: 100%;
-    height: 100%;
-    border: none;
-    background: #fff;
-  `,
   source: css`
     margin: 0;
     padding: 12px;
@@ -49,13 +42,7 @@ export function HtmlView({ handle }: { handle: ValueHandle }) {
       </div>
       <div className={preview.fill}>
         {mode === 'rendered' ? (
-          <iframe
-            title="HTML preview"
-            className={styles.frame}
-            sandbox=""
-            referrerPolicy="no-referrer"
-            srcDoc={CSP + html.value}
-          />
+          <SandboxedHtml title="HTML preview" html={html.value} />
         ) : (
           <ModulePreview
             module="editor"

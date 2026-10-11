@@ -6,13 +6,16 @@ import { unsupportedSlice, type Interpreter } from '../interpreter';
 import { inferSchema } from '../schema';
 import type { ColumnInfo } from '../types';
 import { tryParseJson } from './json';
+import { tryParseNdjson } from './ndjson';
 
 export interface RecordsValue {
   kind: 'records';
   columns: string[];
   rows: Record<string, unknown>[];
-  /** Null when the records came from a JSON array. */
+  /** Null when the records came from a JSON array or NDJSON. */
   delimiter: string | null;
+  /** Set when the records came from NDJSON. */
+  ndjson?: boolean;
   hasHeader: boolean;
 }
 
@@ -63,6 +66,20 @@ function jsonRecords(c: EntryContent): Record<string, unknown>[] | null {
   if (!r.ok || !Array.isArray(r.value) || r.value.length === 0) return null;
   return r.value.every(isRecord) ? r.value : null;
 }
+
+function ndjsonRecords(c: EntryContent): Record<string, unknown>[] | null {
+  const items = tryParseNdjson(c)?.items;
+  return items && items.every(isRecord) ? items : null;
+}
+
+const recordsFromObjects = (rows: Record<string, unknown>[], ndjson: boolean): RecordsValue => ({
+  kind: 'records',
+  columns: [...new Set(rows.flatMap(r => Object.keys(r)))],
+  rows,
+  delimiter: null,
+  hasHeader: true,
+  ...(ndjson ? { ndjson } : {}),
+});
 
 export function typeCell(raw: string): unknown {
   const s = raw.trim();
@@ -121,14 +138,15 @@ export const recordsInterpreter: Interpreter<RecordsValue> = {
   detect(c) {
     if (c.text === null) return 0;
     if (tryParseJson(c).ok) return jsonRecords(c) ? 0.6 : 0;
+    // NDJSON lines are full of commas; don't let them pass for CSV
+    if (tryParseNdjson(c)) return ndjsonRecords(c) ? 0.6 : 0;
     return delimiterOf(c)?.confidence ?? 0;
   },
   parse(c) {
     const fromJson = jsonRecords(c);
-    if (fromJson) {
-      const columns = [...new Set(fromJson.flatMap(r => Object.keys(r)))];
-      return { kind: 'records', columns, rows: fromJson, delimiter: null, hasHeader: true };
-    }
+    if (fromJson) return recordsFromObjects(fromJson, false);
+    const fromNdjson = ndjsonRecords(c);
+    if (fromNdjson) return recordsFromObjects(fromNdjson, true);
     const guess = delimiterOf(c);
     if (!guess || c.text === null) throw new Error('Not delimited data');
     return parseDelimited(c.text, guess.delimiter);
@@ -142,7 +160,12 @@ export const recordsInterpreter: Interpreter<RecordsValue> = {
         { label: 'Columns', value: String(v.columns.length) },
         {
           label: 'Source',
-          value: v.delimiter === null ? 'JSON array' : `${DELIMITER_NAMES[v.delimiter]}-delimited`,
+          value:
+            v.delimiter !== null
+              ? `${DELIMITER_NAMES[v.delimiter]}-delimited`
+              : v.ndjson
+                ? 'NDJSON'
+                : 'JSON array',
         },
         ...(v.delimiter === null
           ? []

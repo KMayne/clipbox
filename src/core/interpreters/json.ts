@@ -4,7 +4,7 @@ import { hasKind } from '../guards';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
 import { jsonChildCount, jsonChildren, jsonTypeOf } from '../jsonSlice';
 import { describeSchema, inferSchema } from '../schema';
-import type { StatRow } from '../types';
+import type { Schema, StatRow } from '../types';
 
 type ParseResult = { ok: true; value: unknown } | { ok: false };
 
@@ -49,27 +49,12 @@ export const jsonInterpreter: Interpreter<JsonValue> = {
   },
   summarise({ json, bytes }) {
     const schema = inferSchema(json);
-    const type = jsonTypeOf(json);
     const stats: StatRow[] = [
-      { label: 'Top-level type', value: type },
+      { label: 'Top-level type', value: jsonTypeOf(json) },
       { label: 'Size', value: formatBytes(bytes) },
     ];
-    if (Array.isArray(json)) {
-      stats.push({ label: 'Length', value: formatCount(json.length) });
-      stats.push({ label: 'Element types', value: elementTypes(json) });
-    }
-    const objectSchema = schema.t === 'array' ? schema.of : schema;
-    const fields = objectSchema.t === 'object' ? Object.entries(objectSchema.fields) : [];
-    if (fields.length > 0) {
-      stats.push({
-        label: Array.isArray(json) ? 'Element keys' : 'Keys',
-        value: formatCount(fields.length),
-        children: fields.map(([k, f]) => ({
-          label: k,
-          value: `${describeSchema(f.schema)} · ${formatPercent(f.presence)}`,
-        })),
-      });
-    }
+    if (Array.isArray(json)) stats.push(...arrayStats(json, schema));
+    else stats.push(...keyStats(schema, 'Keys'));
     stats.push({ label: 'Max depth', value: String(maxDepth(json)) });
     return { stats, schema, extent: jsonChildCount(json) };
   },
@@ -80,6 +65,31 @@ export const jsonInterpreter: Interpreter<JsonValue> = {
   },
   export: ({ json }) => ({ text: JSON.stringify(json, null, 2) }),
 };
+
+/** Length, element types and element keys of an array; shared with the ndjson kind. */
+export function arrayStats(arr: unknown[], schema: Schema): StatRow[] {
+  return [
+    { label: 'Length', value: formatCount(arr.length) },
+    { label: 'Element types', value: elementTypes(arr) },
+    ...keyStats(schema.t === 'array' ? schema.of : schema, 'Element keys'),
+  ];
+}
+
+/** Key count with per-key type and presence, if `schema` describes objects. */
+function keyStats(schema: Schema, label: string): StatRow[] {
+  const fields = schema.t === 'object' ? Object.entries(schema.fields) : [];
+  if (fields.length === 0) return [];
+  return [
+    {
+      label,
+      value: formatCount(fields.length),
+      children: fields.map(([k, f]) => ({
+        label: k,
+        value: `${describeSchema(f.schema)} · ${formatPercent(f.presence)}`,
+      })),
+    },
+  ];
+}
 
 function elementTypes(arr: unknown[]): string {
   const counts = new Map<string, number>();
@@ -93,7 +103,7 @@ function elementTypes(arr: unknown[]): string {
     .join(', ');
 }
 
-function maxDepth(root: unknown): number {
+export function maxDepth(root: unknown): number {
   let max = 0;
   const stack: [unknown, number][] = [[root, 0]];
   let visited = 0;
