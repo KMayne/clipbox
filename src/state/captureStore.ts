@@ -17,6 +17,8 @@ import { dropHandles } from '../engine/valueHandle';
 
 export const MAX_CAPTURES = 50;
 export const CONFIRM_BYTES = 50 * 1024 * 1024;
+/** A capture with more entries than this lists only the first few until "Show all". */
+export const ENTRY_PREVIEW_LIMIT = 8;
 
 export type EntryStatus = 'pending' | 'ready' | 'error' | 'confirm';
 
@@ -31,6 +33,8 @@ export interface EntryView extends RawEntry {
 export interface CaptureView extends Omit<Capture, 'entries'> {
   entries: EntryView[];
   collapsed: boolean;
+  /** Lists every entry even past ENTRY_PREVIEW_LIMIT. */
+  showAll?: boolean;
 }
 
 export interface Selection {
@@ -63,6 +67,11 @@ const emit = (e: CaptureEvent) => eventListeners.forEach(fn => fn(e));
 interface CaptureState {
   captures: CaptureView[];
   selection: Selection | null;
+  /**
+   * The capture shown as a collection (a grid of its entries) in the Inspector. Mutually exclusive
+   * with `selection`: selecting either clears the other.
+   */
+  collection: CaptureId | null;
   add(source: CaptureSourceId, entries: NewEntry[], parent?: Capture['parent']): void;
   /** Append saved captures (newest first) behind any live ones and ingest them one by one. */
   restore(captures: Capture[]): void;
@@ -78,7 +87,11 @@ interface CaptureState {
   remove(captureId: CaptureId): void;
   clear(): void;
   toggle(captureId: CaptureId): void;
+  /** Selects an entry's interpretation, expanding its capture (and "Show all") so it's visible. */
   select(selection: Selection | null): void;
+  /** Shows a capture as a collection. */
+  selectCollection(captureId: CaptureId): void;
+  showAll(captureId: CaptureId): void;
 }
 
 function release(capture: CaptureView) {
@@ -108,10 +121,15 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
 
   /** Select the best interpretation of the newest capture once it's ready, unless the user moved on. */
   const autoSelect = (captureId: CaptureId) => {
-    const { captures, selection } = get();
+    const { captures, selection, collection } = get();
     const capture = captures[0];
-    if (!capture || capture.id !== captureId) return;
+    if (!capture || capture.id !== captureId || collection === captureId) return;
     if (selection && capture.entries.some(e => e.id === selection.entryId)) return;
+    // Several results of an action (e.g. extracted images) open as a collection
+    if (capture.source === 'derived' && capture.entries.length > 1) {
+      set({ selection: null, collection: captureId });
+      return;
+    }
     const best = capture.entries
       .flatMap(e => e.interpretations)
       .find(i => i.status === 'ready' || i.status === 'loading');
@@ -159,6 +177,7 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
   return {
     captures: [],
     selection: null,
+    collection: null,
 
     add(source, newEntries, parent) {
       if (newEntries.length === 0) return;
@@ -248,17 +267,18 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
       if (!capture) return;
       release(capture);
       const selected = capture.entries.some(e => e.id === selection?.entryId);
-      set({
+      set(s => ({
         captures: captures.filter(c => c.id !== captureId),
         selection: selected ? null : selection,
-      });
+        collection: s.collection === captureId ? null : s.collection,
+      }));
       emit({ type: 'removed', captureIds: [captureId] });
     },
 
     clear() {
       get().captures.forEach(release);
       void engine.clear();
-      set({ captures: [], selection: null });
+      set({ captures: [], selection: null, collection: null });
       emit({ type: 'cleared' });
     },
 
@@ -269,17 +289,56 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
     },
 
     select(selection) {
-      set({ selection });
+      if (!selection) return set({ selection, collection: null });
+      set(s => ({
+        selection,
+        collection: null,
+        captures: s.captures.map(c => {
+          const i = c.entries.findIndex(e => e.id === selection.entryId);
+          if (i < 0 || (!c.collapsed && (c.showAll || i < ENTRY_PREVIEW_LIMIT))) return c;
+          return { ...c, collapsed: false, showAll: c.showAll || i >= ENTRY_PREVIEW_LIMIT };
+        }),
+      }));
+    },
+
+    selectCollection(captureId) {
+      if (get().captures.some(c => c.id === captureId))
+        set({ selection: null, collection: captureId });
+    },
+
+    showAll(captureId) {
+      set(s => ({
+        captures: s.captures.map(c => (c.id === captureId ? { ...c, showAll: true } : c)),
+      }));
     },
   };
 });
 
-/** Flat list of chips in display order, for keyboard navigation. */
-export function chipOrder(captures: CaptureView[]): Selection[] {
-  return captures.flatMap(c =>
-    c.collapsed
-      ? []
-      : c.entries.flatMap(e => e.interpretations.map(i => ({ entryId: e.id, kind: i.kind }))),
+/** The entries listed in the Pastes pane (all of them once "Show all" is on). */
+export const visibleEntries = (c: CaptureView): EntryView[] =>
+  c.collapsed ? [] : c.showAll ? c.entries : c.entries.slice(0, ENTRY_PREVIEW_LIMIT);
+
+/** A capture with several entries can be shown as a collection. */
+export const isCollection = (c: { entries: unknown[] }) => c.entries.length > 1;
+
+/** A stop for keyboard navigation in the Pastes pane: a collection header or a chip. */
+export type NavStop = { collection: CaptureId } | Selection;
+
+/** Collection headers and visible chips in display order, for keyboard navigation. */
+export function navOrder(captures: CaptureView[]): NavStop[] {
+  return captures.flatMap(c => [
+    ...(isCollection(c) ? [{ collection: c.id }] : []),
+    ...visibleEntries(c).flatMap(e =>
+      e.interpretations.map(i => ({ entryId: e.id, kind: i.kind })),
+    ),
+  ]);
+}
+
+/** The interpretation a click on an entry selects: the first usable one, else the first. */
+export function bestInterpretation(entry: EntryView): Interpretation | undefined {
+  return (
+    entry.interpretations.find(i => i.status === 'ready' || i.status === 'loading') ??
+    entry.interpretations[0]
   );
 }
 

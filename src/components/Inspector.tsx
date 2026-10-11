@@ -1,7 +1,8 @@
 import { css, cx } from '@emotion/css';
-import { mdiContentCopy, mdiLightningBoltOutline } from '@mdi/js';
+import { mdiContentCopy, mdiDownload, mdiLightningBoltOutline } from '@mdi/js';
 import { Icon } from '@mdi/react';
 import { copySelection } from '../capture/copyToClipboard';
+import { downloadEntry } from '../capture/saveFiles';
 import type { ValueHandle } from '../core/types';
 import { getHandle } from '../engine/valueHandle';
 import { findEntry, useCaptureStore, type Selection } from '../state/captureStore';
@@ -13,6 +14,7 @@ import { ImageView } from './previews/ImageView';
 import { JsonTree } from './previews/JsonTree';
 import { MarkdownView } from './previews/MarkdownView';
 import { MediaView } from './previews/MediaView';
+import { CollectionView } from './CollectionView';
 import { ModulePreview } from './ModulePreview';
 import { ArchiveView } from './previews/ArchiveView';
 import { Base64Preview } from './previews/Base64Preview';
@@ -98,6 +100,8 @@ const styles = {
 
 export function Inspector() {
   const selection = useCaptureStore(s => s.selection);
+  const collection = useCaptureStore(s => s.collection);
+  if (collection) return <CollectionView key={collection} captureId={collection} />;
   if (!selection) {
     return (
       <div className={ui.empty}>
@@ -141,6 +145,14 @@ function SelectionInspector({ selection }: { selection: Selection }) {
           <button className={ui.button} onClick={() => void copySelection(selection)}>
             <Icon path={mdiContentCopy} size={0.6} />
             Copy
+          </button>
+          <button
+            className={ui.button}
+            title="Download the original bytes"
+            onClick={() => downloadEntry(selection.entryId)}
+          >
+            <Icon path={mdiDownload} size={0.6} />
+            Download
           </button>
         </span>
       </div>

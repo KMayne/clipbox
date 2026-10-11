@@ -1,4 +1,7 @@
 import { css, cx } from '@emotion/css';
+import { mdiDownload } from '@mdi/js';
+import { Icon } from '@mdi/react';
+import { downloadEntry } from '../capture/saveFiles';
 import { formatBytes } from '../core/format';
 import { kindName } from '../core/kinds';
 import { moduleInfo } from '../modules/registry';
@@ -10,12 +13,41 @@ import { ui } from './ui';
 const styles = {
   entry: css`
     padding: 4px 8px 6px 24px;
+    & .download {
+      visibility: hidden;
+      margin-left: auto;
+      align-self: center;
+    }
+    &:hover .download,
+    & .download:focus-visible {
+      visibility: visible;
+    }
+  `,
+  /** Large captures: tighter rows, a tiny inline thumbnail and no preview line. */
+  compact: css`
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+    padding: 2px 8px 2px 24px;
+    & > div:first-child {
+      flex: 0 1 auto;
+      min-width: 0;
+    }
   `,
   meta: css`
     display: flex;
     align-items: baseline;
     gap: 6px;
     min-width: 0;
+  `,
+  miniThumb: css`
+    align-self: center;
+    width: 20px;
+    height: 20px;
+    flex: none;
+    object-fit: cover;
+    border: 1px solid ${theme.subtle};
   `,
   mime: css`
     padding: 0 4px;
@@ -84,17 +116,41 @@ const styles = {
   `,
 };
 
-export function EntryRow({ entry }: { entry: EntryView }) {
+/** One entry: its MIME, name, size, a thumbnail or preview, and its interpretation chips. */
+export function EntryRow({ entry, compact = false }: { entry: EntryView; compact?: boolean }) {
   const ingest = useCaptureStore(s => s.ingest);
   return (
-    <div className={styles.entry} data-testid="entry" data-mime={entry.mime}>
+    <div
+      className={cx(styles.entry, compact && styles.compact)}
+      data-testid="entry"
+      data-mime={entry.mime}
+    >
       <div className={styles.meta}>
-        <span className={styles.mime}>{entry.mime}</span>
+        {compact && entry.thumbUrl && (
+          <img
+            className={styles.miniThumb}
+            src={entry.thumbUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+        )}
+        {/* Compact rows drop the MIME (their chips name the format) unless there's no name */}
+        {(!compact || !entry.name) && <span className={styles.mime}>{entry.mime}</span>}
         {entry.name && <span className={styles.name}>{entry.name}</span>}
         <span className={ui.muted}>{formatBytes(entry.size)}</span>
+        <button
+          className={`${ui.iconButton} download`}
+          title="Download"
+          aria-label={`Download ${entry.name ?? entry.mime}`}
+          data-testid="entry-download"
+          onClick={() => downloadEntry(entry.id)}
+        >
+          <Icon path={mdiDownload} size={0.55} />
+        </button>
       </div>
-      {entry.thumbUrl ? (
-        <img className={styles.thumb} src={entry.thumbUrl} alt="" />
+      {compact ? null : entry.thumbUrl ? (
+        <img className={styles.thumb} src={entry.thumbUrl} alt="" loading="lazy" decoding="async" />
       ) : (
         entry.preview && <div className={styles.preview}>{entry.preview}</div>
       )}

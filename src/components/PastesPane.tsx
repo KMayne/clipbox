@@ -1,11 +1,17 @@
-import { css } from '@emotion/css';
+import { css, cx } from '@emotion/css';
 import { mdiArrowTopRight, mdiChevronDown, mdiChevronRight, mdiClose, mdiGithub } from '@mdi/js';
 import { Icon } from '@mdi/react';
-import { kindName } from '../core/kinds';
-import { useCaptureStore, type CaptureView } from '../state/captureStore';
+import { formatBytes, formatCount, plural } from '../core/format';
+import {
+  isCollection,
+  useCaptureStore,
+  visibleEntries,
+  type CaptureView,
+} from '../state/captureStore';
 import { theme } from '../theme';
 import { moveSelection } from '../useGlobalShortcuts';
 import { EntryRow } from './EntryRow';
+import { ParentLink } from './ParentLink';
 import { ui } from './ui';
 
 const styles = {
@@ -48,20 +54,26 @@ const styles = {
       visibility: visible;
     }
   `,
-  parent: css`
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  selectedHeader: css`
+    background: ${theme.accentSoft};
+    &:hover {
+      background: ${theme.accentSoft};
+    }
+  `,
+  count: css`
     white-space: nowrap;
-    padding: 0;
+  `,
+  more: css`
+    display: block;
+    width: 100%;
+    padding: 4px 8px 6px 24px;
     background: none;
     border: none;
     color: ${theme.muted};
     text-align: left;
-    &:enabled {
-      cursor: pointer;
-    }
-    &:enabled:hover {
+    font-size: 12px;
+    cursor: pointer;
+    &:hover {
       color: ${theme.text};
       text-decoration: underline;
     }
@@ -93,11 +105,24 @@ const styles = {
   `,
 };
 
+/** Captures with more entries than this list them as compact one-line rows. */
+const COMPACT_FROM = 4;
+
 const time = (at: number) => new Date(at).toLocaleTimeString('en-GB');
 
 /** The author's site: its root when deployed under a subpath (e.g. /clipbox/), else the live URL. */
 const SITE_URL = import.meta.env.BASE_URL !== '/' ? '/' : 'https://kianmayne.co.uk/';
 const REPO_URL = 'https://github.com/KMayne/clipbox';
+
+/** Moves focus into the collection grid if one is shown (Enter on a selected collection). */
+function focusCollectionGrid(): boolean {
+  if (!useCaptureStore.getState().collection) return false;
+  const tile = document.querySelector<HTMLElement>(
+    '[data-testid=collection-grid] [data-testid=tile][tabindex="0"]',
+  );
+  tile?.focus();
+  return tile !== null;
+}
 
 export function PastesPane() {
   const captures = useCaptureStore(s => s.captures);
@@ -107,6 +132,12 @@ export function PastesPane() {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       moveSelection(e.key === 'ArrowDown' ? 1 : -1);
+    } else if (
+      (e.key === 'Enter' || e.key === 'ArrowRight') &&
+      e.target === e.currentTarget &&
+      focusCollectionGrid()
+    ) {
+      e.preventDefault();
     }
   };
 
@@ -158,20 +189,53 @@ export function PastesPane() {
 function CaptureItem({ capture }: { capture: CaptureView }) {
   const toggle = useCaptureStore(s => s.toggle);
   const remove = useCaptureStore(s => s.remove);
+  const showAll = useCaptureStore(s => s.showAll);
+  const selected = useCaptureStore(s => s.collection === capture.id);
   const n = capture.entries.length;
+  const collection = isCollection(capture);
+  const shown = visibleEntries(capture);
+  const hidden = capture.collapsed ? 0 : n - shown.length;
+  const compact = n > COMPACT_FROM;
+  const total = capture.entries.reduce((sum, e) => sum + e.size, 0);
   return (
     <div className={styles.capture} data-testid="capture">
-      <div className={styles.header} onClick={() => toggle(capture.id)}>
-        <Icon path={capture.collapsed ? mdiChevronRight : mdiChevronDown} size={0.7} />
+      <div
+        className={cx(styles.header, selected && styles.selectedHeader)}
+        data-testid="capture-header"
+        aria-current={selected || undefined}
+        title={collection ? 'Show as a collection' : undefined}
+        onClick={() =>
+          collection ? useCaptureStore.getState().selectCollection(capture.id) : toggle(capture.id)
+        }
+      >
+        <button
+          className={ui.iconButton}
+          aria-label={capture.collapsed ? 'Expand' : 'Collapse'}
+          aria-expanded={!capture.collapsed}
+          onClick={e => {
+            e.stopPropagation();
+            toggle(capture.id);
+          }}
+        >
+          <Icon path={capture.collapsed ? mdiChevronRight : mdiChevronDown} size={0.7} />
+        </button>
         <span>{time(capture.at)}</span>
         <span className={ui.muted}>·</span>
         {capture.parent ? (
-          <ParentLink parent={capture.parent} />
+          <>
+            <ParentLink parent={capture.parent} />
+            {collection && (
+              <span className={cx(ui.muted, styles.count)} data-testid="capture-count">
+                · {plural(n, 'item')}
+              </span>
+            )}
+          </>
         ) : (
-          <span className={ui.muted}>
-            {capture.source} · {n} format{n === 1 ? '' : 's'}
+          <span className={ui.muted} data-testid="capture-count">
+            {capture.source} · {countLabel(capture.source, n)}
           </span>
         )}
+        {collection && <span className={cx(ui.muted, styles.count)}>· {formatBytes(total)}</span>}
         <button
           className={`${ui.iconButton} remove`}
           title="Remove"
@@ -183,36 +247,18 @@ function CaptureItem({ capture }: { capture: CaptureView }) {
           <Icon path={mdiClose} size={0.6} />
         </button>
       </div>
-      {!capture.collapsed && capture.entries.map(e => <EntryRow key={e.id} entry={e} />)}
+      {shown.map(e => (
+        <EntryRow key={e.id} entry={e} compact={compact} />
+      ))}
+      {hidden > 0 && (
+        <button className={styles.more} data-testid="show-all" onClick={() => showAll(capture.id)}>
+          Show all {formatCount(n)} ({formatCount(hidden)} more)
+        </button>
+      )}
     </div>
   );
 }
 
-/** "from ‹parent label› › ‹derivation›"; clicking selects the parent interpretation. */
-function ParentLink({ parent }: { parent: NonNullable<CaptureView['parent']> }) {
-  // Select the capture (a stable reference), not findEntry's fresh object
-  const capture = useCaptureStore(s =>
-    s.captures.find(c => c.entries.some(e => e.id === parent.entryId)),
-  );
-  const entry = capture?.entries.find(e => e.id === parent.entryId);
-  const interpretation = entry?.interpretations.find(i => i.kind === parent.kind);
-  const parentLabel = interpretation?.label ?? kindName(parent.kind);
-  const text = `from ${parentLabel} › ${parent.label}`;
-  return (
-    <button
-      className={styles.parent}
-      data-testid="derived-from"
-      disabled={!capture}
-      title={capture ? `Select ${parentLabel}` : 'The original capture was removed'}
-      onClick={e => {
-        e.stopPropagation();
-        if (!capture) return;
-        const { toggle, select } = useCaptureStore.getState();
-        if (capture.collapsed) toggle(capture.id);
-        select({ entryId: parent.entryId, kind: parent.kind });
-      }}
-    >
-      {text}
-    </button>
-  );
-}
+/** Pastes hold one entry per clipboard format; drops and derived captures hold files. */
+const countLabel = (source: CaptureView['source'], n: number) =>
+  source === 'paste' || source === 'read' ? plural(n, 'format') : plural(n, 'file');
