@@ -11,7 +11,11 @@ export default defineConfig({
   // Shown in Settings → Modules next to the build's version
   define: { __BUILD_DATE__: JSON.stringify(new Date().toISOString()) },
   worker: { format: 'es', plugins: () => [manifest.worker()] },
+  // Agents' git worktrees live under .claude/worktrees; their builds would reload the page
+  server: { watch: { ignored: ['**/.claude/**'] } },
   optimizeDeps: {
+    // Only the app's own page; the default crawls every index.html, worktrees' dist/ included
+    entries: ['index.html'],
     // Pre-bundle lazily-imported deps at startup, otherwise first use triggers a dev-server reload
     include: [
       '@vscode/vscode-languagedetection',
