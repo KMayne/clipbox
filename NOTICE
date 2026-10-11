@@ -26,8 +26,12 @@ Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0):
   Copyright Jake Archibald
   https://github.com/jakearchibald/idb-keyval
 
-The colour scheme is based on the Gruvbox palette by Pavel Pertsev (morhetz),
-MIT License, https://github.com/morhetz/gruvbox
+The colour schemes are based on these palettes, all under the MIT License:
+- Nord (default), Arctic Ice Studio, https://www.nordtheme.com
+- Tokyo Night, enkia, https://github.com/enkia/tokyo-night-vscode-theme
+- Catppuccin Mocha, Catppuccin, https://github.com/catppuccin/catppuccin
+- One Dark, GitHub Inc. (Atom), https://github.com/atom/atom
+- Gruvbox, Pavel Pertsev (morhetz), https://github.com/morhetz/gruvbox
 
 Other dependencies are under MIT, ISC or BSD licences; see each package's
 licence file in node_modules or its published package.

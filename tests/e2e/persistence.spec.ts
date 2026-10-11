@@ -1,27 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { paste } from './helpers';
+import { paste, savedCount } from './helpers';
 
 const JSON_TEXT = JSON.stringify([
   { id: 1, name: 'Ada' },
   { id: 2, name: 'Linus' },
 ]);
-
-/** Number of captures saved in IndexedDB. */
-const savedCount = (page: Page) =>
-  page.evaluate(
-    () =>
-      new Promise<number>((resolve, reject) => {
-        const open = indexedDB.open('clipbox');
-        open.onerror = () => reject(open.error);
-        open.onsuccess = () => {
-          const db = open.result;
-          if (!db.objectStoreNames.contains('captures')) return resolve(0);
-          const req = db.transaction('captures').objectStore('captures').count();
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        };
-      }),
-  );
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
