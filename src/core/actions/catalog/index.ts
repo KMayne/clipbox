@@ -6,6 +6,10 @@ import { mediaActions } from './media';
 import { pdfActions } from './pdf';
 import { presentationActions } from './presentation';
 import { textActions } from './text';
+import { xmlActions } from './xml';
+import { yamlActions } from './yaml';
+import { ndjsonActions } from './ndjson';
+import { recordsActions } from './records';
 
 /**
  * Every action's metadata, shared by the UI and the worker. Each area has its own file (one line
@@ -15,6 +19,10 @@ import { textActions } from './text';
 export const catalog: ActionInfo[] = [
   ...jsonActions,
   ...textActions,
+  ...xmlActions,
+  ...yamlActions,
+  ...ndjsonActions,
+  ...recordsActions,
   ...imageActions,
   ...mediaActions,
   ...presentationActions,
