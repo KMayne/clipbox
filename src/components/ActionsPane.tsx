@@ -438,12 +438,17 @@ function Field({
           {hint}
         </label>
       );
-    case 'string':
+    case 'string': {
+      // Secrets (keys): no autocomplete, spellcheck or password-manager prompts
+      const secret = field.secret
+        ? { autoComplete: 'off', spellCheck: false, 'data-1p-ignore': true, 'data-lpignore': true }
+        : {};
       return (
         <label className={styles.field}>
           {field.title}
           {field.hint === 'multiline' ? (
             <textarea
+              {...secret}
               rows={3}
               className={ui.mono}
               value={String(value ?? '')}
@@ -451,6 +456,7 @@ function Field({
             />
           ) : (
             <input
+              {...secret}
               type="text"
               spellCheck={false}
               className={field.hint === 'regex' ? ui.mono : undefined}
@@ -461,5 +467,6 @@ function Field({
           {hint}
         </label>
       );
+    }
   }
 }

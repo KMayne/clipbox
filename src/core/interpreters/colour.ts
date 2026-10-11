@@ -17,7 +17,7 @@ interface ColourValue extends Rgba {
 }
 
 const HEX = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
-const FUNC = /^(rgba?|hsla?)\(\s*([^()]*?)\s*\)$/i;
+const FUNC = /^(rgba?|hsla?|oklch)\(\s*([^()]*?)\s*\)$/i;
 const NUM = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?(%|deg|grad|rad|turn)?$/i;
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -100,7 +100,43 @@ export function rgbToHsl(r: number, g: number, b: number): [number, number, numb
   return [(h * 60 + 360) % 360, s * 100, l * 100];
 }
 
-/** Parses `#rgb[a]`, `#rrggbb[aa]`, `rgb[a]()` and `hsl[a]()` (comma or space syntax). */
+const srgbToLinear = (c: number) => {
+  const s = c / 255;
+  return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+};
+
+const linearToSrgb = (c: number) =>
+  clamp((c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055) * 255, 0, 255);
+
+/** sRGB (0–255) → OKLCH: L 0–1, C (≈0–0.4), H in degrees. Björn Ottosson's OKLab matrices. */
+export function rgbToOklch(r: number, g: number, b: number): [number, number, number] {
+  const [lr, lg, lb] = [srgbToLinear(r), srgbToLinear(g), srgbToLinear(b)];
+  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
+  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  const C = Math.hypot(A, B);
+  const H = C < 1e-4 ? 0 : ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360;
+  return [L, C < 1e-4 ? 0 : C, H];
+}
+
+/** OKLCH → sRGB (0–255), clipped to the sRGB gamut. */
+export function oklchToRgb(L: number, C: number, H: number): [number, number, number] {
+  const rad = (H * Math.PI) / 180;
+  const [A, B] = [C * Math.cos(rad), C * Math.sin(rad)];
+  const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3;
+  const m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3;
+  const s = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+  return [
+    linearToSrgb(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+    linearToSrgb(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+    linearToSrgb(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
+  ];
+}
+
+/** Parses `#rgb[a]`, `#rrggbb[aa]`, `rgb[a]()`, `hsl[a]()` (comma or space syntax) and `oklch()`. */
 export function parseColour(s: string): Rgba | null {
   const hex = HEX.exec(s)?.[1];
   if (hex) {
@@ -116,7 +152,17 @@ export function parseColour(s: string): Rgba | null {
   if (!x || !y || !z) return null;
   const alpha = alphaOf(w);
   if (alpha === null) return null;
-  if ((m[1] ?? '').toLowerCase().startsWith('rgb')) {
+  const fn = (m[1] ?? '').toLowerCase();
+  if (fn === 'oklch') {
+    // L: 0–1 or %; C: number or % (100% = 0.4); H: angle
+    const L = x.unit === '%' ? x.n / 100 : x.unit === '' ? x.n : null;
+    const C = y.unit === '%' ? (y.n / 100) * 0.4 : y.unit === '' ? y.n : null;
+    const h = hue(z);
+    if (L === null || C === null || h === null) return null;
+    const [r, g, b] = oklchToRgb(clamp(L, 0, 1), Math.max(0, C), h);
+    return { r, g, b, a: alpha };
+  }
+  if (fn.startsWith('rgb')) {
     const [r, g, b] = [channel(x), channel(y), channel(z)];
     if (r === null || g === null || b === null) return null;
     return { r, g, b, a: alpha };
@@ -143,6 +189,12 @@ export function toHslString({ r, g, b, a }: Rgba): string {
   const [h, s, l] = rgbToHsl(r, g, b);
   const c = `${round(h)}, ${round(s)}%, ${round(l)}%`;
   return a < 1 ? `hsla(${c}, ${round(a, 3)})` : `hsl(${c})`;
+}
+
+export function toOklchString({ r, g, b, a }: Rgba): string {
+  const [L, C, H] = rgbToOklch(r, g, b);
+  const c = `${round(L * 100, 2)}% ${round(C, 4)} ${round(H, 2)}`;
+  return a < 1 ? `oklch(${c} / ${round(a, 3)})` : `oklch(${c})`;
 }
 
 /** WCAG 2 relative luminance (alpha ignored). */

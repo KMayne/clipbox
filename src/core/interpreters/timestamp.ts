@@ -127,9 +127,9 @@ function formatOffset(mins: number): string {
   return `${sign}${pad(Math.floor(a / 60))}:${pad(a % 60)}`;
 }
 
-/** Local wall time in the runtime's zone, e.g. `2023-11-14 22:13:20 GMT+00:00 (Europe/London)`. */
-export function formatLocal(ms: number): string {
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+/** Wall time in `zone` (default: the runtime's), e.g. `2023-11-14 22:13:20 GMT+00:00 (Europe/London)`. */
+export function formatLocal(ms: number, timeZone?: string): string {
+  const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const parts = new Intl.DateTimeFormat('en-GB', {
     year: 'numeric',
     month: '2-digit',
@@ -139,6 +139,7 @@ export function formatLocal(ms: number): string {
     second: '2-digit',
     hourCycle: 'h23',
     timeZoneName: 'longOffset',
+    timeZone: zone,
   }).formatToParts(new Date(ms));
   const p = (t: Intl.DateTimeFormatPartTypes) => parts.find(x => x.type === t)?.value ?? '';
   return `${p('year')}-${p('month')}-${p('day')} ${p('hour')}:${p('minute')}:${p('second')} ${p('timeZoneName')} (${zone})`;

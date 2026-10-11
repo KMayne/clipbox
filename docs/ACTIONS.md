@@ -12,7 +12,7 @@ Legend:
 
 ### Every kind
 
-- **Copy** ✓ · **Download** (raw bytes, sensible filename and extension) · **Hash**: SHA-256/SHA-1/SHA-512 of the raw bytes (`core/hash.ts`) ✅ (also SHA-384) · **Open as text** / **Open as hex dump**
+- **Copy** ✓ · **Download** (raw bytes, sensible filename and extension) · **Hash**: SHA-256/SHA-1/SHA-512 of the raw bytes (`core/hash.ts`) ✅ (also SHA-384) · **Open as text** ✅ (UTF-8, Latin-1/Windows-1252, UTF-16 LE/BE; offered when the bytes aren't already UTF-8 text) / **Open as hex dump** ✅ (`any.hexDump`, `hexdump -C` style, 8/16/32 bytes per row, first 16 MiB)
 
 ### Text
 
@@ -63,31 +63,31 @@ Legend:
 
 ### Binary
 
-- **Hex dump** · **To base64**
+- **Hex dump** ✅ (the any-kind Hex dump) · **To base64** ✅ (standard or URL-safe; optional 76-column wrap)
 
 ### Base64
 
-- **Decode** ✓ · **To data URL** · switch standard ↔ URL-safe alphabet
+- **Decode** ✓ · **To data URL** ✅ (MIME from the decoded bytes' signature via `core/magic.ts`, else the text/JSON guess) · switch standard ↔ URL-safe alphabet ✅ (padding: keep, strip or add)
 
 ### JWT
 
-- **Open header / payload** ✓ · **Verify signature** (param: HMAC secret or public key, via `crypto.subtle`) · claims as JSON
+- **Open header / payload** ✓ · **Verify signature** ✅ (`crypto.subtle`: HS/RS/PS/ES 256/384/512 and EdDSA; key: HMAC secret (optionally base64), PEM public key, certificate or JWK/JWK set (picked by `kid`); `none` refused, PEM refused for HS*; ES accepts DER signatures too; checks exp/nbf/iat with a clock-skew setting; text report such as `Signature valid (HS256) · expires in 2h`. The key is a `secret` setting: never in labels or results) · claims as JSON
 
 ### Timestamp
 
-- **Convert to** ISO 8601, RFC 2822, Unix seconds, Unix ms, local time
+- **Convert to** ✅ ISO 8601 (UTC or with offset), RFC 2822, Unix seconds, Unix ms, local time (IANA time zone setting, default the browser's; `Intl` only)
 
 ### UUID / ULID
 
-- **Format**: uppercase, no dashes, braces, URN · **Extract the embedded time** (v1/v6/v7/ULID → timestamp)
+- **Format** ✅ (Reformat: lowercase, uppercase, no dashes, braces, URN) · **Extract the embedded time** ✅ (v1/v6/v7/ULID → ISO text, which opens as a timestamp; a clear error for other versions)
 
 ### URL
 
-- **Decode / encode** · **Query string → JSON** · **Strip tracking params** (utm_*, fbclid, gclid…) · **Open in new tab** · make QR code
+- **Decode / encode** ✅ (Percent-decode / Percent-encode, per line) · **Query string → JSON** ✅ (repeated keys → arrays; several URLs → an array) · **Strip tracking params** ✅ (`TRACKING_PARAMS` in `run/url.ts`: utm_*, fbclid, gclid, dclid, msclkid, mc_eid, igshid, _hsenc, ref_src…, `si` on YouTube/Spotify only; an "extra params" setting with `prefix*`; other params keep their encoding) · **Open in new tab** ✅ (an effect action, see below) · make QR code
 
 ### Colour
 
-- **Convert to** hex, rgb(), hsl(), oklch() · **Contrast against white/black** · tints and shades
+- **Convert to** ✅ hex, rgb(), hsl(), oklch() (alpha kept; the colour kind now parses `oklch()` too) · **Contrast against white/black** ✅ (Contrast check: WCAG 2 ratios, AA/AAA for normal and large text, optional second colour) · tints and shades
 
 ### Archive
 
@@ -133,14 +133,16 @@ Legend:
 
 ### PEM / X.509
 
-- **Certificate details as JSON** · **SHA-256 fingerprint** · **Extract public key (PEM)** · PEM ↔ DER
+- **Certificate details as JSON** ✅ (x509 module service: names, validity, SANs, key usage, EKU, basic constraints, key ids, extensions, fingerprints; leaf first) · **SHA-256 fingerprint** ✅ (Fingerprint: SHA-256, SHA-1 or both, colon-separated uppercase hex, computed in core) · **Extract public key (PEM)** ✅ (SPKI; the leaf, or every block) · PEM ↔ DER
 
 ## Notes for batch 2
 
 - Results can set `note` on `DerivedContent` (e.g. "2 invalid lines skipped"); the UI appends it to the capture's label.
-- Actions that don't produce a new capture (Copy, Download, Open in new tab) don't fit
-  `run → DerivedContent` yet; they need a small extension (e.g. a result type that the UI handles
-  instead of adding a capture).
+- Actions that don't produce a new capture: set `effect: 'open-url'` in the catalog entry and use
+  `implementEffect` in `run/`, returning `{ effect: 'open-url', url }`. The engine's `actionEffect`
+  returns it, and `state/effects.ts` validates it with Zod (http(s) only) and performs it
+  (`window.open` with `noopener`). Add new effect types to `ActionEffect` and that schema. Copy and
+  Download stay UI commands.
 - Multi-output actions return `DerivedContent[]`, which becomes one collection capture (done; used
   by PDF and PowerPoint Extract images). Extract palette and archive "extract all" can use it too.
 - Actions on lazy-module kinds (PDF, spreadsheet, SQLite, PEM, media) get a value the module has

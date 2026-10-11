@@ -14,6 +14,7 @@ import type {
 } from '../core/types';
 import { engine } from '../engine/engineClient';
 import { dropHandles } from '../engine/valueHandle';
+import { performEffect } from './effects';
 
 export const MAX_CAPTURES = 50;
 export const CONFIRM_BYTES = 50 * 1024 * 1024;
@@ -257,6 +258,11 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
     async runAction(from, actionId, params = {}) {
       const info = actionById(actionId);
       if (!info) throw new Error(`Unknown action '${actionId}'`);
+      if (info.effect) {
+        // e.g. Open in new tab: nothing to add as a capture
+        performEffect(await engine.actionEffect(from.entryId, from.kind, actionId, params));
+        return;
+      }
       const result = await engine.runAction(from.entryId, from.kind, actionId, params);
       const note = result.find(r => r.note)?.note;
       addDerived(from, result, actionLabel(info, params) + (note ? ` · ${note}` : ''));
