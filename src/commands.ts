@@ -44,6 +44,7 @@ export const commands: Command[] = [
     run: () => void copySelection(useCaptureStore.getState().selection),
   },
   { id: 'value.openAs', title: 'Open as…', run: () => void openDerivationMenu() },
+  { id: 'settings.open', title: 'Settings', run: () => useUiStore.getState().openSettings() },
   tabCommand('preview', '1'),
   tabCommand('stats', '2'),
   tabCommand('schema', '3'),

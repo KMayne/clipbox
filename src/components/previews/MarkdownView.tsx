@@ -1,7 +1,7 @@
 import { css, cx } from '@emotion/css';
 import { useState } from 'react';
 import type { ValueHandle } from '../../core/types';
-import { theme } from '../../theme';
+import { theme, withAlpha } from '../../theme';
 import { ModulePreview } from '../ModulePreview';
 import { ui } from '../ui';
 import { useAsync } from '../useAsync';
@@ -12,7 +12,8 @@ const SOURCE_LIMIT = 1024 * 1024;
 
 /** Inline (the CSP blocks remote stylesheets): a dark, readable document style. */
 const STYLESHEET = `
-:root { color-scheme: dark; }
+:root { color-scheme: dark; accent-color: ${theme.accent}; }
+::selection { background: ${withAlpha(theme.accent, 0.35)}; }
 body {
   margin: 0 auto; padding: 16px 24px 48px; max-width: 760px;
   background: ${theme.bg}; color: ${theme.text};

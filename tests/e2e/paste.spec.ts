@@ -145,6 +145,12 @@ test('command palette runs commands', async ({ page }) => {
   await page.keyboard.type('stats');
   await page.keyboard.press('Enter');
   await expect(stat(page, 'Words')).toHaveText('1');
+
+  await page.keyboard.press('Control+k');
+  await page.keyboard.type('se');
+  await expect(page.getByRole('option').first()).toHaveText('Settings');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
 });
 
 test('large paste keeps the UI responsive', async ({ page }) => {

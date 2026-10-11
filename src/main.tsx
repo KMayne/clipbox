@@ -6,7 +6,7 @@ import { onCaptureEvent, useCaptureStore } from './state/captureStore';
 import { useModuleStore } from './state/moduleStore';
 import { startPersistence } from './state/persistence';
 import { sw } from './swClient';
-import { theme } from './theme';
+import { theme, withAlpha } from './theme';
 
 injectGlobal`
   *, *::before, *::after { box-sizing: border-box; }
@@ -16,8 +16,13 @@ injectGlobal`
     color: ${theme.text};
     font: 13px/1.4 ${theme.sans};
     color-scheme: dark;
+    /* Native controls (checkboxes, radios, ranges) */
+    accent-color: ${theme.accent};
   }
-  button { font: inherit; color: inherit; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  ::placeholder { color: ${theme.faint}; }
+  ::selection { background: ${withAlpha(theme.accent, 0.35)}; }
+  :focus-visible { outline: 2px solid ${theme.accent}; outline-offset: 1px; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-thumb { background: ${theme.scrollbar}; border-radius: 5px; }
   ::-webkit-scrollbar-corner { background: transparent; }
