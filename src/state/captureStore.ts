@@ -134,10 +134,14 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
     }));
 
   /** Adds a derivation's or action's result as a capture linked to `from`. */
-  const addDerived = (from: Selection, { mime, name, bytes }: DerivedContent, label: string) => {
-    const blob = new Blob([bytes], { type: mime });
+  /** Adds one derived capture holding every result (several results make a collection). */
+  const addDerived = (from: Selection, results: DerivedContent[], label: string) => {
+    const entries = results.map(({ mime, name, bytes }) => {
+      const blob = new Blob([bytes], { type: mime });
+      return { mime, name, size: blob.size, blob };
+    });
     // add() collapses older captures; autoSelect picks the new one's best interpretation
-    get().add('derived', [{ mime, name, size: blob.size, blob }], {
+    get().add('derived', entries, {
       entryId: from.entryId,
       kind: from.kind,
       label,
@@ -226,7 +230,7 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
     async derive(from, derivation) {
       addDerived(
         from,
-        await engine.derive(from.entryId, from.kind, derivation.id),
+        [await engine.derive(from.entryId, from.kind, derivation.id)],
         derivation.label,
       );
     },

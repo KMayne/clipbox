@@ -22,7 +22,8 @@ const entry = (
 async function run(text: string, kind: string, actionId: string, params?: unknown) {
   const engine = new Engine({ loaders: {} });
   await engine.ingest(entry(text));
-  const out = await engine.runAction('en-1', kind, actionId, params);
+  const [out, ...rest] = await engine.runAction('en-1', kind, actionId, params);
+  if (!out || rest.length) throw new Error('expected exactly one result');
   return { ...out, text: new TextDecoder().decode(out.bytes) };
 }
 
@@ -309,11 +310,13 @@ describe('Image convert', () => {
       format: 'jpeg',
       quality: 80,
     });
-    expect(out).toEqual({
-      mime: 'image/jpeg',
-      name: 'photo.jpg',
-      bytes: new Uint8Array([1, 2, 3]),
-    });
+    expect(out).toEqual([
+      {
+        mime: 'image/jpeg',
+        name: 'photo.jpg',
+        bytes: new Uint8Array([1, 2, 3]),
+      },
+    ]);
     expect(calls).toEqual([
       ['decode', 'image/png', png.byteLength],
       ['canvas', 3, 2],

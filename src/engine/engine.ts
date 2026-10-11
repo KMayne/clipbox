@@ -169,7 +169,7 @@ export class Engine {
     kind: Kind,
     actionId: string,
     params: unknown,
-  ): Promise<DerivedContent> {
+  ): Promise<DerivedContent[]> {
     const state = this.state(entryId);
     const impl = actionImpl(actionId);
     if (!impl || !appliesToKind(impl.info, kind)) {
@@ -178,13 +178,16 @@ export class Engine {
     const { module } = impl.info;
     if (module) await this.loadModule(module); // fail clearly if it can't load
     const value = await this.value(entryId, kind);
-    const result = await impl.run(value, state.content, params, {
+    const results = await impl.run(value, state.content, params, {
       signal: new AbortController().signal,
       service: (id, guard) => this.service(id, guard),
     });
     // Copy: the bytes may share a buffer with the value, and transferring would detach it
-    const bytes = result.bytes.slice();
-    return Comlink.transfer({ ...result, bytes }, [bytes.buffer]);
+    const copies = results.map(r => ({ ...r, bytes: r.bytes.slice() }));
+    return Comlink.transfer(
+      copies,
+      copies.map(c => c.bytes.buffer),
+    );
   }
 
   raw(entryId: EntryId, limit = 100 * 1024): RawView {

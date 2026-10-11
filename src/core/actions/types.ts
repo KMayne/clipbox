@@ -79,7 +79,15 @@ export interface ActionImpl<P extends ParamsSchema, V> {
   value(v: unknown): v is V;
   /** Finer filtering than `kinds`, e.g. JSON → CSV only for arrays of objects. */
   applies?(input: ActionInput<V>): boolean;
-  run(input: ActionInput<V>, params: z.output<P>, ctx: ActionContext): MaybePromise<DerivedContent>;
+  /**
+   * One result becomes a capture with one entry; an array becomes one capture holding them all
+   * (a collection, e.g. every image in a deck). An empty array is an error ("nothing found").
+   */
+  run(
+    input: ActionInput<V>,
+    params: z.output<P>,
+    ctx: ActionContext,
+  ): MaybePromise<DerivedContent | DerivedContent[]>;
 }
 
 /** Implementation with its value and settings types erased; every call checks both. */
@@ -92,7 +100,7 @@ export interface AnyActionImpl {
     content: EntryContent,
     params: unknown,
     ctx: ActionContext,
-  ): Promise<DerivedContent>;
+  ): Promise<DerivedContent[]>;
 }
 
 export const anyValue = (_v: unknown): _v is unknown => true;
@@ -116,7 +124,10 @@ export function implement<P extends ParamsSchema, V>(
       if (impl.applies && !impl.applies(input)) {
         throw new Error(`${info.title} doesn't apply to this value`);
       }
-      return impl.run(input, parsed.data, ctx);
+      const result = await impl.run(input, parsed.data, ctx);
+      const results = Array.isArray(result) ? result : [result];
+      if (!results.length) throw new Error(`${info.title} found nothing`);
+      return results;
     },
   };
 }
