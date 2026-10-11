@@ -27,19 +27,20 @@ export function Notice() {
   const notice = useUiStore(s => s.notice);
   const dismiss = useUiStore(s => s.dismissNotice);
   if (!notice) return null;
+  const { action } = notice;
   return (
     <div role="status" className={cx(styles.notice, notice.tone === 'error' && styles.error)}>
       {notice.message}
-      {notice.action && (
+      {action && (
         <>
           <button
             className={ui.button}
             onClick={() => {
               dismiss();
-              notice.action!.run();
+              action.run();
             }}
           >
-            {notice.action.label}
+            {action.label}
           </button>
           <button className={ui.iconButton} onClick={dismiss} aria-label="Dismiss">
             ✕

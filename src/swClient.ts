@@ -1,4 +1,6 @@
+import { z } from 'zod';
 import type { ModuleId } from './modules/types';
+import type { ModulesManifest, SwRequest, SwResponse } from './swProtocol';
 import { useUiStore } from './state/uiStore';
 
 export type CacheState =
@@ -7,24 +9,20 @@ export type CacheState =
   | { state: 'downloading'; progress: number }
   | { state: 'cached' };
 
-export interface ModulesManifest {
-  version: string;
-  core: string[];
-  modules: Record<string, { files: string[]; bytes: number }>;
-}
+export type { ModulesManifest } from './swProtocol';
 
-/** Messages understood by src/sw.ts. */
-export type SwRequest =
-  | { type: 'status' }
-  | { type: 'download'; id: ModuleId }
-  | { type: 'remove'; id: ModuleId }
-  | { type: 'skipWaiting' };
+const manifestSchema = z.object({
+  version: z.string(),
+  core: z.array(z.string()),
+  modules: z.record(z.string(), z.object({ files: z.array(z.string()), bytes: z.number() })),
+}) satisfies z.ZodType<ModulesManifest>;
 
-export type SwResponse =
-  | { type: 'status'; cached: ModuleId[] }
-  | { type: 'progress'; done: number; total: number }
-  | { type: 'done' }
-  | { type: 'error'; message: string };
+const responseSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('status'), cached: z.array(z.string()) }),
+  z.object({ type: z.literal('progress'), done: z.number(), total: z.number() }),
+  z.object({ type: z.literal('done') }),
+  z.object({ type: z.literal('error'), message: z.string() }),
+]) satisfies z.ZodType<SwResponse>;
 
 const supported = import.meta.env.PROD && 'serviceWorker' in navigator;
 
@@ -42,8 +40,10 @@ async function request(
   const target = await worker();
   return new Promise((resolve, reject) => {
     const channel = new MessageChannel();
-    channel.port1.onmessage = (e: MessageEvent<SwResponse>) => {
-      const res = e.data;
+    channel.port1.onmessage = (e: MessageEvent<unknown>) => {
+      const parsed = responseSchema.safeParse(e.data);
+      if (!parsed.success) return reject(new Error('Malformed service worker response'));
+      const res = parsed.data;
       if (res.type === 'progress') onProgress?.(res.total ? res.done / res.total : 0);
       else if (res.type === 'error') reject(new Error(res.message));
       else resolve(res);
@@ -84,7 +84,7 @@ export const sw = {
 
   manifest(): Promise<ModulesManifest | null> {
     manifest ??= fetch('/modules-manifest.json')
-      .then(r => (r.ok ? (r.json() as Promise<ModulesManifest>) : null))
+      .then(async r => (r.ok ? manifestSchema.parse(await r.json()) : null))
       .catch(() => null);
     return manifest;
   },
@@ -95,9 +95,9 @@ export const sw = {
     const res = await request({ type: 'status' });
     const cached = res.type === 'status' ? new Set(res.cached) : new Set<ModuleId>();
     return Object.fromEntries(
-      Object.keys(m.modules).map(id => [
+      Object.keys(m.modules).map((id): [string, CacheState] => [
         id,
-        { state: cached.has(id) ? 'cached' : 'none' } as CacheState,
+        { state: cached.has(id) ? 'cached' : 'none' },
       ]),
     );
   },

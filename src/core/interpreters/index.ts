@@ -1,5 +1,5 @@
 import type { EntryContent } from '../content';
-import type { Interpreter } from '../interpreter';
+import { register, type AnyInterpreter } from '../interpreter';
 import type { Kind } from '../types';
 import { binaryInterpreter } from './binary';
 import { htmlInterpreter } from './html';
@@ -8,19 +8,19 @@ import { jsonInterpreter } from './json';
 import { recordsInterpreter } from './records';
 import { textInterpreter } from './text';
 
-export const interpreters: Interpreter<never>[] = [
-  jsonInterpreter,
-  recordsInterpreter,
-  htmlInterpreter,
-  imageInterpreter,
-  textInterpreter,
-  binaryInterpreter,
-] as Interpreter<never>[];
+export const interpreters: AnyInterpreter[] = [
+  register(jsonInterpreter),
+  register(recordsInterpreter),
+  register(htmlInterpreter),
+  register(imageInterpreter),
+  register(textInterpreter),
+  register(binaryInterpreter),
+];
 
-export function getInterpreter(kind: Kind): Interpreter<unknown> {
+export function getInterpreter(kind: Kind): AnyInterpreter {
   const i = interpreters.find(i => i.kind === kind);
   if (!i) throw new Error(`Unknown kind '${kind}'`);
-  return i as Interpreter<unknown>;
+  return i;
 }
 
 /** Applicable kinds for the content, most confident first. */

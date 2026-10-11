@@ -1,4 +1,5 @@
 import type { ModelResult } from '@vscode/vscode-languagedetection';
+import { isRecord } from '../../core/guards';
 import { fromGuesslang, type Language } from './languages';
 
 export interface Detection {
@@ -9,6 +10,9 @@ export interface Detection {
 export interface LanguageDetector {
   detect(text: string): Promise<Detection | null>;
 }
+
+export const isLanguageDetector = (s: unknown): s is LanguageDetector =>
+  isRecord(s) && typeof s.detect === 'function';
 
 const MIN_CHARS = 20;
 const SAMPLE_CHARS = 10_000;

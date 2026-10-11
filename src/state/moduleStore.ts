@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { create } from 'zustand';
 import { engine } from '../engine/engineClient';
 import type { ModuleLoadState } from '../engine/engine';
@@ -8,10 +9,14 @@ import { sw, type CacheState } from '../swClient';
 
 const STORAGE_KEY = 'clipbox.modules';
 
+const storedPoliciesSchema = z.record(z.string(), z.enum(['auto', 'preload', 'off']));
+
 function loadPolicies(): Policies {
   try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Policies;
-    return { ...defaultPolicies(), ...stored };
+    const raw: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+    // Ignore anything malformed rather than failing startup
+    const stored = storedPoliciesSchema.safeParse(raw);
+    return { ...defaultPolicies(), ...(stored.success ? stored.data : {}) };
   } catch {
     return defaultPolicies();
   }

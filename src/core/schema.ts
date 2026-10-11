@@ -41,10 +41,12 @@ export function mergeSchemas(a: Schema, b: Schema): Schema {
   const out: Schema[] = [];
   for (const m of members) {
     const i = out.findIndex(o => o.t === m.t);
-    if (i === -1) out.push(m);
-    else out[i] = mergeSchemas(out[i]!, m);
+    const existing = out[i];
+    if (existing === undefined) out.push(m);
+    else out[i] = mergeSchemas(existing, m);
   }
-  return out.length === 1 ? out[0]! : { t: 'union', of: out };
+  const [only] = out;
+  return out.length === 1 && only ? only : { t: 'union', of: out };
 }
 
 type ObjectSchema = Extract<Schema, { t: 'object' }> & { n?: number };
@@ -58,7 +60,10 @@ function mergeObjects(a: ObjectSchema, b: ObjectSchema): ObjectSchema {
     const fa = a.fields[key];
     const fb = b.fields[key];
     const count = (fa ? fa.presence * na : 0) + (fb ? fb.presence * nb : 0);
-    const schema = fa && fb ? mergeSchemas(fa.schema, fb.schema) : (fa ?? fb)!.schema;
+    const schema =
+      fa && fb
+        ? mergeSchemas(fa.schema, fb.schema)
+        : (fa?.schema ?? fb?.schema ?? { t: 'unknown' });
     fields[key] = { schema, presence: count / n };
   }
   return { t: 'object', fields, n };

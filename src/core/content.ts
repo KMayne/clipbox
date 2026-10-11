@@ -1,20 +1,23 @@
 import { detectMagic, type MagicType } from './magic';
 
-/** Decoded view of a raw entry shared by all interpreters; parse results are memoised in `memo`. */
+/** Decoded view of a raw entry shared by all interpreters. */
 export interface EntryContent {
   mime: string;
   name?: string;
   size: number;
-  bytes: Uint8Array;
+  bytes: Uint8Array<ArrayBuffer>;
   /** UTF-8 text if the bytes are textual, otherwise null. */
   text: string | null;
   magic: MagicType | null;
-  memo: Map<string, unknown>;
 }
 
 const TEXTUAL_MIME = /^text\/|[/+](json|xml|javascript|ecmascript|yaml|csv|x-sh)\b/;
 
-export function makeContent(mime: string, bytes: Uint8Array, name?: string): EntryContent {
+export function makeContent(
+  mime: string,
+  bytes: Uint8Array<ArrayBuffer>,
+  name?: string,
+): EntryContent {
   const magic = detectMagic(bytes);
   return {
     mime,
@@ -23,7 +26,6 @@ export function makeContent(mime: string, bytes: Uint8Array, name?: string): Ent
     bytes,
     text: decodeText(mime, bytes, magic),
     magic,
-    memo: new Map(),
   };
 }
 
@@ -37,7 +39,18 @@ function decodeText(mime: string, bytes: Uint8Array, magic: MagicType | null): s
   }
 }
 
-export function memo<T>(c: EntryContent, key: string, compute: () => T): T {
-  if (!c.memo.has(key)) c.memo.set(key, compute());
-  return c.memo.get(key) as T;
+/**
+ * A per-content memo: each memo has its own typed cache, so interpreters can share parse
+ * results (e.g. JSON parsed once for both the json and records kinds) without casts.
+ */
+export function createMemo<T>(compute: (c: EntryContent) => T): (c: EntryContent) => T {
+  const cache = new WeakMap<EntryContent, { value: T }>();
+  return c => {
+    let hit = cache.get(c);
+    if (!hit) {
+      hit = { value: compute(c) };
+      cache.set(c, hit);
+    }
+    return hit.value;
+  };
 }

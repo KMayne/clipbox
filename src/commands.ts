@@ -12,7 +12,7 @@ export interface Command {
 
 const tabCommand = (tab: InspectorTab, key: string): Command => ({
   id: `tab.${tab}`,
-  title: `Show ${tab[0]!.toUpperCase()}${tab.slice(1)}`,
+  title: `Show ${tab.charAt(0).toUpperCase()}${tab.slice(1)}`,
   shortcut: key,
   run: () => useUiStore.getState().setTab(tab),
 });

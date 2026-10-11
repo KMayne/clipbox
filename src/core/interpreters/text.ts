@@ -1,12 +1,14 @@
 import { formatBytes, formatCount, plural } from '../format';
+import { hasKind } from '../guards';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
 import { detectByHeuristic } from '../../modules/langdetect/heuristics';
-import type { LanguageDetector } from '../../modules/langdetect/detector';
+import { isLanguageDetector } from '../../modules/langdetect/detector';
 import type { Language } from '../../modules/langdetect/languages';
 import { stripHtml } from './html';
 import { tryParseJson } from './json';
 
 interface TextValue {
+  kind: 'text';
   text: string;
   language?: Language & { confidence: number | null };
 }
@@ -28,20 +30,24 @@ const isHtmlMime = (mime: string) => mime === 'text/html';
 export const textInterpreter: Interpreter<TextValue> = {
   kind: 'text',
   requires: ['langdetect'],
+  isValue: (v): v is TextValue => hasKind(v, 'text'),
   detect: c => (c.text === null ? 0 : isHtmlMime(c.mime) ? 0.25 : 0.3),
   async parse(c, ctx) {
     // Text stripped from HTML is prose; don't bother detecting a language
-    if (isHtmlMime(c.mime)) return { text: stripHtml(c.text ?? '') };
+    if (isHtmlMime(c.mime)) return { kind: 'text', text: stripHtml(c.text ?? '') };
     const text = c.text ?? '';
     // JSON is already parsed (memoised) for the json kind; no need for the model
     const heuristic: Language | null = tryParseJson(c).ok
       ? { monaco: 'json', name: 'JSON' }
       : detectByHeuristic(text);
-    if (heuristic) return { text, language: { ...heuristic, confidence: null } };
-    const detected = await (await ctx.service<LanguageDetector>('langdetect'))?.detect(text);
-    return detected
-      ? { text, language: { ...detected.language, confidence: detected.confidence } }
-      : { text };
+    if (heuristic) return { kind: 'text', text, language: { ...heuristic, confidence: null } };
+    const detected = await (await ctx.service('langdetect', isLanguageDetector))?.detect(text);
+    if (!detected) return { kind: 'text', text };
+    return {
+      kind: 'text',
+      text,
+      language: { ...detected.language, confidence: detected.confidence },
+    };
   },
   label: v => `${v.language?.name ?? 'Text'} · ${plural(linesOf(v).length, 'line')}`,
   summarise(v) {
@@ -84,7 +90,7 @@ export const textInterpreter: Interpreter<TextValue> = {
   },
   slice(v, req) {
     if (req.type === 'lines') return linesOf(v).slice(req.from, req.to);
-    if (req.type === 'full') return v.text;
+    if (req.type === 'text') return v.text;
     return unsupportedSlice('text', req);
   },
   export: v => ({ text: v.text }),

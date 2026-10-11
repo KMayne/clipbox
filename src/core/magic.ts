@@ -70,7 +70,8 @@ function webpDimensions(b: Uint8Array, dv: DataView): Dimensions | null {
     return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
   }
   if (chunk === 'VP8X') {
-    const u24 = (o: number) => b[o]! | (b[o + 1]! << 8) | (b[o + 2]! << 16);
+    const u24 = (o: number) =>
+      dv.getUint8(o) | (dv.getUint8(o + 1) << 8) | (dv.getUint8(o + 2) << 16);
     return { width: u24(24) + 1, height: u24(27) + 1 };
   }
   return null;
@@ -80,7 +81,7 @@ function jpegDimensions(b: Uint8Array, dv: DataView): Dimensions | null {
   let i = 2;
   while (i + 9 < b.length) {
     if (b[i] !== 0xff) return null;
-    const marker = b[i + 1]!;
+    const marker = dv.getUint8(i + 1);
     // SOF0..SOF15, excluding DHT (C4), JPG (C8) and DAC (CC)
     if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
       return { height: dv.getUint16(i + 5), width: dv.getUint16(i + 7) };

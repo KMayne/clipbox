@@ -40,7 +40,7 @@ export function TextView({ handle }: { handle: ValueHandle }) {
   const wrap = useUiStore(s => s.wrap);
   const count = handle.summary.extent;
   const parentRef = useRef<HTMLDivElement>(null);
-  const { ensure, get } = useChunks<string>(handle, 'lines');
+  const { ensure, get } = useChunks(handle.lines);
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => parentRef.current,

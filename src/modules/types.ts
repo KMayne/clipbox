@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import type { EntryContent } from '../core/content';
-import type { Interpreter } from '../core/interpreter';
+import type { AnyInterpreter } from '../core/interpreter';
 import type { Kind, ValueHandle } from '../core/types';
 
 export type ModuleId = 'core' | 'editor' | 'langdetect' | (string & {});
@@ -31,7 +31,7 @@ export interface ModuleInfo {
 
 /** Lazily-imported worker half of a module. */
 export interface WorkerModule {
-  interpreters?: Interpreter[];
+  interpreters?: AnyInterpreter[];
   /** Service exposed to interpreters via ctx.service(moduleId). */
   service?: unknown;
 }

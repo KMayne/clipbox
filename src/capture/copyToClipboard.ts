@@ -2,12 +2,14 @@ import type { Selection } from '../state/captureStore';
 import { useUiStore } from '../state/uiStore';
 import { engine } from '../engine/engineClient';
 
-async function toPng(bytes: Uint8Array, mime: string): Promise<Blob> {
-  const blob = new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime });
+async function toPng(bytes: Uint8Array<ArrayBuffer>, mime: string): Promise<Blob> {
+  const blob = new Blob([bytes], { type: mime });
   if (mime === 'image/png') return blob;
   const bitmap = await createImageBitmap(blob);
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-  canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D context unavailable');
+  ctx.drawImage(bitmap, 0, 0);
   return canvas.convertToBlob({ type: 'image/png' });
 }
 

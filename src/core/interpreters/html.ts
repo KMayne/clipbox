@@ -1,7 +1,9 @@
 import { formatBytes, formatCount, plural } from '../format';
+import { hasKind } from '../guards';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
 
 interface HtmlValue {
+  kind: 'html';
   html: string;
 }
 
@@ -39,12 +41,13 @@ const count = (html: string, re: RegExp) => html.match(re)?.length ?? 0;
 
 export const htmlInterpreter: Interpreter<HtmlValue> = {
   kind: 'html',
+  isValue: (v): v is HtmlValue => hasKind(v, 'html'),
   detect(c) {
     if (c.text === null) return 0;
     if (c.mime === 'text/html') return 0.9;
     return /^\s*(<!doctype html|<html[\s>])/i.test(c.text) ? 0.7 : 0;
   },
-  parse: c => ({ html: c.text ?? '' }),
+  parse: c => ({ kind: 'html', html: c.text ?? '' }),
   label: v => `HTML · ${plural(count(v.html, /<[a-z][\w-]*/gi), 'element')}`,
   summarise: v => ({
     stats: [
@@ -58,7 +61,7 @@ export const htmlInterpreter: Interpreter<HtmlValue> = {
     extent: 0,
   }),
   slice(v, req) {
-    if (req.type === 'full') return v.html;
+    if (req.type === 'text') return v.html;
     return unsupportedSlice('html', req);
   },
   export: v => ({ html: v.html, text: stripHtml(v.html) }),

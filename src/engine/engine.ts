@@ -2,7 +2,7 @@ import * as Comlink from 'comlink';
 import { makeContent, type EntryContent } from '../core/content';
 import { oneLine, toBase64 } from '../core/format';
 import { sha256 } from '../core/hash';
-import type { ExportPayload, InterpretContext, Interpreter } from '../core/interpreter';
+import type { AnyInterpreter, ExportPayload, InterpretContext } from '../core/interpreter';
 import { interpreters as coreInterpreters } from '../core/interpreters';
 import type {
   EntryId,
@@ -45,7 +45,7 @@ export class Engine {
   private modules = new Map<ModuleId, Promise<WorkerModule>>();
   private moduleStates = new Map<ModuleId, ModuleLoadState>();
   private loaders: Partial<Record<string, () => Promise<WorkerModule>>>;
-  private ctx: InterpretContext = { service: id => this.service(id) };
+  private ctx: InterpretContext = { service: (id, guard) => this.service(id, guard) };
 
   constructor(options: EngineOptions = {}) {
     this.loaders = options.loaders ?? workerLoaders;
@@ -152,10 +152,10 @@ export class Engine {
   }
 
   private detect(content: EntryContent): Candidate[] {
-    const core = coreInterpreters.map(i => ({
+    const core = coreInterpreters.map((i): Candidate => ({
       kind: i.kind,
       confidence: i.detect(content),
-      module: 'core' as ModuleId,
+      module: 'core',
     }));
     const lazy = detectors.map(d => ({
       kind: d.kind,
@@ -197,22 +197,27 @@ export class Engine {
     return value;
   }
 
-  private async interpreter(c: Candidate): Promise<Interpreter> {
-    if (c.module === 'core') return this.coreInterpreter(c.kind)!;
+  private async interpreter(c: Candidate): Promise<AnyInterpreter> {
+    if (c.module === 'core') {
+      const core = this.coreInterpreter(c.kind);
+      if (!core) throw new Error(`No core interpreter for '${c.kind}'`);
+      return core;
+    }
     const mod = await this.loadModule(c.module);
     const interpreter = mod.interpreters?.find(i => i.kind === c.kind);
     if (!interpreter) throw new Error(`Module '${c.module}' has no '${c.kind}' interpreter`);
     return interpreter;
   }
 
-  private coreInterpreter(kind: Kind): Interpreter | undefined {
-    return (coreInterpreters as Interpreter[]).find(i => i.kind === kind);
+  private coreInterpreter(kind: Kind): AnyInterpreter | undefined {
+    return coreInterpreters.find(i => i.kind === kind);
   }
 
-  private async service<T>(id: ModuleId): Promise<T | null> {
+  private async service<T>(id: ModuleId, guard: (s: unknown) => s is T): Promise<T | null> {
     if (policyOf(this.policies, id) === 'off') return null;
     try {
-      return ((await this.loadModule(id)).service as T) ?? null;
+      const { service } = await this.loadModule(id);
+      return guard(service) ? service : null;
     } catch {
       return null; // e.g. offline and not cached: degrade gracefully
     }

@@ -15,6 +15,9 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // No unchecked casts: narrow, validate with Zod at boundaries, or fix the types
+      '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
+      '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/no-unused-expressions': ['error', { allowTaggedTemplates: true }],
       // TanStack Virtual is used deliberately; the compiler just skips those components
       'react-hooks/incompatible-library': 'off',

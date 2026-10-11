@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { detectKinds, getInterpreter } from '../../src/core/interpreters';
 import { textContent, bytesContent, pngHeader } from './helpers';
 import type { EntryContent } from '../../src/core/content';
+import { defined } from '../../src/core/guards';
 import type { InterpretContext } from '../../src/core/interpreter';
 
 const kinds = (c: EntryContent) => detectKinds(c).map(d => d.kind);
@@ -30,7 +31,7 @@ describe('json', async () => {
     expect(s.label).toBe('JSON array · 3');
     expect(stat(s.stats, 'Length')).toBe('3');
     expect(stat(s.stats, 'Element types')).toBe('object 3');
-    const keys = s.stats.find(r => r.label === 'Element keys')!;
+    const keys = defined(s.stats.find(r => r.label === 'Element keys'));
     expect(keys.children).toContainEqual({ label: 'team', value: 'string · 67%' });
     expect(stat(s.stats, 'Max depth')).toBe('2');
   });
@@ -65,7 +66,7 @@ describe('records', async () => {
 
   it('detects missing header', async () => {
     const s = await summarise('records', textContent('1,2\n3,4\n5,6'));
-    expect(s.columns!.map(c => c.name)).toEqual(['col1', 'col2']);
+    expect(defined(s.columns).map(c => c.name)).toEqual(['col1', 'col2']);
   });
 
   it('ranks prose below text', async () => {
@@ -100,7 +101,7 @@ describe('html', async () => {
     expect(stat(s.stats, 'Tables')).toBe('1');
     expect(stat(s.stats, 'Links')).toBe('1');
     expect(stat(s.stats, 'Images')).toBe('1');
-    expect((await summarise('text', c)).value).toEqual({ text: 'a & b\tc\n\nlink' });
+    expect((await summarise('text', c)).value).toEqual({ kind: 'text', text: 'a & b\tc\n\nlink' });
   });
 });
 

@@ -16,8 +16,10 @@ export function MonacoView({ text, language }: { text: string; language: string 
   const wrap = useUiStore(s => s.wrap);
 
   useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
     const model = monaco.editor.createModel(text, language);
-    const editor = monaco.editor.create(ref.current!, {
+    const editor = monaco.editor.create(el, {
       model,
       readOnly: true,
       domReadOnly: true,

@@ -89,27 +89,34 @@ export interface JsonChild {
   childCount?: number;
 }
 
+/** Window of a value requested from the engine. Results are validated in engine/valueHandle.ts. */
 export type SliceRequest =
   | { type: 'lines'; from: number; to: number }
   | { type: 'rows'; from: number; to: number }
   | { type: 'children'; path: JsonPath; from: number; to: number }
   | { type: 'bytes'; from: number; to: number }
-  | { type: 'full' };
+  /** Whole text (text, HTML source). */
+  | { type: 'text' }
+  /** Image bytes and MIME type. */
+  | { type: 'image' }
+  /** Whole JSON value (used for top-level scalars). */
+  | { type: 'json' };
 
-export interface SliceResultMap {
-  lines: string[];
-  rows: Record<string, unknown>[];
-  children: JsonChild[];
-  bytes: Uint8Array;
-  full: unknown;
+export interface ImageData {
+  bytes: Uint8Array<ArrayBuffer>;
+  mime: string;
 }
-
-export type SliceResult<R extends SliceRequest> = SliceResultMap[R['type']];
 
 /** UI ↔ engine seam: previews only ever read values through this. */
 export interface ValueHandle {
   summary: Summary;
-  getSlice<R extends SliceRequest>(req: R): Promise<SliceResult<R>>;
+  lines(from: number, to: number): Promise<string[]>;
+  rows(from: number, to: number): Promise<Record<string, unknown>[]>;
+  children(path: JsonPath, from: number, to: number): Promise<JsonChild[]>;
+  bytes(from: number, to: number): Promise<Uint8Array<ArrayBuffer>>;
+  text(): Promise<string>;
+  image(): Promise<ImageData>;
+  json(): Promise<unknown>;
 }
 
 export interface RawView {

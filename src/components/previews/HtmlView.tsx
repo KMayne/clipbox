@@ -31,7 +31,7 @@ const styles = {
 
 export function HtmlView({ handle }: { handle: ValueHandle }) {
   const [mode, setMode] = useState<'rendered' | 'source'>('rendered');
-  const html = useAsync('full', () => handle.getSlice({ type: 'full' }) as Promise<string>);
+  const html = useAsync('text', () => handle.text());
   if (html.status !== 'ok') return null;
 
   return (

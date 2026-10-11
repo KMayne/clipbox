@@ -1,9 +1,11 @@
 import { formatBytes } from '../format';
+import { hasKind } from '../guards';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
 import type { MagicType } from '../magic';
 
 interface BinaryValue {
-  bytes: Uint8Array;
+  kind: 'binary';
+  bytes: Uint8Array<ArrayBuffer>;
   magic: MagicType | null;
 }
 
@@ -12,8 +14,9 @@ export const toHex = (bytes: Uint8Array) =>
 
 export const binaryInterpreter: Interpreter<BinaryValue> = {
   kind: 'binary',
+  isValue: (v): v is BinaryValue => hasKind(v, 'binary'),
   detect: c => (c.text === null ? 0.2 : 0),
-  parse: c => ({ bytes: c.bytes, magic: c.magic }),
+  parse: c => ({ kind: 'binary', bytes: c.bytes, magic: c.magic }),
   label: v => `Binary · ${formatBytes(v.bytes.byteLength)}`,
   summarise: v => ({
     stats: [

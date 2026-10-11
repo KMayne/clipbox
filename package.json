@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && NODE_ENV=production vite build",
-    "typecheck": "tsc --noEmit",
+    "build": "pnpm run typecheck && NODE_ENV=production vite build",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.sw.json",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "test": "vitest run",

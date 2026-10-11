@@ -33,6 +33,7 @@ export function useGlobalShortcuts() {
         return;
       }
       if (ui.paletteOpen || isEditable(e.target)) return;
+      const tab = TABS[e.key];
       if (mod && e.key.toLowerCase() === 'o') {
         e.preventDefault();
         openFile();
@@ -42,8 +43,8 @@ export function useGlobalShortcuts() {
         void copySelection(useCaptureStore.getState().selection);
       } else if (mod || e.altKey) {
         return;
-      } else if (TABS[e.key]) {
-        ui.setTab(TABS[e.key]!);
+      } else if (tab) {
+        ui.setTab(tab);
       } else if (e.key === 'w') {
         ui.toggleWrap();
       } else if (e.key === 'j' || e.key === 'k') {

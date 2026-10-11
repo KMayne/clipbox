@@ -1,35 +1,33 @@
 /*
  * Service worker: precaches the app shell and lets the user download lazily-loaded modules for
  * offline use. Built by vite/modulesManifest.ts, which inlines the build manifest below.
- * Not bundled with the app: no imports.
+ * Not bundled: only type imports are allowed (stripped by the build), so no Zod here.
  */
-import type { ModulesManifest, SwRequest, SwResponse } from './swClient';
+import type { ModulesManifest, SwRequest, SwResponse } from './swProtocol';
 
-// Minimal ServiceWorker typings (the WebWorker lib conflicts with DOM in this tsconfig)
-interface ExtendableEvent extends Event {
-  waitUntil(p: Promise<unknown>): void;
-}
-interface FetchEvent extends ExtendableEvent {
-  request: Request;
-  respondWith(r: Promise<Response>): void;
-}
-interface ExtendableMessageEvent extends ExtendableEvent {
-  data: SwRequest;
-  ports: readonly MessagePort[];
-}
-interface SwScope {
-  registration: { active: unknown };
-  skipWaiting(): Promise<void>;
-  clients: { claim(): Promise<void> };
-  location: Location;
-  addEventListener(type: 'install' | 'activate', fn: (e: ExtendableEvent) => void): void;
-  addEventListener(type: 'fetch', fn: (e: FetchEvent) => void): void;
-  addEventListener(type: 'message', fn: (e: ExtendableMessageEvent) => void): void;
-}
-
+// Type-checked separately with the WebWorker lib (tsconfig.sw.json)
+declare const self: ServiceWorkerGlobalScope;
 declare const __MANIFEST__: ModulesManifest;
 const MANIFEST: ModulesManifest = __MANIFEST__;
-const scope = self as unknown as SwScope;
+
+/** Messages come from our own pages, but they're still untyped data: check before use. */
+function parseRequest(data: unknown): SwRequest | null {
+  if (typeof data !== 'object' || data === null || !('type' in data)) return null;
+  const id = 'id' in data && typeof data.id === 'string' ? data.id : null;
+  switch (data.type) {
+    case 'status':
+    case 'skipWaiting':
+      return { type: data.type };
+    case 'download':
+    case 'remove':
+      return id === null ? null : { type: data.type, id };
+    default:
+      return null;
+  }
+}
+
+const isStringArray = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every(x => typeof x === 'string');
 
 const PREFIX = 'clipbox-';
 const CORE_CACHE = `${PREFIX}core-${MANIFEST.version}`;
@@ -40,7 +38,8 @@ const url = (file: string) => `/${file}`;
 
 async function readDownloaded(): Promise<string[]> {
   const res = await (await caches.open(META_CACHE)).match(DOWNLOADED_KEY);
-  return res ? ((await res.json()) as string[]) : [];
+  const ids: unknown = res ? await res.json() : [];
+  return isStringArray(ids) ? ids : [];
 }
 
 async function writeDownloaded(ids: string[]): Promise<void> {
@@ -71,19 +70,19 @@ async function isCached(id: string): Promise<boolean> {
   return keys.length >= mod.files.length;
 }
 
-scope.addEventListener('install', e => {
+self.addEventListener('install', e => {
   e.waitUntil(
     (async () => {
       await (
         await caches.open(CORE_CACHE)
       ).addAll(['/', '/modules-manifest.json', ...MANIFEST.core.map(url)]);
       // First install: take over immediately. Updates wait for the user to click Reload.
-      if (!scope.registration.active) await scope.skipWaiting();
+      if (!self.registration.active) await self.skipWaiting();
     })(),
   );
 });
 
-scope.addEventListener('activate', e => {
+self.addEventListener('activate', e => {
   e.waitUntil(
     (async () => {
       const current = new Set([
@@ -94,7 +93,7 @@ scope.addEventListener('activate', e => {
       for (const name of await caches.keys()) {
         if (name.startsWith(PREFIX) && !current.has(name)) await caches.delete(name);
       }
-      await scope.clients.claim();
+      await self.clients.claim();
       // Re-download modules the user had downloaded under the previous version
       const downloaded = (await readDownloaded()).filter(id => MANIFEST.modules[id]);
       await writeDownloaded(downloaded);
@@ -103,9 +102,9 @@ scope.addEventListener('activate', e => {
   );
 });
 
-scope.addEventListener('fetch', e => {
+self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== scope.location.origin) return;
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   e.respondWith(
     (async () => {
       // Build files are content-hashed, so Vary (e.g. Origin from vite preview) can be ignored
@@ -115,19 +114,18 @@ scope.addEventListener('fetch', e => {
   );
 });
 
-scope.addEventListener('message', e => {
+self.addEventListener('message', e => {
   const port = e.ports[0];
   const reply = (msg: SwResponse) => port?.postMessage(msg);
-  const req = e.data;
+  const req = parseRequest(e.data);
+  if (!req) return reply({ type: 'error', message: 'Unrecognised request' });
   const work = (async () => {
     try {
       switch (req.type) {
         case 'status': {
           const ids = Object.keys(MANIFEST.modules);
-          const cached = (await Promise.all(ids.map(isCached))).flatMap((ok, i) =>
-            ok ? [ids[i]!] : [],
-          );
-          return reply({ type: 'status', cached });
+          const checks = await Promise.all(ids.map(async id => ({ id, ok: await isCached(id) })));
+          return reply({ type: 'status', cached: checks.filter(c => c.ok).map(c => c.id) });
         }
         case 'download':
           await download(req.id, (done, total) => reply({ type: 'progress', done, total }));
@@ -137,7 +135,7 @@ scope.addEventListener('message', e => {
           await writeDownloaded((await readDownloaded()).filter(id => id !== req.id));
           return reply({ type: 'done' });
         case 'skipWaiting':
-          await scope.skipWaiting();
+          await self.skipWaiting();
           return reply({ type: 'done' });
       }
     } catch (err) {

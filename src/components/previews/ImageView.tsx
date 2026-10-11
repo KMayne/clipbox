@@ -41,14 +41,7 @@ const styles = {
 
 export function ImageView({ handle }: { handle: ValueHandle }) {
   const [fit, setFit] = useState(true);
-  const image = useAsync(
-    'full',
-    () =>
-      handle.getSlice({ type: 'full' }) as Promise<{
-        bytes: Uint8Array<ArrayBuffer>;
-        mime: string;
-      }>,
-  );
+  const image = useAsync('image', () => handle.image());
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (image.status !== 'ok') return;

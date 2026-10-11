@@ -29,9 +29,7 @@ const printable = (b: number) => (b >= 0x20 && b < 0x7f ? String.fromCharCode(b)
 export function HexView({ handle }: { handle: ValueHandle }) {
   const [page, setPage] = useState(0);
   const pages = Math.max(1, Math.ceil(handle.summary.extent / PAGE));
-  const bytes = useAsync(String(page), () =>
-    handle.getSlice({ type: 'bytes', from: page * PAGE, to: (page + 1) * PAGE }),
-  );
+  const bytes = useAsync(String(page), () => handle.bytes(page * PAGE, (page + 1) * PAGE));
 
   const lines: React.ReactNode[] = [];
   if (bytes.status === 'ok') {

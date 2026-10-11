@@ -9,4 +9,4 @@ const NAMES: Record<string, string> = {
   binary: 'Binary',
 };
 
-export const kindName = (kind: Kind) => NAMES[kind] ?? kind[0]!.toUpperCase() + kind.slice(1);
+export const kindName = (kind: Kind) => NAMES[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);

@@ -1,10 +1,12 @@
 import { useCallback, useReducer, useState } from 'react';
-import type { ValueHandle } from '../core/types';
 
 const CHUNK = 500;
 
-/** Lazily fetches 'lines' or 'rows' slices in fixed-size chunks for virtualised views. */
-export function useChunks<T>(handle: ValueHandle, type: 'lines' | 'rows') {
+/**
+ * Lazily fetches items in fixed-size chunks for virtualised views. `fetch` must be stable
+ * (e.g. `handle.lines`).
+ */
+export function useChunks<T>(fetch: (from: number, to: number) => Promise<T[]>) {
   const [cache] = useState(() => new Map<number, T[] | 'pending'>());
   const [, bump] = useReducer((n: number) => n + 1, 0);
 
@@ -13,13 +15,13 @@ export function useChunks<T>(handle: ValueHandle, type: 'lines' | 'rows') {
       for (let c = Math.floor(from / CHUNK); c <= Math.floor(to / CHUNK); c++) {
         if (cache.has(c)) continue;
         cache.set(c, 'pending');
-        void handle.getSlice({ type, from: c * CHUNK, to: (c + 1) * CHUNK }).then(items => {
-          cache.set(c, items as T[]);
+        void fetch(c * CHUNK, (c + 1) * CHUNK).then(items => {
+          cache.set(c, items);
           bump();
         });
       }
     },
-    [cache, handle, type],
+    [cache, fetch],
   );
 
   const get = (i: number): T | undefined => {

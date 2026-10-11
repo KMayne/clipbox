@@ -2,7 +2,7 @@
 
 Paste anything (text/JSON/CSV/HTML/image/file), inspect it (interpretations, preview, stats, schema), and later transform it with a typed node graph. Web app, Chromium only, no backend.
 
-Plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md`. Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Next: banning type assertions, then saving pastes to IndexedDB, then Batch B (text formats).
+Plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md`. Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Next: saving pastes to IndexedDB, and Batch B (text formats).
 
 ## Commands
 - `pnpm dev` — Vite dev server
@@ -10,7 +10,7 @@ Plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md`. Done: Deliverable 1a 
 - `pnpm test:e2e` — Playwright, two projects:
   - `dev`: dev server, synthetic `ClipboardEvent`/`DragEvent`
   - `preview`: production build plus `vite preview`, for Service Worker and offline tests (`offline.spec.ts`)
-- `pnpm typecheck`, `pnpm lint` (zero warnings), `pnpm build`
+- `pnpm typecheck` (main tsconfig plus `tsconfig.sw.json` for the service worker), `pnpm lint` (zero warnings), `pnpm build`
 
 Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
 
@@ -32,6 +32,18 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
 - `src/capture/` — capture sources (paste, read, drop, file) → `captureStore.add()`.
 - `src/state/` — Zustand stores (`captureStore`, `moduleStore`, `uiStore`).
 - `src/components/` — Emotion CSS, with dark theme tokens in `src/theme.ts`. Previews live in `components/previews/`. `ModulePreview` lazy-loads a module's preview and falls back to the core one.
+
+## Conventions
+- **No type assertions:** `as` (other than `as const`) and non-null `!` are lint errors. Instead:
+  - narrow with checks;
+  - use the guards in `src/core/guards.ts` (`isRecord`, `defined`, `hasKind`);
+  - or fix the types.
+- **Zod at trust boundaries:** localStorage, `fetch`/`JSON.parse` results, messages, and values arriving from the worker (`engine/valueHandle.ts` validates every slice).
+  - Exception: `src/sw.ts` isn't bundled, so it narrows by hand.
+- **New kinds:**
+  - Write an `Interpreter<V>` whose value is tagged `{ kind: '<kind>', … }`, with `isValue: v => hasKind(v, '<kind>')`, and add it with `register()`. The registry stores type-erased `AnyInterpreter`s that check values on every call.
+  - Previews read data through the typed `ValueHandle` methods (`lines`, `rows`, `children`, `bytes`, `text`, `image`, `json`).
+- **Bytes** are `Uint8Array<ArrayBuffer>` throughout. `crypto.subtle` and `Blob` need ArrayBuffer-backed bytes.
 
 ## Gotchas
 - Import `{ Icon }` from `@mdi/react` (named), the default import breaks under Vite 8.

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { defined } from '../../src/core/guards';
 import { inferSchema, schemaToTs } from '../../src/core/schema';
 
 describe('schema', () => {
@@ -11,9 +12,12 @@ describe('schema', () => {
     ]);
     expect(s.t).toBe('array');
     if (s.t !== 'array' || s.of.t !== 'object') throw new Error('bad shape');
-    expect(s.of.fields.id!.presence).toBe(1);
-    expect(s.of.fields.team!.presence).toBe(0.75);
-    expect(s.of.fields.name!.schema).toEqual({ t: 'union', of: [{ t: 'string' }, { t: 'null' }] });
+    expect(defined(s.of.fields.id).presence).toBe(1);
+    expect(defined(s.of.fields.team).presence).toBe(0.75);
+    expect(defined(s.of.fields.name).schema).toEqual({
+      t: 'union',
+      of: [{ t: 'string' }, { t: 'null' }],
+    });
   });
 
   it('renders TS declarations', () => {

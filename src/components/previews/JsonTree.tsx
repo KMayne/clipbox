@@ -76,7 +76,7 @@ export function JsonTree({ handle }: { handle: ValueHandle }) {
 }
 
 function ScalarView({ handle }: { handle: ValueHandle }) {
-  const value = useAsync('full', () => handle.getSlice({ type: 'full' }));
+  const value = useAsync('json', () => handle.json());
   return (
     <pre className={preview.scroller} style={{ margin: 0, padding: 12 }}>
       {value.status === 'ok' ? JSON.stringify(value.value, null, 2) : ''}
@@ -86,13 +86,18 @@ function ScalarView({ handle }: { handle: ValueHandle }) {
 
 function Tree({ handle }: { handle: ValueHandle }) {
   const [nodes, setNodes] = useState(() => new Map<string, Loaded>());
-  /** Expanded paths → their child count. */
-  const [expanded, setExpanded] = useState(() => new Map([[keyOf([]), handle.summary.extent]]));
+  /** Expanded nodes, keyed by path. */
+  const [expanded, setExpanded] = useState(
+    () =>
+      new Map<string, { path: JsonPath; total: number }>([
+        [keyOf([]), { path: [], total: handle.summary.extent }],
+      ]),
+  );
   const [requested] = useState(() => new Set<string>());
 
   const load = useCallback(
     async (path: JsonPath, from: number, total: number) => {
-      const items = await handle.getSlice({ type: 'children', path, from, to: from + PAGE });
+      const items = await handle.children(path, from, from + PAGE);
       setNodes(prev => {
         const next = new Map(prev);
         const before = from > 0 ? (prev.get(keyOf(path))?.items ?? []) : [];
@@ -102,7 +107,9 @@ function Tree({ handle }: { handle: ValueHandle }) {
       if (path.length === 0 && total <= AUTO_EXPAND_MAX) {
         setExpanded(prev => {
           const next = new Map(prev);
-          for (const c of items) if (c.childCount) next.set(keyOf([c.key]), c.childCount);
+          for (const c of items) {
+            if (c.childCount) next.set(keyOf([c.key]), { path: [c.key], total: c.childCount });
+          }
           return next;
         });
       }
@@ -111,10 +118,10 @@ function Tree({ handle }: { handle: ValueHandle }) {
   );
 
   useEffect(() => {
-    for (const [key, total] of expanded) {
+    for (const [key, { path, total }] of expanded) {
       if (requested.has(key)) continue;
       requested.add(key);
-      void load(JSON.parse(key) as JsonPath, 0, total);
+      void load(path, 0, total);
     }
   }, [expanded, load, requested]);
 
@@ -123,7 +130,7 @@ function Tree({ handle }: { handle: ValueHandle }) {
       const next = new Map(prev);
       const key = keyOf(path);
       if (next.has(key)) next.delete(key);
-      else next.set(key, total);
+      else next.set(key, { path, total });
       return next;
     });
 
@@ -162,7 +169,8 @@ function Tree({ handle }: { handle: ValueHandle }) {
     <div ref={parentRef} className={preview.scroller} data-testid="json-tree">
       <div style={{ height: virtualizer.getTotalSize(), position: 'relative', minWidth: '100%' }}>
         {virtualizer.getVirtualItems().map(item => {
-          const row = rows[item.index]!;
+          const row = rows[item.index];
+          if (!row) return null;
           const style = {
             transform: `translateY(${item.start}px)`,
             paddingLeft: 8 + row.depth * 16,
@@ -181,14 +189,15 @@ function Tree({ handle }: { handle: ValueHandle }) {
             );
           }
           const { child, path } = row;
-          const container = child.childCount !== undefined;
+          const { childCount } = child;
+          const container = childCount !== undefined;
           const open = expanded.has(keyOf(path));
           return (
             <div
               key={item.key}
               className={styles.row}
               style={style}
-              onClick={() => container && toggle(path, child.childCount!)}
+              onClick={() => childCount !== undefined && toggle(path, childCount)}
             >
               <span className={styles.toggle}>
                 {container && <Icon path={open ? mdiChevronDown : mdiChevronRight} size={0.6} />}

@@ -1,12 +1,14 @@
 import Papa from 'papaparse';
-import { memo, type EntryContent } from '../content';
+import { createMemo, type EntryContent } from '../content';
 import { formatCount } from '../format';
+import { hasKind, isRecord } from '../guards';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
 import { inferSchema } from '../schema';
 import type { ColumnInfo } from '../types';
 import { tryParseJson } from './json';
 
 export interface RecordsValue {
+  kind: 'records';
   columns: string[];
   rows: Record<string, unknown>[];
   /** Null when the records came from a JSON array. */
@@ -40,7 +42,9 @@ export function guessDelimiter(text: string): DelimiterGuess | null {
     if (data.length < 3) continue;
     const counts = new Map<number, number>();
     for (const row of data) counts.set(row.length, (counts.get(row.length) ?? 0) + 1);
-    const [mode, modeCount] = [...counts].sort((a, b) => b[1] - a[1])[0]!;
+    const top = [...counts].sort((a, b) => b[1] - a[1])[0];
+    if (!top) continue;
+    const [mode, modeCount] = top;
     if (mode < 2 || modeCount / data.length < 0.9) continue;
 
     const cells = data.flat();
@@ -52,13 +56,12 @@ export function guessDelimiter(text: string): DelimiterGuess | null {
   return best;
 }
 
-const isPlainObject = (v: unknown): v is Record<string, unknown> =>
-  v !== null && typeof v === 'object' && !Array.isArray(v);
+const delimiterOf = createMemo(c => (c.text === null ? null : guessDelimiter(c.text)));
 
 function jsonRecords(c: EntryContent): Record<string, unknown>[] | null {
   const r = tryParseJson(c);
   if (!r.ok || !Array.isArray(r.value) || r.value.length === 0) return null;
-  return r.value.every(isPlainObject) ? r.value : null;
+  return r.value.every(isRecord) ? r.value : null;
 }
 
 export function typeCell(raw: string): unknown {
@@ -88,7 +91,7 @@ export function parseDelimited(text: string, delimiter: string): RecordsValue {
     columns.forEach((col, i) => (rec[col] = typeCell(row[i] ?? '')));
     return rec;
   });
-  return { columns, rows, delimiter, hasHeader };
+  return { kind: 'records', columns, rows, delimiter, hasHeader };
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
@@ -114,18 +117,19 @@ export function columnInfo(v: RecordsValue): (ColumnInfo & { empty: number })[] 
 
 export const recordsInterpreter: Interpreter<RecordsValue> = {
   kind: 'records',
+  isValue: (v): v is RecordsValue => hasKind(v, 'records'),
   detect(c) {
     if (c.text === null) return 0;
     if (tryParseJson(c).ok) return jsonRecords(c) ? 0.6 : 0;
-    return memo(c, 'delimiter', () => guessDelimiter(c.text!))?.confidence ?? 0;
+    return delimiterOf(c)?.confidence ?? 0;
   },
   parse(c) {
     const fromJson = jsonRecords(c);
     if (fromJson) {
       const columns = [...new Set(fromJson.flatMap(r => Object.keys(r)))];
-      return { columns, rows: fromJson, delimiter: null, hasHeader: true };
+      return { kind: 'records', columns, rows: fromJson, delimiter: null, hasHeader: true };
     }
-    const guess = memo(c, 'delimiter', () => guessDelimiter(c.text ?? ''));
+    const guess = delimiterOf(c);
     if (!guess || c.text === null) throw new Error('Not delimited data');
     return parseDelimited(c.text, guess.delimiter);
   },
@@ -159,7 +163,6 @@ export const recordsInterpreter: Interpreter<RecordsValue> = {
   },
   slice(v, req) {
     if (req.type === 'rows') return v.rows.slice(req.from, req.to);
-    if (req.type === 'full') return v.rows;
     return unsupportedSlice('records', req);
   },
   export: v => ({ text: toTsv(v) }),

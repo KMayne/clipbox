@@ -1,5 +1,6 @@
-import { memo, type EntryContent } from '../content';
+import { createMemo } from '../content';
 import { formatBytes, formatCount, formatPercent, plural } from '../format';
+import { hasKind } from '../guards';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
 import { jsonChildCount, jsonChildren, jsonTypeOf } from '../jsonSlice';
 import { describeSchema, inferSchema } from '../schema';
@@ -8,25 +9,26 @@ import type { StatRow } from '../types';
 type ParseResult = { ok: true; value: unknown } | { ok: false };
 
 /** Shared with the records interpreter so JSON is only parsed once per entry. */
-export function tryParseJson(c: EntryContent): ParseResult {
-  return memo(c, 'json', () => {
-    const t = c.text?.trimStart();
-    if (!t || !/^[[{"\d-]|^(true|false|null)\b/.test(t)) return { ok: false };
-    try {
-      return { ok: true, value: JSON.parse(t) };
-    } catch {
-      return { ok: false };
-    }
-  });
-}
+export const tryParseJson = createMemo((c): ParseResult => {
+  const t = c.text?.trimStart();
+  if (!t || !/^[[{"\d-]|^(true|false|null)\b/.test(t)) return { ok: false };
+  try {
+    const value: unknown = JSON.parse(t);
+    return { ok: true, value };
+  } catch {
+    return { ok: false };
+  }
+});
 
 interface JsonValue {
+  kind: 'json';
   json: unknown;
   bytes: number;
 }
 
 export const jsonInterpreter: Interpreter<JsonValue> = {
   kind: 'json',
+  isValue: (v): v is JsonValue => hasKind(v, 'json'),
   detect(c) {
     const r = tryParseJson(c);
     if (!r.ok) return 0;
@@ -37,7 +39,7 @@ export const jsonInterpreter: Interpreter<JsonValue> = {
   parse(c) {
     const r = tryParseJson(c);
     if (!r.ok) throw new Error('Not valid JSON');
-    return { json: r.value, bytes: c.size };
+    return { kind: 'json', json: r.value, bytes: c.size };
   },
   label({ json }) {
     const type = jsonTypeOf(json);
@@ -73,7 +75,7 @@ export const jsonInterpreter: Interpreter<JsonValue> = {
   },
   slice({ json }, req) {
     if (req.type === 'children') return jsonChildren(json, req.path, req.from, req.to);
-    if (req.type === 'full') return json;
+    if (req.type === 'json') return json;
     return unsupportedSlice('json', req);
   },
   export: ({ json }) => ({ text: JSON.stringify(json, null, 2) }),
@@ -95,8 +97,8 @@ function maxDepth(root: unknown): number {
   let max = 0;
   const stack: [unknown, number][] = [[root, 0]];
   let visited = 0;
-  while (stack.length > 0 && visited++ < 1_000_000) {
-    const [v, d] = stack.pop()!;
+  for (let item = stack.pop(); item && visited++ < 1_000_000; item = stack.pop()) {
+    const [v, d] = item;
     if (v === null || typeof v !== 'object') continue;
     max = Math.max(max, d + 1);
     for (const child of Object.values(v)) stack.push([child, d + 1]);

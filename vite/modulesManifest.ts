@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { transformWithOxc, type Plugin, type Rolldown } from 'vite';
-import type { ModulesManifest } from '../src/swClient';
+import type { ModulesManifest } from '../src/swProtocol';
 
 /** Lazily-loaded module entry points: src/modules/<id>/{worker,ui}.ts(x). */
 const MODULE_ENTRY = /[\\/]src[\\/]modules[\\/]([\w-]+)[\\/](worker|ui)\.tsx?$/;
@@ -83,9 +83,7 @@ export function buildManifest(bundle: Bundle, roots: Map<string, string>): Modul
     }
     if (o.type === 'chunk') {
       [...o.imports, ...o.dynamicImports].forEach(f => out.add(f));
-      const meta = (
-        o as { viteMetadata?: { importedCss: Set<string>; importedAssets: Set<string> } }
-      ).viteMetadata;
+      const meta = o.viteMetadata;
       meta?.importedCss.forEach(f => out.add(f));
       meta?.importedAssets.forEach(f => out.add(f));
     }
@@ -95,8 +93,7 @@ export function buildManifest(bundle: Bundle, roots: Map<string, string>): Modul
   const closure = (start: string[], stop: Set<string>) => {
     const seen = new Set<string>();
     const queue = [...start];
-    while (queue.length) {
-      const f = queue.pop()!;
+    for (let f = queue.pop(); f !== undefined; f = queue.pop()) {
       if (seen.has(f)) continue;
       seen.add(f);
       for (const r of refs.get(f) ?? []) if (!seen.has(r) && !stop.has(r)) queue.push(r);

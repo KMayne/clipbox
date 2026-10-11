@@ -65,7 +65,7 @@ function Cell({ value }: { value: unknown }) {
 export function RecordsTable({ handle }: { handle: ValueHandle }) {
   const columns = handle.summary.columns ?? [];
   const parentRef = useRef<HTMLDivElement>(null);
-  const { ensure, get } = useChunks<Record<string, unknown>>(handle, 'rows');
+  const { ensure, get } = useChunks(handle.rows);
   const virtualizer = useVirtualizer({
     count: handle.summary.extent,
     getScrollElement: () => parentRef.current,
