@@ -2,9 +2,10 @@ import { expect, test, type Page } from '@playwright/test';
 import { actionsPane, paste } from './helpers';
 
 const derivedFrom = (page: Page) => page.getByTestId('capture').first().getByTestId('derived-from');
+/** The selected value's text, in the Text view's editor. */
 const rawView = async (page: Page) => {
-  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Raw' }).click();
-  return page.getByRole('region', { name: 'View' }).locator('pre');
+  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Text' }).click();
+  return page.getByRole('region', { name: 'View' }).getByTestId('monaco-view');
 };
 
 const b64url = (bytes: ArrayBuffer | Uint8Array) =>
@@ -49,7 +50,7 @@ test('Open in new tab opens the URL without adding a capture', async ({ page, co
     .getByRole('button', { name: 'Run' })
     .click();
   await expect(page.getByTestId('capture')).toHaveCount(2);
-  await expect(await rawView(page)).toHaveText('https://example.com/docs?id=7\n');
+  await expect(await rawView(page)).toContainText('https://example.com/docs?id=7');
 });
 
 const ALGS: [string, () => Promise<CryptoKeyPair>, AlgorithmIdentifier | EcdsaParams][] = [
