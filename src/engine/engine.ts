@@ -1,6 +1,6 @@
 import * as Comlink from 'comlink';
 import { actionImpl, actionImpls } from '../core/actions/run';
-import { appliesToKind } from '../core/actions/types';
+import { appliesToKind, type ActionContext, type ActionEffect } from '../core/actions/types';
 import { makeContent, type EntryContent } from '../core/content';
 import { oneLine, toBase64 } from '../core/format';
 import { sha256 } from '../core/hash';
@@ -170,7 +170,30 @@ export class Engine {
     actionId: string,
     params: unknown,
   ): Promise<DerivedContent[]> {
-    const state = this.state(entryId);
+    const { impl, value, content, ctx } = await this.prepareAction(entryId, kind, actionId);
+    const results = await impl.run(value, content, params, ctx);
+    // Copy: the bytes may share a buffer with the value, and transferring would detach it
+    const copies = results.map(r => ({ ...r, bytes: r.bytes.slice() }));
+    return Comlink.transfer(
+      copies,
+      copies.map(c => c.bytes.buffer),
+    );
+  }
+
+  /** Runs an effect action (`info.effect`); the caller carries out the returned effect. */
+  async actionEffect(
+    entryId: EntryId,
+    kind: Kind,
+    actionId: string,
+    params: unknown,
+  ): Promise<ActionEffect> {
+    const { impl, value, content, ctx } = await this.prepareAction(entryId, kind, actionId);
+    if (!impl.effect) throw new Error(`${impl.info.title} makes a capture; use runAction`);
+    return impl.effect(value, content, params, ctx);
+  }
+
+  private async prepareAction(entryId: EntryId, kind: Kind, actionId: string) {
+    const { content } = this.state(entryId);
     const impl = actionImpl(actionId);
     if (!impl || !appliesToKind(impl.info, kind)) {
       throw new Error(`No '${actionId}' action for ${kind}`);
@@ -178,16 +201,11 @@ export class Engine {
     const { module } = impl.info;
     if (module) await this.loadModule(module); // fail clearly if it can't load
     const value = await this.value(entryId, kind);
-    const results = await impl.run(value, state.content, params, {
+    const ctx: ActionContext = {
       signal: new AbortController().signal,
       service: (id, guard) => this.service(id, guard),
-    });
-    // Copy: the bytes may share a buffer with the value, and transferring would detach it
-    const copies = results.map(r => ({ ...r, bytes: r.bytes.slice() }));
-    return Comlink.transfer(
-      copies,
-      copies.map(c => c.bytes.buffer),
-    );
+    };
+    return { impl, value, content, ctx };
   }
 
   raw(entryId: EntryId, limit = 100 * 1024): RawView {
@@ -322,6 +340,7 @@ export type EngineApi = Pick<
   | 'derive'
   | 'actions'
   | 'runAction'
+  | 'actionEffect'
   | 'raw'
   | 'rawBytes'
   | 'forget'

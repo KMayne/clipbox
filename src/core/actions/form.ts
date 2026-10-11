@@ -11,6 +11,8 @@ export type FormField =
       default: string;
       hint?: 'multiline' | 'regex';
       pattern?: string;
+      /** Sensitive (see `GlobalMeta.secret`): never shown in labels. */
+      secret?: boolean;
     }
   | {
       type: 'number';
@@ -50,6 +52,7 @@ const propertySchema = z.union([
     default: z.string(),
     hint: z.enum(['multiline', 'regex']).optional(),
     pattern: z.string().optional(),
+    secret: z.boolean().optional(),
   }),
   z.object({
     ...common,
@@ -116,6 +119,7 @@ export function formFields(params: ParamsSchema): FormField[] {
           default: p.default,
           ...('hint' in p && p.hint && { hint: p.hint }),
           ...('pattern' in p && p.pattern !== undefined && { pattern: p.pattern }),
+          ...('secret' in p && p.secret === true && { secret: true }),
         };
     }
   });
@@ -131,14 +135,30 @@ const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…`
 /**
  * Short text for a derived capture's parent label: the action's own `label`, or its title plus
  * the settings, e.g. "Sort lines (Z → A, unique)". Invalid settings fall back to the title.
+ * Secret settings (`.meta({ secret: true })`) are always left out.
  */
 export function actionLabel(info: ActionInfo, params: unknown): string {
   const parsed = info.params.safeParse(params ?? {});
   if (!parsed.success) return info.title;
-  if (info.label) return clip(info.label(parsed.data), MAX_LABEL);
   const values: Record<string, unknown> = parsed.data;
+  const fields = formFields(info.params);
+  if (info.label) {
+    const label = info.label(parsed.data);
+    // A custom label that echoes a secret falls back to the bare title
+    const leaks = fields.some(f => {
+      const v = values[f.key];
+      return (
+        f.type === 'string' &&
+        f.secret &&
+        typeof v === 'string' &&
+        v.trim() !== '' &&
+        label.includes(v.trim().slice(0, 16))
+      );
+    });
+    return leaks ? info.title : clip(label, MAX_LABEL);
+  }
   const parts: string[] = [];
-  for (const field of formFields(info.params)) {
+  for (const field of fields) {
     const v = values[field.key];
     if (field.type === 'boolean') {
       if (v === true) parts.push(field.title.toLowerCase());
@@ -146,6 +166,8 @@ export function actionLabel(info: ActionInfo, params: unknown): string {
       parts.push(field.options.find(o => o.value === v)?.label ?? String(v));
     } else if (field.type === 'number') {
       parts.push(`${field.title.toLowerCase()} ${String(v)}`);
+    } else if (field.secret) {
+      continue;
     } else if (typeof v === 'string' && v !== '') {
       parts.push(JSON.stringify(clip(v, 16)));
     }
