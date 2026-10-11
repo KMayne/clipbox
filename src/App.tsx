@@ -6,6 +6,7 @@ import { DropOverlay } from './components/DropOverlay';
 import { Inspector } from './components/Inspector';
 import { Notice } from './components/Notice';
 import { PastesPane } from './components/PastesPane';
+import { SettingsDialog } from './components/SettingsDialog';
 import { TopBar } from './components/TopBar';
 import { theme } from './theme';
 import { useGlobalShortcuts } from './useGlobalShortcuts';
@@ -48,6 +49,7 @@ export function App() {
         </Panel>
       </Group>
       <CommandPalette />
+      <SettingsDialog />
       <Notice />
       {dragging && <DropOverlay />}
     </div>

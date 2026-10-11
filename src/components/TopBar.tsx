@@ -1,11 +1,13 @@
 import { css } from '@emotion/css';
 import {
+  mdiCogOutline,
   mdiClipboardArrowDownOutline,
   mdiFileUploadOutline,
   mdiPackageVariantClosed,
 } from '@mdi/js';
 import { Icon } from '@mdi/react';
 import { openFile, readClipboard } from '../capture/sources';
+import { useUiStore } from '../state/uiStore';
 import { theme } from '../theme';
 import { ui } from './ui';
 
@@ -56,6 +58,14 @@ export function TopBar() {
         <span>
           <kbd className={ui.kbd}>Ctrl+K</kbd> commands
         </span>
+        <button
+          className={ui.iconButton}
+          title="Settings"
+          aria-label="Settings"
+          onClick={() => useUiStore.getState().openSettings()}
+        >
+          <Icon path={mdiCogOutline} size={0.8} />
+        </button>
       </span>
     </header>
   );

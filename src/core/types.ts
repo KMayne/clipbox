@@ -42,6 +42,10 @@ export interface ColumnInfo {
 
 export interface Summary {
   kind: Kind;
+  /** Size of the underlying content in bytes. */
+  bytes: number;
+  /** Monaco language id when the content is code/markup, e.g. 'typescript'. */
+  language?: string;
   /** Short chip text, e.g. "JSON array · 42". */
   label: string;
   stats: StatRow[];
@@ -51,11 +55,22 @@ export interface Summary {
   columns?: ColumnInfo[];
 }
 
+/**
+ * ready: parsed · loading: waiting on a module (call engine.resolve) · off: module disabled ·
+ * error: parse or module load failed
+ */
+export type InterpretationStatus = 'ready' | 'loading' | 'off' | 'error';
+
 export interface Interpretation {
   entryId: EntryId;
   kind: Kind;
   confidence: number;
-  label: string;
+  status: InterpretationStatus;
+  /** Present once ready. */
+  label?: string;
+  /** Module that owns or is required by this interpretation, if not core. */
+  module?: string;
+  error?: string;
 }
 
 export interface IngestResult {

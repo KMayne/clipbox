@@ -10,6 +10,8 @@ import type {
 } from '../core/types';
 import { engine } from '../engine/engineClient';
 import { dropHandles } from '../engine/valueHandle';
+import type { ModuleId } from '../modules/types';
+import { onPolicyChange } from './moduleStore';
 
 export const MAX_CAPTURES = 50;
 export const CONFIRM_BYTES = 50 * 1024 * 1024;
@@ -70,9 +72,48 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
     const capture = captures[0];
     if (!capture || capture.id !== captureId) return;
     if (selection && capture.entries.some(e => e.id === selection.entryId)) return;
-    const best = capture.entries.find(e => e.interpretations.length > 0)?.interpretations[0];
+    const best = capture.entries
+      .flatMap(e => e.interpretations)
+      .find(i => i.status === 'ready' || i.status === 'loading');
     if (best) set({ selection: { entryId: best.entryId, kind: best.kind } });
   };
+
+  const setInterpretation = (entryId: EntryId, next: Interpretation) =>
+    set(s => ({
+      captures: s.captures.map(c => ({
+        ...c,
+        entries: c.entries.map(e =>
+          e.id !== entryId
+            ? e
+            : {
+                ...e,
+                interpretations: e.interpretations.map(i => (i.kind === next.kind ? next : i)),
+              },
+        ),
+      })),
+    }));
+
+  const resolve = async (entryId: EntryId, kind: Kind) => {
+    try {
+      setInterpretation(entryId, await engine.resolve(entryId, kind));
+    } catch {
+      // entry was removed while resolving
+    }
+  };
+
+  /** When a module is switched back on, re-resolve chips that were blocked by it. */
+  onPolicyChange((id: ModuleId, policy) => {
+    if (policy === 'off') return;
+    for (const c of get().captures) {
+      for (const e of c.entries) {
+        for (const i of e.interpretations) {
+          if (i.module !== id || (i.status !== 'off' && i.status !== 'error')) continue;
+          setInterpretation(e.id, { ...i, status: 'loading', error: undefined });
+          void resolve(e.id, i.kind);
+        }
+      }
+    }
+  });
 
   return {
     captures: [],
@@ -114,6 +155,8 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
           interpretations: res.interpretations,
         });
         autoSelect(capture.id);
+        for (const i of res.interpretations)
+          if (i.status === 'loading') void resolve(entryId, i.kind);
       } catch (err) {
         updateEntry(entryId, { status: 'error', error: String(err) });
       }
@@ -154,7 +197,11 @@ export function chipOrder(captures: CaptureView[]): Selection[] {
   return captures.flatMap(c =>
     c.collapsed
       ? []
-      : c.entries.flatMap(e => e.interpretations.map(i => ({ entryId: e.id, kind: i.kind }))),
+      : c.entries.flatMap(e =>
+          e.interpretations
+            .filter(i => i.status !== 'off')
+            .map(i => ({ entryId: e.id, kind: i.kind })),
+        ),
   );
 }
 

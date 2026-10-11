@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { detectKinds, getInterpreter } from '../../src/core/interpreters';
 import { textContent, bytesContent, pngHeader } from './helpers';
 import type { EntryContent } from '../../src/core/content';
+import type { InterpretContext } from '../../src/core/interpreter';
 
 const kinds = (c: EntryContent) => detectKinds(c).map(d => d.kind);
-const summarise = (kind: string, c: EntryContent) => {
+const noServices: InterpretContext = { service: async () => null };
+const summarise = async (kind: string, c: EntryContent) => {
   const i = getInterpreter(kind);
-  const v = i.parse(c);
-  return { label: i.label(v), ...i.summarise(v), value: v };
+  const v = await i.parse(c, noServices);
+  return { label: i.label(v), ...(await i.summarise(v)), value: v };
 };
 const stat = (stats: { label: string; value: string }[], label: string) =>
   stats.find(s => s.label === label)?.value;
@@ -18,13 +20,13 @@ const USERS = JSON.stringify([
   { id: 3, name: 'Grace' },
 ]);
 
-describe('json', () => {
-  it('ranks JSON first for an array of objects and offers records + text', () => {
+describe('json', async () => {
+  it('ranks JSON first for an array of objects and offers records + text', async () => {
     expect(kinds(textContent(USERS))).toEqual(['json', 'records', 'text']);
   });
 
-  it('summarises arrays', () => {
-    const s = summarise('json', textContent(USERS));
+  it('summarises arrays', async () => {
+    const s = await summarise('json', textContent(USERS));
     expect(s.label).toBe('JSON array · 3');
     expect(stat(s.stats, 'Length')).toBe('3');
     expect(stat(s.stats, 'Element types')).toBe('object 3');
@@ -33,18 +35,18 @@ describe('json', () => {
     expect(stat(s.stats, 'Max depth')).toBe('2');
   });
 
-  it('does not claim bare scalars from text/plain', () => {
+  it('does not claim bare scalars from text/plain', async () => {
     expect(kinds(textContent('42'))).toEqual(['text']);
   });
 });
 
-describe('records', () => {
-  it('parses CSV with header and typed cells', () => {
+describe('records', async () => {
+  it('parses CSV with header and typed cells', async () => {
     const c = textContent(
       'id,name,joined,active\n1,Ada,2024-01-02,true\n2,Linus,,false\n007,Grace,2023-05-06,true\n',
     );
     expect(kinds(c)[0]).toBe('records');
-    const s = summarise('records', c);
+    const s = await summarise('records', c);
     expect(s.label).toBe('Records 3×4');
     expect(s.columns).toEqual([
       { name: 'id', type: 'number | string' },
@@ -55,18 +57,18 @@ describe('records', () => {
     expect(stat(s.stats, 'Source')).toBe('comma-delimited');
   });
 
-  it('prefers tab over comma for TSV', () => {
+  it('prefers tab over comma for TSV', async () => {
     const c = textContent('a\tb\n1,5\t2\n3\t4\n5\t6');
-    const s = summarise('records', c);
+    const s = await summarise('records', c);
     expect(stat(s.stats, 'Source')).toBe('tab-delimited');
   });
 
-  it('detects missing header', () => {
-    const s = summarise('records', textContent('1,2\n3,4\n5,6'));
+  it('detects missing header', async () => {
+    const s = await summarise('records', textContent('1,2\n3,4\n5,6'));
     expect(s.columns!.map(c => c.name)).toEqual(['col1', 'col2']);
   });
 
-  it('ranks prose below text', () => {
+  it('ranks prose below text', async () => {
     const prose = [
       'Well, I went to the shop, and then I came home again after a while.',
       'Later, we talked about it, and nobody could quite agree on the plan.',
@@ -76,9 +78,9 @@ describe('records', () => {
   });
 });
 
-describe('text', () => {
-  it('reports line endings and counts', () => {
-    const s = summarise('text', textContent('one two\r\nthree\r\n\r\nfour\r\n'));
+describe('text', async () => {
+  it('reports line endings and counts', async () => {
+    const s = await summarise('text', textContent('one two\r\nthree\r\n\r\nfour\r\n'));
     expect(stat(s.stats, 'Lines')).toBe('4');
     expect(stat(s.stats, 'Line endings')).toBe('CRLF');
     expect(stat(s.stats, 'Words')).toBe('4');
@@ -87,33 +89,33 @@ describe('text', () => {
   });
 });
 
-describe('html', () => {
+describe('html', async () => {
   const html =
     '<meta charset="utf-8"><table><tr><td>a &amp; b</td><td>c</td></tr></table><a href="x">link</a><img src="y">';
 
-  it('is preferred for text/html and also offers stripped text', () => {
+  it('is preferred for text/html and also offers stripped text', async () => {
     const c = textContent(html, 'text/html');
     expect(kinds(c)).toEqual(['html', 'text']);
-    const s = summarise('html', c);
+    const s = await summarise('html', c);
     expect(stat(s.stats, 'Tables')).toBe('1');
     expect(stat(s.stats, 'Links')).toBe('1');
     expect(stat(s.stats, 'Images')).toBe('1');
-    expect(summarise('text', c).value).toEqual({ text: 'a & b\tc\n\nlink' });
+    expect((await summarise('text', c)).value).toEqual({ text: 'a & b\tc\n\nlink' });
   });
 });
 
-describe('image + binary', () => {
-  it('reads PNG metadata', () => {
+describe('image + binary', async () => {
+  it('reads PNG metadata', async () => {
     const c = bytesContent(pngHeader(812, 430), 'image/png');
     expect(kinds(c)).toEqual(['image', 'binary']);
-    const s = summarise('image', c);
+    const s = await summarise('image', c);
     expect(s.label).toBe('PNG 812×430');
     expect(stat(s.stats, 'Aspect ratio')).toBe('1.89:1');
   });
 
-  it('falls back to binary for unknown bytes', () => {
+  it('falls back to binary for unknown bytes', async () => {
     const c = bytesContent([0, 1, 2, 3, 0xff]);
     expect(kinds(c)).toEqual(['binary']);
-    expect(stat(summarise('binary', c).stats, 'First 16 bytes')).toBe('00 01 02 03 ff');
+    expect(stat((await summarise('binary', c)).stats, 'First 16 bytes')).toBe('00 01 02 03 ff');
   });
 });

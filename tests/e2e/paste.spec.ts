@@ -21,7 +21,7 @@ test('paste shows every format with interpretations and stats', async ({ page })
   await expect(plain.getByTestId('chip')).toHaveText([
     'JSON array · 42',
     'Records 42×3',
-    'Text · 1 line',
+    'JSON · 1 line',
   ]);
   await expect(
     page.locator('[data-testid=entry][data-mime="text/html"]').getByTestId('chip'),

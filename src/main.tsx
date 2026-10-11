@@ -2,6 +2,8 @@ import { injectGlobal } from '@emotion/css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { useModuleStore } from './state/moduleStore';
+import { sw } from './swClient';
 import { theme } from './theme';
 
 injectGlobal`
@@ -18,6 +20,9 @@ injectGlobal`
   ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
   ::-webkit-scrollbar-corner { background: transparent; }
 `;
+
+sw.register();
+useModuleStore.getState().init();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

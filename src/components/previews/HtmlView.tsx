@@ -2,6 +2,7 @@ import { css, cx } from '@emotion/css';
 import { useState } from 'react';
 import type { ValueHandle } from '../../core/types';
 import { theme } from '../../theme';
+import { ModulePreview } from '../ModulePreview';
 import { ui } from '../ui';
 import { useAsync } from '../useAsync';
 import { preview } from './styles';
@@ -56,9 +57,16 @@ export function HtmlView({ handle }: { handle: ValueHandle }) {
             srcDoc={CSP + html.value}
           />
         ) : (
-          <pre className={cx(preview.scroller, styles.source)}>
-            {html.value.slice(0, SOURCE_LIMIT)}
-          </pre>
+          <ModulePreview
+            module="editor"
+            kind="html"
+            handle={handle}
+            fallback={
+              <pre className={cx(preview.scroller, styles.source)}>
+                {html.value.slice(0, SOURCE_LIMIT)}
+              </pre>
+            }
+          />
         )}
       </div>
     </div>

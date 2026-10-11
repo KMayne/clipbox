@@ -1,5 +1,8 @@
 import { css, cx } from '@emotion/css';
 import { formatBytes } from '../core/format';
+import { kindName } from '../core/kinds';
+import { moduleInfo } from '../modules/registry';
+import { useUiStore } from '../state/uiStore';
 import type { Interpretation } from '../core/types';
 import { useCaptureStore, type EntryView } from '../state/captureStore';
 import { kindColor, theme } from '../theme';
@@ -63,6 +66,10 @@ const styles = {
       background: ${theme.hover};
     }
   `,
+  inactive: css`
+    opacity: 0.55;
+    border-style: dashed;
+  `,
   selected: css`
     border-color: ${theme.accent};
     background: rgba(78, 161, 255, 0.15);
@@ -108,21 +115,50 @@ export function EntryRow({ entry }: { entry: EntryView }) {
   );
 }
 
+function chipText(i: Interpretation): string {
+  const name = kindName(i.kind);
+  switch (i.status) {
+    case 'ready':
+      return i.label ?? name;
+    case 'loading':
+      return `${name} · …`;
+    case 'off':
+      return `${name} · module off`;
+    case 'error':
+      return `${name} · unavailable`;
+  }
+}
+
 function InterpretationChip({ interpretation: i }: { interpretation: Interpretation }) {
   const selected = useCaptureStore(
     s => s.selection?.entryId === i.entryId && s.selection.kind === i.kind,
   );
   const select = useCaptureStore(s => s.select);
+  const inactive = i.status === 'off' || i.status === 'error';
+  const title =
+    i.status === 'off'
+      ? `${moduleInfo(i.module ?? '')?.title ?? i.module} is off — click to open Settings`
+      : i.status === 'error'
+        ? i.error
+        : i.status === 'loading'
+          ? `Loading ${moduleInfo(i.module ?? '')?.title ?? 'module'}…`
+          : undefined;
   return (
     <button
-      className={cx(styles.chip, selected && styles.selected)}
+      className={cx(styles.chip, selected && styles.selected, inactive && styles.inactive)}
       aria-pressed={selected}
       data-testid="chip"
       data-kind={i.kind}
-      onClick={() => select({ entryId: i.entryId, kind: i.kind })}
+      data-status={i.status}
+      title={title}
+      onClick={() =>
+        i.status === 'off'
+          ? useUiStore.getState().openSettings(i.module)
+          : select({ entryId: i.entryId, kind: i.kind })
+      }
     >
       <span className={styles.dot} style={{ background: kindColor(i.kind) }} />
-      {i.label}
+      {chipText(i)}
     </button>
   );
 }

@@ -1,9 +1,14 @@
 import { formatBytes, formatCount, plural } from '../format';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
+import { detectByHeuristic } from '../../modules/langdetect/heuristics';
+import type { LanguageDetector } from '../../modules/langdetect/detector';
+import type { Language } from '../../modules/langdetect/languages';
 import { stripHtml } from './html';
+import { tryParseJson } from './json';
 
 interface TextValue {
   text: string;
+  language?: Language & { confidence: number | null };
 }
 
 const linesCache = new WeakMap<TextValue, string[]>();
@@ -22,9 +27,23 @@ const isHtmlMime = (mime: string) => mime === 'text/html';
 
 export const textInterpreter: Interpreter<TextValue> = {
   kind: 'text',
+  requires: ['langdetect'],
   detect: c => (c.text === null ? 0 : isHtmlMime(c.mime) ? 0.25 : 0.3),
-  parse: c => ({ text: isHtmlMime(c.mime) ? stripHtml(c.text ?? '') : (c.text ?? '') }),
-  label: v => `Text · ${plural(linesOf(v).length, 'line')}`,
+  async parse(c, ctx) {
+    // Text stripped from HTML is prose; don't bother detecting a language
+    if (isHtmlMime(c.mime)) return { text: stripHtml(c.text ?? '') };
+    const text = c.text ?? '';
+    // JSON is already parsed (memoised) for the json kind; no need for the model
+    const heuristic: Language | null = tryParseJson(c).ok
+      ? { monaco: 'json', name: 'JSON' }
+      : detectByHeuristic(text);
+    if (heuristic) return { text, language: { ...heuristic, confidence: null } };
+    const detected = await (await ctx.service<LanguageDetector>('langdetect'))?.detect(text);
+    return detected
+      ? { text, language: { ...detected.language, confidence: detected.confidence } }
+      : { text };
+  },
+  label: v => `${v.language?.name ?? 'Text'} · ${plural(linesOf(v).length, 'line')}`,
   summarise(v) {
     const lines = linesOf(v);
     const crlf = (v.text.match(/\r\n/g) ?? []).length;
@@ -36,8 +55,21 @@ export const textInterpreter: Interpreter<TextValue> = {
       longest = Math.max(longest, l.length);
       if (l.trim() === '') blank++;
     }
+    const { language } = v;
     return {
+      language: language?.monaco,
       stats: [
+        ...(language
+          ? [
+              {
+                label: 'Language',
+                value:
+                  language.confidence === null
+                    ? `${language.name} (heuristic)`
+                    : `${language.name} (${Math.round(language.confidence * 100)}%)`,
+              },
+            ]
+          : []),
         { label: 'Bytes', value: formatBytes(new TextEncoder().encode(v.text).byteLength) },
         { label: 'Characters', value: formatCount(v.text.length) },
         { label: 'Lines', value: formatCount(lines.length) },

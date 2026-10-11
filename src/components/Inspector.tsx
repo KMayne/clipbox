@@ -11,6 +11,7 @@ import { HexView } from './previews/HexView';
 import { HtmlView } from './previews/HtmlView';
 import { ImageView } from './previews/ImageView';
 import { JsonTree } from './previews/JsonTree';
+import { ModulePreview } from './ModulePreview';
 import { RecordsTable } from './previews/RecordsTable';
 import { TextView } from './previews/TextView';
 import { RawView } from './RawView';
@@ -18,6 +19,9 @@ import { SchemaView } from './SchemaView';
 import { StatsGrid } from './StatsGrid';
 import { ui } from './ui';
 import { useAsync } from './useAsync';
+
+/** Above this, Monaco gets sluggish; use the lightweight virtualised view. */
+const MONACO_MAX_BYTES = 20 * 1024 * 1024;
 
 const TABS: InspectorTab[] = ['preview', 'stats', 'schema', 'raw'];
 
@@ -171,7 +175,16 @@ function Preview({ handle }: { handle: ValueHandle }) {
     case 'records':
       return <RecordsTable handle={handle} />;
     case 'text':
-      return <TextView handle={handle} />;
+      return handle.summary.bytes <= MONACO_MAX_BYTES ? (
+        <ModulePreview
+          module="editor"
+          kind="text"
+          handle={handle}
+          fallback={<TextView handle={handle} />}
+        />
+      ) : (
+        <TextView handle={handle} />
+      );
     case 'html':
       return <HtmlView handle={handle} />;
     case 'image':

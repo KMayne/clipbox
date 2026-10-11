@@ -1,5 +1,5 @@
 import { memo, type EntryContent } from '../content';
-import { formatBytes, formatCount, formatPercent } from '../format';
+import { formatBytes, formatCount, formatPercent, plural } from '../format';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
 import { jsonChildCount, jsonChildren, jsonTypeOf } from '../jsonSlice';
 import { describeSchema, inferSchema } from '../schema';
@@ -42,7 +42,7 @@ export const jsonInterpreter: Interpreter<JsonValue> = {
   label({ json }) {
     const type = jsonTypeOf(json);
     if (type === 'array') return `JSON array · ${formatCount(jsonChildCount(json))}`;
-    if (type === 'object') return `JSON object · ${formatCount(jsonChildCount(json))} keys`;
+    if (type === 'object') return `JSON object · ${plural(jsonChildCount(json), 'key')}`;
     return `JSON ${type}`;
   },
   summarise({ json, bytes }) {

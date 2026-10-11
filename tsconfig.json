@@ -17,5 +17,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src", "tests", "vite.config.ts", "playwright.config.ts", "eslint.config.js"]
+  "include": ["src", "tests", "vite", "vite.config.ts", "playwright.config.ts", "eslint.config.js"]
 }
