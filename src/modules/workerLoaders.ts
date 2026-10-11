@@ -9,4 +9,5 @@ export const workerLoaders: Partial<Record<ModuleId, () => Promise<WorkerModule>
   sqlite: () => import('./sqlite/worker'),
   pdf: () => import('./pdf/worker'),
   libarchive: () => import('./libarchive/worker'),
+  audiotools: () => import('./audiotools/worker'),
 };

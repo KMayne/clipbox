@@ -18,6 +18,7 @@ export default defineConfig({
       '@peculiar/x509',
       'reflect-metadata',
       'music-metadata',
+      'mediabunny',
       'xlsx',
       'sql.js',
       'pdfjs-dist',

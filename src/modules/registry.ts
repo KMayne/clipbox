@@ -74,6 +74,14 @@ export const modules: ModuleInfo[] = (
       hasWorker: true,
       hasUi: false,
     },
+    {
+      id: 'audiotools',
+      title: 'Audio tools',
+      description: 'Loudness normalisation for audio and video (decode, re-encode and remux)',
+      approxBytes: 630_000,
+      hasWorker: true,
+      hasUi: false,
+    },
   ] satisfies Omit<ModuleInfo, 'library'>[]
 ).map(m => ({ ...m, library: moduleLibraries[m.id] }));
 
