@@ -1,3 +1,4 @@
+import { audioDetector, videoDetector } from './media/detect';
 import { pemDetector } from './x509/detect';
 import type { Detector, ModuleId, ModuleInfo, Policies, Policy } from './types';
 
@@ -30,10 +31,19 @@ export const modules: ModuleInfo[] = [
     hasWorker: true,
     hasUi: false,
   },
+  {
+    id: 'media',
+    title: 'Audio & video',
+    description: 'Reads audio and video metadata, tags and cover art (music-metadata)',
+    approxBytes: 250_000,
+    defaultPolicy: 'auto',
+    hasWorker: true,
+    hasUi: false,
+  },
 ];
 
 /** Detectors for kinds owned by lazily-loaded modules. */
-export const detectors: Detector[] = [pemDetector];
+export const detectors: Detector[] = [pemDetector, audioDetector, videoDetector];
 
 export const moduleInfo = (id: ModuleId) => modules.find(m => m.id === id);
 

@@ -119,9 +119,17 @@ export type SliceRequest =
   /** Whole JSON value (used for top-level scalars). */
   | { type: 'json' }
   /** Rendered HTML (Markdown). */
-  | { type: 'html' };
+  | { type: 'html' }
+  /** Playable audio/video bytes and MIME type. */
+  | { type: 'media' };
 
 export interface ImageData {
+  bytes: Uint8Array<ArrayBuffer>;
+  mime: string;
+}
+
+/** Audio or video bytes; `mime` is audio/* when there's no video track. */
+export interface MediaData {
   bytes: Uint8Array<ArrayBuffer>;
   mime: string;
 }
@@ -137,6 +145,7 @@ export interface ValueHandle {
   image(): Promise<ImageData>;
   json(): Promise<unknown>;
   html(): Promise<string>;
+  media(): Promise<MediaData>;
 }
 
 export interface RawView {
