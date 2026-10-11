@@ -14,6 +14,7 @@ import { JsonTree } from './previews/JsonTree';
 import { MarkdownView } from './previews/MarkdownView';
 import { ModulePreview } from './ModulePreview';
 import { OpenAsMenu } from './OpenAsMenu';
+import { ArchiveView } from './previews/ArchiveView';
 import { Base64Preview } from './previews/Base64Preview';
 import { JwtView } from './previews/JwtView';
 import { RecordsTable } from './previews/RecordsTable';
@@ -216,6 +217,8 @@ function Preview({ handle }: { handle: ValueHandle }) {
       return <ValueCard handle={handle} />;
     case 'pem':
       return <PemView handle={handle} />;
+    case 'archive':
+      return <ArchiveView handle={handle} />;
     default:
       return <HexView handle={handle} />;
   }

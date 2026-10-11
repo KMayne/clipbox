@@ -1,3 +1,4 @@
+import { libarchiveDetector } from './libarchive/detect';
 import { pemDetector } from './x509/detect';
 import type { Detector, ModuleId, ModuleInfo, Policies, Policy } from './types';
 
@@ -30,10 +31,19 @@ export const modules: ModuleInfo[] = [
     hasWorker: true,
     hasUi: false,
   },
+  {
+    id: 'libarchive',
+    title: 'More archives',
+    description: '7z, RAR, tar.xz, tar.bz2 and zstd archives (libarchive WASM, fzstd)',
+    approxBytes: 1_100_000,
+    defaultPolicy: 'auto',
+    hasWorker: true,
+    hasUi: false,
+  },
 ];
 
 /** Detectors for kinds owned by lazily-loaded modules. */
-export const detectors: Detector[] = [pemDetector];
+export const detectors: Detector[] = [pemDetector, libarchiveDetector];
 
 export const moduleInfo = (id: ModuleId) => modules.find(m => m.id === id);
 
