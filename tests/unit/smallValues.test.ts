@@ -111,6 +111,8 @@ describe('timestamp', () => {
     const now = Date.UTC(2024, 0, 1);
     expect(relativeTime(now + 3 * 86_400_000, now)).toBe('in 3 days');
     expect(relativeTime(now - 2 * 3_600_000, now)).toBe('2 hours ago');
+    // Rounding up to 60 minutes carries into hours
+    expect(relativeTime(now + 59 * 60_000 + 40_000, now)).toBe('in 1 hour');
   });
 });
 

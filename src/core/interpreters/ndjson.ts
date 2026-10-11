@@ -7,15 +7,17 @@ import { inferSchema } from '../schema';
 import { arrayStats, maxDepth } from '../jsonStats';
 import { tryParseJson } from './json';
 
-/** Lines checked by detection; every non-empty one must parse. */
+/** Lines checked by detection; at most `MAX_INVALID_SHARE` of the non-empty ones may fail. */
 const DETECT_LINES = 200;
+/** A stray truncated or hand-edited line shouldn't hide a log; prose or broken JSON fails more. */
+const MAX_INVALID_SHARE = 0.1;
 const SHOWN_INVALID = 5;
 const NDJSON_MIME = /^application\/(x-ndjson|jsonl|x-jsonlines|jsonlines)\b/;
 
 export interface NdjsonValue {
   kind: 'ndjson';
   items: unknown[];
-  /** 1-based line numbers that failed to parse (only possible beyond the detection window). */
+  /** 1-based line numbers that failed to parse; they're left out of `items`. */
   invalidLines: number[];
 }
 
@@ -32,6 +34,7 @@ export const tryParseNdjson = createMemo((c): NdjsonParse | null => {
   const items: unknown[] = [];
   const invalidLines: number[] = [];
   let nonEmpty = 0;
+  let windowInvalid = 0;
   let containers = 0;
   let allObjects = true;
   for (const [i, raw] of text.split('\n').entries()) {
@@ -42,7 +45,11 @@ export const tryParseNdjson = createMemo((c): NdjsonParse | null => {
     try {
       value = JSON.parse(line);
     } catch {
-      if (nonEmpty <= DETECT_LINES) return null;
+      if (nonEmpty <= DETECT_LINES) {
+        windowInvalid++;
+        // Already too many to pass, whatever follows
+        if (windowInvalid > DETECT_LINES * MAX_INVALID_SHARE) return null;
+      }
       invalidLines.push(i + 1);
       continue;
     }
@@ -50,8 +57,9 @@ export const tryParseNdjson = createMemo((c): NdjsonParse | null => {
     if (!isRecord(value)) allObjects = false;
     items.push(value);
   }
+  if (windowInvalid > Math.min(nonEmpty, DETECT_LINES) * MAX_INVALID_SHARE) return null;
   // A column of bare numbers or words isn't worth calling NDJSON
-  if (nonEmpty < 2 || containers === 0) return null;
+  if (items.length < 2 || containers === 0) return null;
   if (tryParseJson(c).ok) return null;
   return { items, invalidLines, allObjects };
 });

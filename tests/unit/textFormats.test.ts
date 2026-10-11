@@ -75,6 +75,39 @@ describe('markdown detection', () => {
     expect(kinds(textContent('- one\n- two\n- three'))).not.toContain('markdown');
   });
 
+  it('detects a note of bold `Label:` lines', () => {
+    const note = '**Name:** Ada Lovelace\n**Role:** Engineer\n**Started:** 2024-01-02\n';
+    expect(kinds(textContent(note))[0]).toBe('markdown');
+  });
+
+  it('leaves plain `Label: value` lines to YAML or text', () => {
+    // No Markdown syntax at all: these lines are equally a YAML mapping, a header block or prose,
+    // and render the same either way, so Markdown would add nothing.
+    const yamlish = 'Name: Ada Lovelace\nRole: Engineer\nStarted: 2024-01-02\n';
+    expect(kinds(textContent(yamlish))).toEqual(['yaml', 'text']);
+    // A value with its own `: ` isn't valid YAML, so this is (correctly) just text
+    const note = 'Meeting: Monday standup\nWhere: Room 4: the big one\nNotes: bring snacks\n';
+    expect(kinds(textContent(note))).toEqual(['text']);
+  });
+
+  const TABLE =
+    '| id | name | score |\n|---|---|---|\n' +
+    Array.from({ length: 20 }, (_, i) => `| ${i} | name${i} | ${i * 3} |`).join('\n') +
+    '\n';
+
+  it.each([
+    ['a heading', `# Scores\n\n${TABLE}`],
+    ['a line of prose', `Scores from the last run, by person.\n\n${TABLE}`],
+  ])('ranks a long pipe table with %s above records', (_, text) => {
+    const c = textContent(text);
+    expect(kinds(c)[0]).toBe('markdown');
+    expect(kinds(c)).toContain('records');
+  });
+
+  it('leaves a bare pipe table to records, offering Markdown second', () => {
+    expect(kinds(textContent(TABLE)).slice(0, 2)).toEqual(['records', 'markdown']);
+  });
+
   it('does not claim JSON', () => {
     const json = JSON.stringify({ text: '# heading\n- [link](https://x.dev) **bold**' });
     expect(kinds(textContent(json))).not.toContain('markdown');
@@ -221,6 +254,25 @@ describe('ndjson', () => {
     // Invalid lines are skipped; the valid ones still make records
     const records = await interpret('records', c);
     expect(records.label).toBe('Records 249×2');
+  });
+
+  it('tolerates a few bad lines inside the detection window and reports them', async () => {
+    const lines = events(30);
+    lines[2] = '{"id": 2, broken';
+    lines[17] = 'oops';
+    const c = textContent(lines.join('\n'));
+    expect(kinds(c)[0]).toBe('ndjson');
+    const r = await interpret('ndjson', c);
+    expect(r.label).toBe('NDJSON · 28 lines');
+    expect(stat(r.stats, 'Invalid lines')).toBe('2 (lines 3, 18)');
+  });
+
+  it('rejects text where more than a tenth of lines are not JSON', () => {
+    const lines = events(20);
+    for (const i of [1, 5, 9]) lines[i] = 'not json';
+    expect(kinds(textContent(lines.join('\n')))).not.toContain('ndjson');
+    // Two lines, one bad: half of them
+    expect(kinds(textContent('{"a":1}\n{"a":2\n'))).not.toContain('ndjson');
   });
 
   it('offers records with an NDJSON source', async () => {

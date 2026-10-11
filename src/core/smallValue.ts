@@ -1,4 +1,5 @@
 import { createMemo } from './content';
+import { nearestUnit } from './time';
 
 /** Shared by the small-value decoders (timestamp, uuid, colour) and their ValueCard preview. */
 
@@ -37,22 +38,23 @@ export function formatUtc(ms: number): string {
   );
 }
 
-const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ['year', 365.25 * 86_400_000],
-  ['month', 30.44 * 86_400_000],
-  ['day', 86_400_000],
-  ['hour', 3_600_000],
-  ['minute', 60_000],
-  ['second', 1000],
+const UNITS: readonly [RelativeUnit, ...RelativeUnit[]] = [
+  { unit: 'year', size: 365.25 * 86_400_000 },
+  { unit: 'month', size: 30.44 * 86_400_000 },
+  { unit: 'day', size: 86_400_000 },
+  { unit: 'hour', size: 3_600_000 },
+  { unit: 'minute', size: 60_000 },
+  { unit: 'second', size: 1000 },
 ];
+interface RelativeUnit {
+  unit: Intl.RelativeTimeFormatUnit;
+  size: number;
+}
 
 /** "in 3 days", "2 years ago", "now". */
 export function relativeTime(ms: number, now = Date.now()): string {
   const diff = ms - now;
   const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-  for (const [unit, size] of UNITS) {
-    if (Math.abs(diff) >= size || unit === 'second')
-      return rtf.format(Math.round(diff / size), unit);
-  }
-  return rtf.format(0, 'second');
+  const { unit, n } = nearestUnit(diff, UNITS);
+  return rtf.format(diff < 0 ? -n : n, unit.unit);
 }

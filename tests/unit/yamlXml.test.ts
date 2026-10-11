@@ -159,6 +159,19 @@ describe('xml', () => {
     expect(top).toContainEqual(expect.objectContaining({ key: 'entry', type: 'array' }));
   });
 
+  it('leaves the declaration out of the tree and reports it in stats', async () => {
+    const s = await summarise('xml', textContent(FEED));
+    const tree = await s.i.slice(s.value, { type: 'json' });
+    expect(Object.keys(tree ?? {})).toEqual(['feed']);
+    const top = await s.i.slice(s.value, { type: 'children', path: [], from: 0, to: 10 });
+    expect(top).toEqual([expect.objectContaining({ key: 'feed' })]);
+    expect(stat(s.stats, 'XML version')).toBe('1.0');
+    expect(stat(s.stats, 'Encoding')).toBe('utf-8');
+    expect(s.stats.find(r => r.label === 'Standalone')).toBeUndefined();
+    const bare = await summarise('xml', textContent('<a><b/></a>'));
+    expect(bare.stats.find(r => r.label === 'XML version')).toBeUndefined();
+  });
+
   it('defers to the image kind for SVG', () => {
     const c = textContent('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"></svg>');
     expect(kinds(c)[0]).toBe('image');
@@ -174,6 +187,31 @@ describe('xml', () => {
     ['malformed XML', '<a><b></a>'],
   ])('does not claim %s', (_, text) => {
     expect(kinds(textContent(text))).not.toContain('xml');
+  });
+
+  it.each([
+    ['a class attribute', '<div class="card"><h2>Title</h2><p>Body</p></div>'],
+    ['HTML-only elements', '<ul>\n  <li>one</li>\n  <li>two</li>\n</ul>'],
+    ['a link with href', '<a href="https://example.com">example</a>'],
+    ['a self-closed void element', '<p>one<br/>two</p>'],
+  ])('ranks an HTML fragment with %s above XML', (_, text) => {
+    const c = textContent(text);
+    expect(kinds(c)[0]).toBe('html');
+    expect(kinds(c)).toContain('xml');
+  });
+
+  it('detects HTML that is not well-formed XML', () => {
+    expect(kinds(textContent('<p>one<br>two</p>'))[0]).toBe('html');
+  });
+
+  it.each([
+    ['generic tags', '<a><b/></a>'],
+    ['an RSS feed', '<rss><channel><title>T</title><item><link>x</link></item></channel></rss>'],
+    ['a config', '<config><server port="80"/><title>x</title></config>'],
+  ])('keeps %s as XML', (_, text) => {
+    const c = textContent(text);
+    expect(kinds(c)[0]).toBe('xml');
+    expect(kinds(c)).not.toContain('html');
   });
 
   it('skips text/html', () => {

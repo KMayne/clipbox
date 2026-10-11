@@ -39,3 +39,39 @@ export const savedCount = (page: Page) =>
         };
       }),
   );
+
+/**
+ * Records what the app copies instead of touching the real clipboard. Call before `page.goto`;
+ * read the last copy with `lastCopy`.
+ */
+export async function recordClipboard(page: Page) {
+  await page.addInitScript(() => {
+    const copies: Record<string, string>[] = [];
+    Object.defineProperty(window, '__copies', { value: copies });
+    navigator.clipboard.write = async items => {
+      for (const item of items) {
+        const copy: Record<string, string> = {};
+        for (const type of item.types) {
+          const blob = await item.getType(type);
+          // Text as-is; anything else as its size and first bytes, enough to identify it
+          const head = [...new Uint8Array(await blob.slice(0, 8).arrayBuffer())];
+          copy[type] = type.startsWith('text/')
+            ? await blob.text()
+            : `${blob.size} bytes: ${head.map(b => b.toString(16).padStart(2, '0')).join(' ')}`;
+        }
+        copies.push(copy);
+      }
+    };
+  });
+}
+
+/** The most recent copy recorded by `recordClipboard` (MIME type → text or byte summary). */
+export async function lastCopy(page: Page): Promise<Record<string, string> | undefined> {
+  return page.evaluate(() => {
+    const copies: unknown = Reflect.get(window, '__copies');
+    if (!Array.isArray(copies)) return undefined;
+    const last: unknown = copies.at(-1);
+    if (typeof last !== 'object' || last === null) return undefined;
+    return Object.fromEntries(Object.entries(last).map(([k, v]) => [k, String(v)]));
+  });
+}

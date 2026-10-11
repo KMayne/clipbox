@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toBase64 } from '../../src/core/format';
-import { getInterpreter } from '../../src/core/interpreters';
+import { detectKinds, getInterpreter } from '../../src/core/interpreters';
 import type { InterpretContext } from '../../src/core/interpreter';
 import { bytesContent, pngHeader, textContent } from './helpers';
 
@@ -41,6 +41,26 @@ describe('base64 detection', () => {
     expect(confidence(wrapped)).toBe(0.6);
   });
 
+  it('accepts short unpadded tokens that decode to words', () => {
+    expect(confidence('aGVsbG8gd29ybGQ')).toBe(0.5); // "hello world"
+    expect(confidence('YWRtaW46c2VjcmV0')).toBe(0.6); // "admin:secret", 16 chars
+    expect(confidence('YWRtaW46cGFzcw')).toBe(0.5); // "admin:pass"
+    expect(detectKinds(textContent('aGVsbG8gd29ybGQ'))[0]?.kind).toBe('base64');
+  });
+
+  it.each([
+    'Constructor1',
+    'readonlyArray',
+    'toLocaleString',
+    'getElementById',
+    'TildeToken',
+    'big-endian',
+    'Administrator',
+    '1700000000000',
+  ])('does not take the short word %s for base64', word => {
+    expect(confidence(word)).toBe(0);
+  });
+
   it('rejects words, hex, short strings, JSON and bad padding', () => {
     expect(confidence('HelloWorldThisIsJustWords')).toBe(0);
     expect(confidence('some_snake_case_identifier_name')).toBe(0);
@@ -79,6 +99,21 @@ describe('base64 value', () => {
     const text = await parse('data:text/plain;charset=utf-8;base64,aGk=');
     expect(text.value).toMatchObject({ mime: 'text/plain', text: 'hi' });
     expect(text.label).toBe('Base64 · text · 2 B');
+  });
+
+  it('copies decoded images as images and other binary as the base64 text', async () => {
+    const png = toBase64(pngHeader(2, 3));
+    const image = await parse(png);
+    expect(await b64.export(image.value)).toEqual({
+      image: { bytes: pngHeader(2, 3), mime: 'image/png' },
+    });
+    const url = `data:image/png;base64,${png}`;
+    expect((await b64.export((await parse(url)).value)).image?.mime).toBe('image/png');
+
+    const random = toBase64(Uint8Array.from({ length: 48 }, (_, i) => (i * 97 + 13) % 256));
+    expect(await b64.export((await parse(`  ${random}\n`)).value)).toEqual({ text: random });
+    const octets = `data:application/octet-stream;base64,${random}`;
+    expect(await b64.export((await parse(octets)).value)).toEqual({ text: octets });
   });
 
   it('is not offered for binary entries', () => {

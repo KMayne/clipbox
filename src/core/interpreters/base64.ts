@@ -19,6 +19,8 @@ export interface Base64Value {
   dataUrl: boolean;
   magic: MagicType | null;
   json: boolean;
+  /** The pasted text, trimmed (base64 or a data URL). */
+  source: string;
 }
 
 const MAGIC_MIME: Record<MagicType, string> = {
@@ -37,6 +39,8 @@ const MAGIC_MIME: Record<MagicType, string> = {
 };
 
 const MIN_LENGTH = 16;
+/** Shorter tokens are only accepted when they decode to word-like ASCII (see `wordy`). */
+const MIN_SHORT_LENGTH = 12;
 const DATA_URL = /^data:([^,;]*)((?:;[^,;]*)*);base64,([\s\S]*)$/i;
 const HEX = /^[0-9a-fA-F]+$/;
 
@@ -55,7 +59,25 @@ function isJsonContainer(text: string): boolean {
 const looksRandom = (s: string) =>
   /\d/.test(s) && /[a-z]/.test(s) && /[A-Z]/.test(s) && (s.length >= 24 || /[+/=]/.test(s));
 
-function build(encoded: string, declaredMime: string | null): Base64Value | null {
+/**
+ * Decoded text that reads like words or credentials: plain ASCII, mostly letters and spaces, with
+ * a vowel. Identifiers and English words almost never decode to this by chance (none of ~20k
+ * identifiers from the TypeScript DOM typings did), so it's safe for short tokens such as
+ * `aGVsbG8gd29ybGQ` ("hello world").
+ */
+function wordy(text: string): boolean {
+  return (
+    /^[A-Za-z0-9 ,.'!?:;()@#&_/-]+$/.test(text) &&
+    (text.match(/[A-Za-z ]/g)?.length ?? 0) >= text.length * 0.8 &&
+    /[aeiou]/i.test(text)
+  );
+}
+
+function build(
+  encoded: string,
+  declaredMime: string | null,
+  source: string,
+): Base64Value | null {
   const shape = base64Shape(encoded);
   const bytes = decodeBase64(encoded);
   if (!shape || !bytes || bytes.length === 0) return null;
@@ -80,6 +102,7 @@ function build(encoded: string, declaredMime: string | null): Base64Value | null
     dataUrl: declaredMime !== null,
     magic,
     json,
+    source,
   };
 }
 
@@ -89,16 +112,20 @@ const parseBase64 = createMemo((c): { value: Base64Value; confidence: number } |
 
   const dataUrl = DATA_URL.exec(t);
   if (dataUrl) {
-    const value = build((dataUrl[3] ?? '').replace(/\s+/g, ''), (dataUrl[1] ?? '').toLowerCase());
+    const encoded = (dataUrl[3] ?? '').replace(/\s+/g, '');
+    const value = build(encoded, (dataUrl[1] ?? '').toLowerCase(), t);
     // data:;base64,… defaults to text/plain (RFC 2397)
     if (value && value.mime === '') value.mime = 'text/plain';
     return value ? { value, confidence: 0.95 } : null;
   }
 
   const compact = t.replace(/\r?\n/g, '');
-  if (compact.length < MIN_LENGTH || HEX.test(compact)) return null;
-  const value = build(t, null);
+  if (compact.length < MIN_SHORT_LENGTH || HEX.test(compact)) return null;
+  const value = build(t, null, t);
   if (!value) return null;
+  if (compact.length < MIN_LENGTH) {
+    return value.text !== null && wordy(value.text) ? { value, confidence: 0.5 } : null;
+  }
   if (value.magic || value.json) return { value, confidence: 0.85 };
   if (value.text !== null) return { value, confidence: 0.6 };
   return looksRandom(compact) ? { value, confidence: 0.4 } : null;
@@ -147,7 +174,13 @@ export const base64Interpreter: Interpreter<Base64Value> = {
     if (req.type === 'image' && isImage(v)) return { bytes: v.bytes, mime: v.mime };
     return unsupportedSlice('base64', req);
   },
-  export: v => (v.text === null ? {} : { text: v.text }),
+  // Decoded text or image; other bytes can't go on the clipboard, so copy the base64 itself
+  // (Open as → Decode gives the bytes as a capture)
+  export(v) {
+    if (v.text !== null) return { text: v.text };
+    if (isImage(v)) return { image: { bytes: v.bytes, mime: v.mime } };
+    return { text: v.source };
+  },
   derivations: () => [{ id: 'decode', label: 'Decode' }],
   derive: v => ({ mime: v.mime, bytes: v.bytes }),
 };

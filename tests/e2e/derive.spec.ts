@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { paste, stat } from './helpers';
+import { lastCopy, paste, recordClipboard, stat } from './helpers';
 
 const b64url = (s: string) =>
   Buffer.from(s).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -10,7 +10,28 @@ const jwt = (payload: object) =>
 const now = () => Math.floor(Date.now() / 1000);
 
 test.beforeEach(async ({ page }) => {
+  await recordClipboard(page);
   await page.goto('/');
+});
+
+test('base64 copies a decoded image as PNG and other binary as its base64', async ({ page }) => {
+  const png =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  await paste(page, { 'text/plain': png });
+  await expect(page.locator('[data-kind=base64]')).toHaveText('Base64 · PNG · 70 B');
+  const copy = page.getByRole('button', { name: 'Copy' });
+  await copy.click();
+  await expect
+    .poll(() => lastCopy(page))
+    .toEqual({ 'image/png': '70 bytes: 89 50 4e 47 0d 0a 1a 0a' });
+
+  const random = Buffer.from(Array.from({ length: 48 }, (_, i) => (i * 97 + 13) % 256)).toString(
+    'base64',
+  );
+  await paste(page, { 'text/plain': random });
+  await expect(page.locator('[data-kind=base64]').first()).toHaveText('Base64 · binary · 48 B');
+  await copy.click();
+  await expect.poll(() => lastCopy(page)).toEqual({ 'text/plain': random });
 });
 
 test('base64 JSON opens as a derived capture via Open as → Decode', async ({ page }) => {

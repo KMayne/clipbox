@@ -13,7 +13,7 @@ does and how to run it, see `README.md`.
 5. If your shell exports `NODE_ENV=development`, `pnpm build` still produces a production build
    (the script pins it), but plain `vite build` won't.
 6. Check everything works: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e`. All should pass:
-   242 unit tests and 43 e2e tests.
+   269 unit tests and 44 e2e tests.
 
 Claude Code context that lives outside the repo and won't come with it:
 
@@ -54,8 +54,16 @@ Claude Code context that lives outside the repo and won't come with it:
     Both are at least 4.5:1 contrast against the panel in every scheme.
   - README, NOTICE and the MIT licence.
 - **Push:** `main` matched `origin` as of 11 October 2026. Commits made locally after that (the Vite
-  config fix, the GitHub link, the merged colour schemes and the credit contrast fix) are unpushed.
+  config fix, the GitHub link, the merged colour schemes, the credit contrast fix and the detection and
+  copy fixes) are unpushed.
   `feat/theme-switcher` is merged into `main`; its copy on `origin` is stale and can be deleted.
+- **Detection and copy fixes:**
+  - HTML fragments rank above XML, Markdown with a pipe table ranks above Records, and short base64
+    tokens that decode to words are recognised.
+  - The `<?xml?>` declaration moved from the tree to stats.
+  - JWT and timestamp relative times round to the nearest unit.
+  - NDJSON tolerates up to a tenth of invalid lines and reports them all.
+  - Copy takes the spreadsheet sheet that's showing, and copies decoded base64 images as PNG.
 - **Deployment:** to be served at `kianmayne.co.uk/clipbox/`, built with `BASE_PATH=/clipbox/`.
   A separate Claude session handled the site side and a local preview (port 8080), and it needs a
   rebuild to show recent changes.
@@ -123,15 +131,12 @@ Claude Code context that lives outside the repo and won't come with it:
   - passwords;
   - nested archives;
   - streaming.
-- **Detection quirks:**
-  - A well-formed HTML fragment pasted as plain text is labelled XML.
-  - A short Markdown note made of `Label: value` lines falls back to Text.
-  - A Markdown doc that is mostly one pipe table may rank Records above Markdown.
-  - Short unpadded base64 tokens without mixed case and digits show as Text.
+- **Detection:** plain `Label: value` notes stay YAML or Text, on purpose: they have no Markdown
+  syntax. Notes of `**Label:** value` lines rank Markdown. A unit test records the reasoning.
 - **Copy:**
   - Markdown copies unsanitised HTML; it's only shown inside the sandboxed iframe.
-  - Spreadsheets always copy the first sheet.
-  - Non-text base64 copies nothing.
+  - Base64 that decodes to non-image binary copies the base64 text, because browsers can't put
+    arbitrary bytes on the clipboard. Open as → Decode gives the raw bytes.
 - **PDF:**
   - The module is about 4 MB and runs on the engine thread, so a heavy PDF delays other pastes.
   - Page sizes are read for every page when the file opens.
@@ -145,10 +150,6 @@ Claude Code context that lives outside the repo and won't come with it:
   - Raw ADTS AAC files aren't detected.
   - WebM/MKV videos have no rotation.
   - Recordings made with `MediaRecorder` show no duration.
-- **XML:** with a `<?xml` prolog, the tree includes a `?xml` key.
-- **NDJSON:** invalid lines are only reported after line 200, because detection requires the first 200
-  to parse.
-- **JWT:** relative times round down, e.g. "expires in 1h" at 1h59m.
 - **Theme:** there are more kinds than distinct palette hues, so a few unrelated kinds share a chip
   colour.
 - **Testing:** the SQLite lazy load through the engine is only covered by e2e tests, not unit tests.

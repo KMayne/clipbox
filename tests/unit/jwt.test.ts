@@ -99,4 +99,17 @@ describe('jwt', () => {
     expect(formatRelative(NOW - 3 * 86_400_000, NOW)).toBe('3 days ago');
     expect(formatRelative(NOW + 1000, NOW, 'short')).toBe('in 1s');
   });
+
+  it('rounds relative times to the nearest unit, carrying up', async () => {
+    const hm = (h: number, m: number) => (h * 60 + m) * 60_000;
+    expect((await parse(makeJwt({ exp: sec(NOW + hm(1, 59)) }))).label).toBe(
+      'JWT · HS256 · expires in 2h',
+    );
+    expect((await parse(makeJwt({ exp: sec(NOW + hm(1, 20)) }))).label).toBe(
+      'JWT · HS256 · expires in 1h',
+    );
+    expect(formatRelative(NOW + hm(0, 59) + 40_000, NOW, 'short')).toBe('in 1h');
+    expect(formatRelative(NOW - hm(23, 45), NOW)).toBe('1 day ago');
+    expect(formatRelative(NOW + 89_000, NOW)).toBe('in 1 minute');
+  });
 });

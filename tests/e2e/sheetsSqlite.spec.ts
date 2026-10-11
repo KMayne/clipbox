@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import initSqlJs from 'sql.js';
 import * as XLSX from 'xlsx';
+import { lastCopy, recordClipboard } from './helpers';
 
 /** Drops a binary file; the bytes travel as base64 because page.evaluate takes JSON. */
 async function dropBytes(page: Page, name: string, type: string, bytes: Uint8Array) {
@@ -59,6 +60,7 @@ async function sqliteFixture(): Promise<Uint8Array> {
 }
 
 test.beforeEach(async ({ page }) => {
+  await recordClipboard(page);
   await page.goto('/');
 });
 
@@ -85,6 +87,15 @@ test('xlsx shows sheet tabs and switches sheets', async ({ page }) => {
   );
   await expect(table).toContainText('Osaka');
   await expect(table).not.toContainText('Grace');
+
+  // Copy takes the sheet on show
+  const copy = page.getByRole('button', { name: 'Copy' });
+  const copiedText = async () => (await lastCopy(page))?.['text/plain'];
+  await copy.click();
+  await expect.poll(copiedText).toMatch(/^city\tcountry\n/);
+  await sheets.getByRole('tab', { name: /People/ }).click();
+  await copy.click();
+  await expect.poll(copiedText).toMatch(/^name\tage\n/);
 });
 
 test('sqlite lists tables, shows rows and opens a table as CSV', async ({ page }) => {
