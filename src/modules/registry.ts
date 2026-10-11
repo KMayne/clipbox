@@ -86,7 +86,7 @@ export const modules: ModuleInfo[] = (
       id: 'qr',
       title: 'QR codes',
       description: 'Reads QR codes in images where the browser has no barcode reader',
-      approxBytes: 50_000,
+      approxBytes: 130_000,
       hasWorker: true,
       hasUi: false,
     },
