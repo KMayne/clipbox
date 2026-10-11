@@ -3,6 +3,7 @@ import { createMemo } from '../content';
 import { formatBytes, formatCount, plural } from '../format';
 import { hasKind, isRecord } from '../guards';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
+import { isHtmlFragment } from './html';
 import { jsonChildCount, jsonChildren } from '../jsonSlice';
 import { inferSchema } from '../schema';
 import type { StatRow } from '../types';
@@ -44,7 +45,9 @@ export const xmlInterpreter: Interpreter<XmlValue> = {
     const r = tryParseXml(c);
     if (!r) return 0;
     if (c.magic === 'svg' || /^svg$/i.test(xmlStats(r.tree).root)) return 0.5;
-    return r.prolog || /^(application|text)\/xml\b/.test(c.mime) ? 0.85 : 0.7;
+    if (r.prolog || /^(application|text)\/xml\b/.test(c.mime)) return 0.85;
+    // Well-formed HTML is also XML; keep XML on offer, below HTML
+    return isHtmlFragment(c) ? 0.6 : 0.7;
   },
   parse(c) {
     const r = tryParseXml(c);

@@ -176,6 +176,31 @@ describe('xml', () => {
     expect(kinds(textContent(text))).not.toContain('xml');
   });
 
+  it.each([
+    ['a class attribute', '<div class="card"><h2>Title</h2><p>Body</p></div>'],
+    ['HTML-only elements', '<ul>\n  <li>one</li>\n  <li>two</li>\n</ul>'],
+    ['a link with href', '<a href="https://example.com">example</a>'],
+    ['a self-closed void element', '<p>one<br/>two</p>'],
+  ])('ranks an HTML fragment with %s above XML', (_, text) => {
+    const c = textContent(text);
+    expect(kinds(c)[0]).toBe('html');
+    expect(kinds(c)).toContain('xml');
+  });
+
+  it('detects HTML that is not well-formed XML', () => {
+    expect(kinds(textContent('<p>one<br>two</p>'))[0]).toBe('html');
+  });
+
+  it.each([
+    ['generic tags', '<a><b/></a>'],
+    ['an RSS feed', '<rss><channel><title>T</title><item><link>x</link></item></channel></rss>'],
+    ['a config', '<config><server port="80"/><title>x</title></config>'],
+  ])('keeps %s as XML', (_, text) => {
+    const c = textContent(text);
+    expect(kinds(c)[0]).toBe('xml');
+    expect(kinds(c)).not.toContain('html');
+  });
+
   it('skips text/html', () => {
     expect(kinds(textContent('<p>hi</p>', 'text/html'))).not.toContain('xml');
   });
