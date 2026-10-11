@@ -2,7 +2,7 @@
 
 Paste anything (text/JSON/CSV/HTML/image/file), inspect it (interpretations, preview, stats, schema), and later transform it with a typed node graph. Web app, Chromium only, no backend.
 
-Plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md`. Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Batch B is merging in from parallel agents: persistence, YAML/XML and Markdown/NDJSON are done; derived captures + base64/JWT and value decoders + PEM are still running.
+Plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md`. Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Batch B is done: persistence, YAML/XML, Markdown/NDJSON, derived captures ("Open as…") + base64/JWT, value decoders (timestamp/uuid/url/colour) and the lazy `x509` PEM module. Next: Batch C (binary formats: archives, PDF, audio, video, spreadsheets, SQLite); archives open entries as derived captures.
 
 ## Commands
 - `pnpm dev` — Vite dev server
@@ -27,7 +27,7 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
   - `workerLoaders.ts` / `uiLoaders.ts`: the `import()` for each half. These are kept separate so the worker build doesn't pull in UI chunks and vice versa.
   - Policies are Auto, Preload or Off, stored in localStorage under `clipbox.modules`.
   - Interpreters use module services through `ctx.service(id)`, which returns null when the module is off or fails to load.
-  - Current modules: `editor` (Monaco, UI only) and `langdetect` (VS Code's ML model, worker only).
+  - Current modules: `editor` (Monaco, UI only), `langdetect` (VS Code's ML model, worker only) and `x509` (PEM certificates and keys, worker only, `@peculiar/x509`).
 - `src/sw.ts` + `vite/modulesManifest.ts` — the plugin maps each module's entry to its files (chunks, workers, assets), emits `modules-manifest.json`, and emits `sw.js` with the manifest inlined. The SW precaches the core files and handles per-module download, remove and update. It only runs in production builds. `src/swClient.ts` is the page side.
 - `src/capture/` — capture sources (paste, read, drop, file) → `captureStore.add()`.
 - `src/state/` — Zustand stores (`captureStore`, `moduleStore`, `uiStore`).
@@ -44,6 +44,7 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
 - **New kinds:**
   - Write an `Interpreter<V>` whose value is tagged `{ kind: '<kind>', … }`, with `isValue: v => hasKind(v, '<kind>')`, and add it with `register()`. The registry stores type-erased `AnyInterpreter`s that check values on every call.
   - Previews read data through the typed `ValueHandle` methods (`lines`, `rows`, `children`, `bytes`, `text`, `image`, `json`).
+- **Derivations:** interpreters can offer `derivations`/`derive` ("Open as…"). The engine returns the bytes, and `captureStore.derive` adds a `'derived'` capture with a `parent` link, which persistence also stores.
 - **Bytes** are `Uint8Array<ArrayBuffer>` throughout. `crypto.subtle` and `Blob` need ArrayBuffer-backed bytes.
 
 ## Gotchas
