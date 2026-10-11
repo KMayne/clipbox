@@ -3,14 +3,16 @@
 export interface ModulesManifest {
   version: string;
   core: string[];
-  modules: Record<string, { files: string[]; bytes: number }>;
+  /** `version` is the module's main library version, when the build could read it. */
+  modules: Record<string, { files: string[]; bytes: number; version?: string }>;
 }
 
 /** Page → service worker. */
 export type SwRequest =
   | { type: 'status' }
   | { type: 'download'; id: string }
-  | { type: 'remove'; id: string }
+  /** Deletes this version's caches and downloads them again (core plus downloaded modules). */
+  | { type: 'repair' }
   | { type: 'skipWaiting' };
 
 /** Service worker → page, over the request's MessagePort. */

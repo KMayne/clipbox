@@ -13,7 +13,7 @@ does and how to run it, see `README.md`.
 5. If your shell exports `NODE_ENV=development`, `pnpm build` still produces a production build
    (the script pins it), but plain `vite build` won't.
 6. Check everything works: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e`. All should pass:
-   269 unit tests and 44 e2e tests.
+   293 unit tests and 49 e2e tests.
 
 Claude Code context that lives outside the repo and won't come with it:
 
@@ -54,8 +54,8 @@ Claude Code context that lives outside the repo and won't come with it:
     Both are at least 4.5:1 contrast against the panel in every scheme.
   - README, NOTICE and the MIT licence.
 - **Push:** `main` matched `origin` as of 11 October 2026. Commits made locally after that (the Vite
-  config fix, the GitHub link, the merged colour schemes, the credit contrast fix and the detection and
-  copy fixes) are unpushed.
+  config fix, the GitHub link, the merged colour schemes, the credit contrast fix, the detection and
+  copy fixes and the Settings → Modules rework) are unpushed.
   `feat/theme-switcher` is merged into `main`; its copy on `origin` is stale and can be deleted.
 - **Detection and copy fixes:**
   - HTML fragments rank above XML, Markdown with a pipe table ranks above Records, and short base64
@@ -64,40 +64,30 @@ Claude Code context that lives outside the repo and won't come with it:
   - JWT and timestamp relative times round to the nearest unit.
   - NDJSON tolerates up to a tenth of invalid lines and reports them all.
   - Copy takes the spreadsheet sheet that's showing, and copies decoded base64 images as PNG.
+- **Settings → Modules, simplified:**
+  - Each module row shows its library and version (read into `modules-manifest.json` at build time),
+    size and status. There are no per-module controls.
+  - The per-module Auto/Preload/Off policies are gone, along with the `'off'` status and the "module
+    off" chip. One **Module downloads** setting (`clipbox.moduleDownloads`) replaces them and the
+    background toggle: Automatic (default), On demand (metered connections) or Everything now.
+  - The footer shows the app version and build date, with **Check for updates** and **Repair offline
+    cache**.
 - **Deployment:** to be served at `kianmayne.co.uk/clipbox/`, built with `BASE_PATH=/clipbox/`.
   A separate Claude session handled the site side and a local preview (port 8080), and it needs a
   rebuild to show recent changes.
 
 ## Remaining work
 
-### Next up (agreed, not started)
-
-1. **Simplify Settings → Modules.**
-   - Each row shows status only: name, library and version (e.g. "pdf.js 6.4.299"), size, and status
-     (not downloaded, downloading x%, offline, loaded). Remove Auto/Preload/Off and per-module
-     Download/Remove.
-   - Library versions: have `vite/modulesManifest.ts` read each module's main package version into
-     `modules-manifest.json`.
-   - Footer: app version (the manifest hash) and build date, **Check for updates** (`registration.update()`)
-     and **Repair offline cache** (delete and re-download the current version's caches).
-   - **Decision needed:** with no per-module controls, the policy system (Auto/Preload/Off in
-     `modules/registry.ts`, `engine.setPolicies`, the `'off'` interpretation status, the "module off"
-     chip, `clipbox.modules` in localStorage, and `skip`/`unskip` in `backgroundDownloads.ts`) has no
-     UI. Either remove it, or keep it internal and ignore the saved policies, so nobody is stuck with a
-     module Off. Several tests depend on it: `tests/e2e/modules.spec.ts`, the Engine unit tests, and
-     the x509 "module off" e2e test.
-   - The background-download toggle should stay; it's a useful control on metered connections.
-
 ### Original roadmap (from the plan)
 
-2. **Deliverable 1b: the canvas.**
+1. **Deliverable 1b: the canvas.**
    - Add a React Flow canvas between the Pastes pane and the Inspector.
    - Source nodes are created from a chip with "+" or Enter.
    - Shift+Enter replaces a source's data with the latest paste.
    - Undo/redo with `zundo`.
    - Save the graph (history persistence already exists), and pin each source node's blob so expiry
      can't remove it.
-3. **Deliverable 2: ops and edges.**
+2. **Deliverable 2: ops and edges.**
    - Op registry: input and output kinds, Zod params, and async `run(inputs, params, { signal })`.
    - Engine `setGraph` with reactive, debounced re-evaluation that cancels stale runs.
    - Per-node results; when a node errors, the nodes downstream show as blocked.
@@ -105,15 +95,15 @@ Claude Code context that lives outside the repo and won't come with it:
    - Ops: pick/rename, filter, sort, group by, flatten, count/unique, to Markdown, to CSV/TSV,
      stringify, split lines, regex replace.
    - Palette: typing an op name adds it after the selected node.
-4. **Spike, then Deliverable 3: inline TypeScript node.**
+3. **Spike, then Deliverable 3: inline TypeScript node.**
    - Monaco in the existing `editor` module.
    - Inject the upstream value's `Schema` as `declare const input: …` for type checking.
    - Transpile with sucrase and run in a disposable sandbox worker with a timeout.
-5. **Deliverable 4: quick-task UX.**
+4. **Deliverable 4: quick-task UX.**
    - Tab on a node opens the op picker, filtered by output kind, which auto-wires the chosen op.
    - Auto-layout.
    - Saved pipelines as templates.
-6. **Extras:**
+5. **Extras:**
    - Diffing two inputs.
    - Image ops.
    - HTML→Markdown.

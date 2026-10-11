@@ -220,7 +220,6 @@ describe('media module in the engine', () => {
 
   it('defers to the module, then resolves the audio kind with a cover derivation', async () => {
     const engine = new Engine({ loaders });
-    engine.setPolicies({ media: 'auto' });
     const res = await engine.ingest(entry(mp3WithId3({ cover: pngHeader(2, 2) }), 'audio/mpeg'));
     expect(res.interpretations[0]).toMatchObject({
       kind: 'audio',

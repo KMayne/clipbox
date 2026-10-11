@@ -17,8 +17,9 @@ Source: https://github.com/KMayne/clipbox
 - **Binary:** images, archives (zip, gzip, tar, 7z, RAR, tar.xz, tar.bz2, zstd), PDF, audio, video,
   spreadsheets (xlsx/xlsm/xlsb/ods/xls), SQLite, PEM certificates and keys
 
-The heavy formats load as optional modules. Settings → Modules lets you choose Auto, Preload or
-Off for each one, and download them for offline use. "Open as…" turns a value into a new capture,
+The heavy formats load as optional modules, downloaded the first time a paste needs one. Settings →
+Modules shows each module's status and lets you choose how they're downloaded for offline use:
+automatically in the background on fast connections, only on demand, or all at once. "Open as…" turns a value into a new capture,
 e.g. decoding base64, opening a file inside an archive, or a sheet as CSV.
 
 ## Development

@@ -14,7 +14,10 @@ export type { ModulesManifest } from './swProtocol';
 const manifestSchema = z.object({
   version: z.string(),
   core: z.array(z.string()),
-  modules: z.record(z.string(), z.object({ files: z.array(z.string()), bytes: z.number() })),
+  modules: z.record(
+    z.string(),
+    z.object({ files: z.array(z.string()), bytes: z.number(), version: z.string().optional() }),
+  ),
 }) satisfies z.ZodType<ModulesManifest>;
 
 const responseSchema = z.discriminatedUnion('type', [
@@ -53,29 +56,33 @@ async function request(
 }
 
 let manifest: Promise<ModulesManifest | null> | null = null;
+let registration: Promise<ServiceWorkerRegistration> | null = null;
+
+export type UpdateCheck = 'current' | 'available';
 
 export const sw = {
   supported,
 
   register(): void {
     if (!supported) return;
-    void navigator.serviceWorker
-      .register(`${import.meta.env.BASE_URL}sw.js`, { type: 'module' })
-      .then(reg => {
-        const announce = (waiting: ServiceWorker) =>
-          useUiStore.getState().notify('Update available', 'info', {
-            label: 'Reload',
-            run: () => waiting.postMessage({ type: 'skipWaiting' } satisfies SwRequest),
-          });
-        if (reg.waiting && navigator.serviceWorker.controller) announce(reg.waiting);
-        reg.addEventListener('updatefound', () => {
-          const installing = reg.installing;
-          installing?.addEventListener('statechange', () => {
-            if (installing.state === 'installed' && navigator.serviceWorker.controller)
-              announce(installing);
-          });
+    registration = navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, {
+      type: 'module',
+    });
+    void registration.then(reg => {
+      const announce = (waiting: ServiceWorker) =>
+        useUiStore.getState().notify('Update available', 'info', {
+          label: 'Reload',
+          run: () => waiting.postMessage({ type: 'skipWaiting' } satisfies SwRequest),
+        });
+      if (reg.waiting && navigator.serviceWorker.controller) announce(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const installing = reg.installing;
+        installing?.addEventListener('statechange', () => {
+          if (installing.state === 'installed' && navigator.serviceWorker.controller)
+            announce(installing);
         });
       });
+    });
     // Reload only when an update replaces the controlling worker. On a first visit the new
     // worker claims the page (controller goes null → set), which must not reload it.
     let hadController = navigator.serviceWorker.controller !== null;
@@ -115,7 +122,19 @@ export const sw = {
     await request({ type: 'download', id }, onProgress);
   },
 
-  async remove(id: ModuleId): Promise<void> {
-    if (supported) await request({ type: 'remove', id });
+  /**
+   * Asks the browser to check for a new service worker now. When there is one, the usual
+   * "Update available" notice appears once it has installed.
+   */
+  async checkForUpdate(): Promise<UpdateCheck> {
+    if (!supported || !registration) throw new Error('Updates need the offline cache');
+    const reg = await registration;
+    await reg.update();
+    return reg.installing || reg.waiting ? 'available' : 'current';
+  },
+
+  /** Deletes this version's caches and downloads the app and downloaded modules again. */
+  async repair(onProgress: (fraction: number) => void): Promise<void> {
+    if (supported) await request({ type: 'repair' }, onProgress);
   },
 };

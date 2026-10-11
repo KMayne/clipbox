@@ -23,7 +23,6 @@ const CODE = 'export function greet(name: string): string {\n  return `hi ${name
 describe('Engine', () => {
   it('ingests, summarises and slices without returning values', async () => {
     const engine = new Engine({ loaders: {} });
-    engine.setPolicies({ langdetect: 'off' });
     const res = await engine.ingest(entry('[{"a":1},{"a":2}]'));
     expect(res.interpretations.map(i => [i.status, i.label])).toEqual([
       ['ready', 'JSON array · 2'],
@@ -43,7 +42,6 @@ describe('Engine', () => {
 
   it('defers text until its language service loads, then resolves', async () => {
     const engine = new Engine({ loaders: { langdetect: fakeLangdetect } });
-    engine.setPolicies({ langdetect: 'auto' });
     const res = await engine.ingest(entry(CODE));
     expect(res.interpretations).toEqual([
       expect.objectContaining({ kind: 'text', status: 'loading', module: 'langdetect' }),
@@ -54,17 +52,17 @@ describe('Engine', () => {
     expect(engine.moduleLoadStates()).toEqual({ langdetect: 'loaded' });
   });
 
-  it('parses text without a language when the module is off or fails to load', async () => {
-    const off = new Engine({ loaders: { langdetect: fakeLangdetect } });
-    off.setPolicies({ langdetect: 'off' });
-    const res = await off.ingest(entry(CODE));
+  it('parses text without a language when the module is missing or fails to load', async () => {
+    // No loader (e.g. a build without the module): nothing to wait for
+    const missing = new Engine({ loaders: {} });
+    const res = await missing.ingest(entry(CODE));
     expect(res.interpretations[0]).toMatchObject({ status: 'ready', label: 'Text · 3 lines' });
-    expect(off.moduleLoadStates()).toEqual({});
+    expect(missing.moduleLoadStates()).toEqual({});
 
+    // Offline and not cached: ctx.service() returns null and the text still parses
     const broken = new Engine({
       loaders: { langdetect: () => Promise.reject(new Error('offline')) },
     });
-    broken.setPolicies({ langdetect: 'auto' });
     await broken.ingest(entry(CODE));
     expect(await broken.resolve('en-1', 'text')).toMatchObject({
       status: 'ready',
@@ -72,17 +70,25 @@ describe('Engine', () => {
     });
   });
 
-  it('preloads modules with the preload policy', async () => {
-    const engine = new Engine({ loaders: { langdetect: fakeLangdetect } });
-    engine.setPolicies({ langdetect: 'preload' });
-    await Promise.resolve();
+  it('marks a module failed after a load error, and retries it on the next need', async () => {
+    let attempts = 0;
+    const flaky = (): Promise<WorkerModule> =>
+      ++attempts === 1 ? Promise.reject(new Error('offline')) : fakeLangdetect();
+    const engine = new Engine({ loaders: { langdetect: flaky } });
     await engine.ingest(entry(CODE));
+    expect(await engine.resolve('en-1', 'text')).toMatchObject({ label: 'Text · 3 lines' });
+    expect(engine.moduleLoadStates()).toEqual({ langdetect: 'failed' });
+
+    const again = await engine.ingest(entry(CODE, 'en-2'));
+    expect(again.interpretations[0]).toMatchObject({ status: 'loading', module: 'langdetect' });
+    expect(await engine.resolve('en-2', 'text')).toMatchObject({
+      label: 'TypeScript · 3 lines',
+    });
     expect(engine.moduleLoadStates()).toEqual({ langdetect: 'loaded' });
   });
 
   it('derives new content that ingests as another kind', async () => {
     const engine = new Engine({ loaders: {} });
-    engine.setPolicies({ langdetect: 'off' });
     const res = await engine.ingest(entry(btoa('[{"a":1,"b":"x,y"},{"a":2}]')));
     expect(res.interpretations[0]).toMatchObject({ kind: 'base64', status: 'ready' });
     const summary = await engine.summary('en-1', 'base64');

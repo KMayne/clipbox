@@ -124,7 +124,6 @@ describe('pdf interpreter', () => {
 describe('pdf in the engine', () => {
   it('loads the module, then derives text that is detected as text', async () => {
     const engine = new Engine({ loaders: { pdf: () => import('../../src/modules/pdf/worker') } });
-    engine.setPolicies({ langdetect: 'off' });
     const res = await engine.ingest(pdfEntry(pdfBytes(samplePdf())));
     expect(res.interpretations[0]).toMatchObject({ kind: 'pdf', status: 'loading', module: 'pdf' });
     expect(await engine.resolve('en-1', 'pdf')).toMatchObject({

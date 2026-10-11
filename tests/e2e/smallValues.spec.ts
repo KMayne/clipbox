@@ -72,11 +72,14 @@ test('chain renders leaf first with an expired badge', async ({ page }) => {
   await expect(cards.nth(1).getByTestId('expiry-badge')).toHaveAttribute('data-tone', 'valid');
 });
 
-test('with Certificates off, PEM chips say module off', async ({ page }) => {
+test('a saved per-module Off policy from older versions is ignored and removed', async ({
+  page,
+}) => {
   await page.evaluate(() =>
     localStorage.setItem('clipbox.modules', JSON.stringify({ x509: 'off' })),
   );
   await page.reload();
   await paste(page, { 'text/plain': await selfSigned('off.example', 100) });
-  await expect(page.locator('[data-kind=pem]')).toHaveText('PEM · module off');
+  await expect(page.locator('[data-kind=pem]')).toContainText('CN=off.example');
+  expect(await page.evaluate(() => localStorage.getItem('clipbox.modules'))).toBeNull();
 });

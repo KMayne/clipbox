@@ -20,13 +20,11 @@ class FallbackBoundary extends Component<
 interface Props extends PreviewProps {
   module: ModuleId;
   kind: Kind;
-  /** Shown while the module loads, if it's off, or if it fails. */
+  /** Shown while the module loads, or if it fails. */
   fallback: ReactNode;
 }
 
 export function ModulePreview({ module, kind, handle, fallback }: Props) {
-  const off = useModuleStore(s => s.policies[module] === 'off');
-  if (off) return <>{fallback}</>;
   return (
     <FallbackBoundary fallback={fallback}>
       <Suspense fallback={fallback}>

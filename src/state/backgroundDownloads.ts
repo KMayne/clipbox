@@ -1,49 +1,26 @@
 import { z } from 'zod';
 import { create } from 'zustand';
 import { judgeConnection, nextToDownload, type ConnectionInfo } from '../modules/backgroundPolicy';
+import {
+  DEFAULT_DOWNLOAD_MODE,
+  loadDownloadMode,
+  saveDownloadMode,
+  type DownloadMode,
+} from '../modules/downloadMode';
 import type { ModuleId } from '../modules/types';
 import { sw } from '../swClient';
 import { useModuleStore } from './moduleStore';
 
 /*
- * Downloads Auto-policy modules into the offline cache in the background, smallest first, when
- * the connection looks fast and unmetered. Chrome's Network Information API gives an effective
- * type, a downlink estimate (capped at ~10 Mbps) and the user's Data Saver flag; it can't tell
- * whether a desktop connection is metered, so Data Saver and "cellular" are the signals used.
+ * Applies the global "Module downloads" setting (modules/downloadMode.ts):
+ * - Automatic: downloads modules into the offline cache in the background, smallest first, when
+ *   the connection looks fast and unmetered. Chrome's Network Information API gives an effective
+ *   type, a downlink estimate (capped at ~10 Mbps) and the user's Data Saver flag; it can't tell
+ *   whether a desktop connection is metered, so Data Saver and "cellular" are the signals used.
+ * - On demand: nothing in the background.
+ * - Everything now: downloads every module straight away, whatever the connection.
+ * In every mode a module is also fetched the first time a paste needs it.
  */
-
-// ---- Settings ----------------------------------------------------------------------------
-
-const STORAGE_KEY = 'clipbox.backgroundDownloads';
-
-const settingsSchema = z.object({
-  enabled: z.boolean(),
-  /** Modules the user removed by hand; never re-downloaded in the background. */
-  skipped: z.array(z.string()),
-});
-
-type Settings = z.infer<typeof settingsSchema>;
-
-const DEFAULTS: Settings = { enabled: true, skipped: [] };
-
-function loadSettings(): Settings {
-  try {
-    const parsed = settingsSchema.safeParse(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}'));
-    return parsed.success ? parsed.data : DEFAULTS;
-  } catch {
-    return DEFAULTS;
-  }
-}
-
-function saveSettings(s: Settings) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-  } catch {
-    // storage unavailable: the setting just won't persist
-  }
-}
-
-// ---- Store and runner --------------------------------------------------------------------
 
 export type BackgroundStatus =
   | { state: 'unsupported' }
@@ -53,13 +30,10 @@ export type BackgroundStatus =
   | { state: 'downloading'; module: ModuleId }
   | { state: 'done' };
 
-interface BackgroundState extends Settings {
+interface BackgroundState {
+  mode: DownloadMode;
   status: BackgroundStatus;
-  setEnabled(enabled: boolean): void;
-  /** Call when the user removes a module so it isn't fetched again in the background. */
-  skip(id: ModuleId): void;
-  /** Call when the user downloads a module by hand, undoing an earlier skip. */
-  unskip(id: ModuleId): void;
+  setMode(mode: DownloadMode): void;
 }
 
 const connectionSchema = z.object({
@@ -83,27 +57,22 @@ const idle = () =>
     else setTimeout(resolve, 2000);
   });
 
-export const useBackgroundDownloads = create<BackgroundState>((set, get) => {
-  const persist = () => saveSettings({ enabled: get().enabled, skipped: get().skipped });
-  return {
-    ...loadSettings(),
-    status: { state: 'waiting' },
-    setEnabled(enabled) {
-      set({ enabled, status: enabled ? { state: 'waiting' } : { state: 'off' } });
-      persist();
-      if (enabled) void run();
-    },
-    skip(id) {
-      if (get().skipped.includes(id)) return;
-      set({ skipped: [...get().skipped, id] });
-      persist();
-    },
-    unskip(id) {
-      set({ skipped: get().skipped.filter(s => s !== id) });
-      persist();
-    },
-  };
-});
+const storage = () => (typeof localStorage === 'undefined' ? null : localStorage);
+
+export const useBackgroundDownloads = create<BackgroundState>(set => ({
+  mode: (() => {
+    const s = storage();
+    return s ? loadDownloadMode(s) : DEFAULT_DOWNLOAD_MODE;
+  })(),
+  status: { state: 'waiting' },
+  setMode(mode) {
+    const s = storage();
+    if (s) saveDownloadMode(s, mode);
+    if (!sw.supported) return set({ mode, status: { state: 'unsupported' } });
+    set({ mode, status: mode === 'onDemand' ? { state: 'off' } : { state: 'waiting' } });
+    if (mode !== 'onDemand') void run();
+  },
+}));
 
 let running = false;
 /** Modules that failed this session; not retried until the next page load. */
@@ -112,21 +81,23 @@ const failed = new Set<ModuleId>();
 async function run(): Promise<void> {
   const bg = useBackgroundDownloads.getState;
   const setStatus = (status: BackgroundStatus) => useBackgroundDownloads.setState({ status });
-  if (running || !bg().enabled) return;
+  if (running || bg().mode === 'onDemand') return;
   running = true;
   try {
-    await idle();
+    // Automatic waits for the app to be idle; Everything now starts straight away
+    if (bg().mode === 'automatic') await idle();
     const manifest = await sw.manifest();
     if (!manifest) return setStatus({ state: 'unsupported' });
     const sizes = Object.fromEntries(
       Object.entries(manifest.modules).map(([id, m]) => [id, m.bytes]),
     );
     await useModuleStore.getState().refresh();
-    while (bg().enabled) {
-      const verdict = judgeConnection(connection());
-      if (!verdict.ok) return setStatus({ state: 'paused', reason: verdict.reason });
-      const { policies, cache } = useModuleStore.getState();
-      const id = nextToDownload(sizes, policies, cache, new Set([...failed, ...bg().skipped]));
+    while (bg().mode !== 'onDemand') {
+      if (bg().mode === 'automatic') {
+        const verdict = judgeConnection(connection());
+        if (!verdict.ok) return setStatus({ state: 'paused', reason: verdict.reason });
+      }
+      const id = nextToDownload(sizes, useModuleStore.getState().cache, failed);
       if (!id) return setStatus({ state: 'done' });
       setStatus({ state: 'downloading', module: id });
       await useModuleStore.getState().download(id);
@@ -137,15 +108,21 @@ async function run(): Promise<void> {
   }
 }
 
+/** Downloads again, retrying failures, e.g. after the offline cache was repaired. */
+export function resumeBackgroundDownloads(): void {
+  failed.clear();
+  void run();
+}
+
 /** Starts background downloads and re-checks whenever the connection changes. */
 export function startBackgroundDownloads(): void {
   if (!sw.supported) {
     useBackgroundDownloads.setState({ status: { state: 'unsupported' } });
     return;
   }
-  // Listen even while disabled, so turning it on later still reacts to connection changes
+  // Listen even while On demand, so switching to Automatic later still reacts to changes
   connection()?.target?.addEventListener('change', () => void run());
-  if (!useBackgroundDownloads.getState().enabled) {
+  if (useBackgroundDownloads.getState().mode === 'onDemand') {
     useBackgroundDownloads.setState({ status: { state: 'off' } });
     return;
   }

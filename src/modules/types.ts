@@ -2,13 +2,9 @@ import type { ComponentType } from 'react';
 import type { EntryContent } from '../core/content';
 import type { AnyInterpreter } from '../core/interpreter';
 import type { Kind, ValueHandle } from '../core/types';
+import type { ModuleLibrary } from './libraries';
 
 export type ModuleId = 'core' | 'editor' | 'langdetect' | (string & {});
-
-/** auto: load on first need · preload: load at startup and keep offline · off: never load */
-export type Policy = 'auto' | 'preload' | 'off';
-
-export type Policies = Record<string, Policy>;
 
 /** Cheap, synchronous detection for a kind owned by a lazily-loaded module. Lives in core. */
 export interface Detector {
@@ -23,8 +19,9 @@ export interface ModuleInfo {
   description: string;
   /** Approximate download size, shown in Settings until the build manifest says otherwise. */
   approxBytes: number;
-  defaultPolicy: Policy;
-  /** Which halves exist; drives what gets loaded on preload. */
+  /** Main third-party library, shown in Settings with the version from the build manifest. */
+  library?: ModuleLibrary;
+  /** Which halves exist. */
   hasWorker: boolean;
   hasUi: boolean;
 }
