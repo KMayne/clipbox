@@ -131,6 +131,23 @@ Legend:
 
 - **Table as CSV** ✓ · **Table as JSON** · **Schema (CREATE statements) as SQL** · run a read-only query (param; known gap)
 
+### Executable (PE, ELF, Mach-O)
+
+Parsed in core (`src/core/executable/`), no dependency. Actions in the `executable` area files:
+
+- **Extract icon** ✅: the first icon group as `.ico` (largest image first) plus its largest image as
+  PNG (PNG-compressed icons as they are; BMP DIBs decoded and re-encoded in pure TS, no canvas), one
+  collection capture
+- **Version info as JSON** ✅ · **Imports as CSV** ✅ (dll, function, ordinal, delay_loaded; ELF
+  needed libraries and Mach-O dylibs with an empty function) · **Exports as CSV** ✅ (PE exports,
+  ELF dynamic symbols) · **Sections as CSV** ✅ · **Extract manifest** ✅ (XML)
+- **Extract strings** ✅: ASCII and/or UTF-16LE (both alignments), minimum length (6), optional hex
+  offsets; stops at 100,000 strings with a note line
+- **Extract overlay** ✅: data after the last section, minus a trailing Authenticode table
+- **Extract signing certificates** ✅: the Authenticode / Mach-O CMS certificates as PEM, which the
+  x509 module then decodes as usual (so no `ctx.service` call is needed; the signer's subject and
+  issuer are read by a small DER walker in core, never verified)
+
 ### PEM / X.509
 
 - **Certificate details as JSON** ✅ (x509 module service: names, validity, SANs, key usage, EKU, basic constraints, key ids, extensions, fingerprints; leaf first) · **SHA-256 fingerprint** ✅ (Fingerprint: SHA-256, SHA-1 or both, colon-separated uppercase hex, computed in core) · **Extract public key (PEM)** ✅ (SPKI; the leaf, or every block) · PEM ↔ DER

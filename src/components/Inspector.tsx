@@ -26,6 +26,7 @@ import { RecordsTable } from './previews/RecordsTable';
 import { PdfView } from './previews/PdfView';
 import { PemView } from './previews/PemView';
 import { PresentationView } from './previews/PresentationView';
+import { ExecutableView } from './previews/ExecutableView';
 import { SpreadsheetView } from './previews/SpreadsheetView';
 import { SqliteView } from './previews/SqliteView';
 import { TextView } from './previews/TextView';
@@ -317,6 +318,8 @@ function Preview({ handle, selection }: { handle: ValueHandle; selection: Select
       return <ArchiveView handle={handle} />;
     case 'presentation':
       return <PresentationView handle={handle} />;
+    case 'executable':
+      return <ExecutableView handle={handle} />;
     default:
       return <HexView handle={handle} />;
   }

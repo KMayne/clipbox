@@ -2,7 +2,7 @@
 
 Paste anything (text/JSON/CSV/HTML/image/file), inspect it (interpretations, preview, stats, schema), and later transform it with a typed node graph. Web app, Chromium only, no backend.
 
-Progress and remaining work: `docs/PROGRESS.md`. Original plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md` (local to the original machine). Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Batches A–C are done. The kinds are: core (JSON, records, text, HTML, image, binary, YAML, XML, Markdown, NDJSON, base64, JWT, timestamp, UUID, URL, colour, archive for zip/gzip/tar, presentation for PowerPoint .pptx) plus lazy modules. Actions framework done on `feat/actions` (batch 2 to pick from `docs/ACTIONS.md`). Next: Deliverable 1b (canvas and graph) / Deliverable 2 (ops).
+Progress and remaining work: `docs/PROGRESS.md`. Original plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md` (local to the original machine). Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Batches A–C are done. The kinds are: core (JSON, records, text, HTML, image, binary, YAML, XML, Markdown, NDJSON, base64, JWT, timestamp, UUID, URL, colour, archive for zip/gzip/tar, presentation for PowerPoint .pptx, executable for PE/ELF/Mach-O parsed in `src/core/executable/`) plus lazy modules. Actions framework done on `feat/actions` (batch 2 to pick from `docs/ACTIONS.md`). Next: Deliverable 1b (canvas and graph) / Deliverable 2 (ops).
 
 ## Commands
 - `pnpm dev` — Vite dev server

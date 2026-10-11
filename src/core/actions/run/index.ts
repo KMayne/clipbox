@@ -10,6 +10,7 @@ import { mediaImpls } from './media';
 import { pdfImpls } from './pdf';
 import { pemImpls } from './pem';
 import { presentationImpls } from './presentation';
+import { executableImpls } from './executable';
 import { textImpls } from './text';
 import { xmlImpls } from './xml';
 import { yamlImpls } from './yaml';
@@ -33,6 +34,7 @@ export const actionImpls: AnyActionImpl[] = [
   ...imageImpls,
   ...mediaImpls,
   ...presentationImpls,
+  ...executableImpls,
   ...pdfImpls,
   ...jwtImpls,
   ...timestampImpls,

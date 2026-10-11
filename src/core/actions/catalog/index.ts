@@ -10,6 +10,7 @@ import { mediaActions } from './media';
 import { pdfActions } from './pdf';
 import { pemActions } from './pem';
 import { presentationActions } from './presentation';
+import { executableActions } from './executable';
 import { textActions } from './text';
 import { xmlActions } from './xml';
 import { yamlActions } from './yaml';
@@ -34,6 +35,7 @@ export const catalog: ActionInfo[] = [
   ...imageActions,
   ...mediaActions,
   ...presentationActions,
+  ...executableActions,
   ...pdfActions,
   ...jwtActions,
   ...timestampActions,
