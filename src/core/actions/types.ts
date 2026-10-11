@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import type { ModuleId } from '../../modules/types';
 import type { EntryContent } from '../content';
+import type { TaskContext } from '../progress';
 import type { DerivedContent, Kind } from '../types';
 
 /** Hints that settings fields can carry in `.meta()`, read by the generated forms. */
@@ -85,8 +86,11 @@ export interface ActionInput<V> {
   content: EntryContent;
 }
 
-export interface ActionContext {
-  signal: AbortSignal;
+/**
+ * What `run` gets besides its input. Long-running actions report `progress` and honour `signal`
+ * (see `core/progress.ts`: `checkpoint` in synchronous loops, `throwIfAborted` in async ones).
+ */
+export interface ActionContext extends TaskContext {
   /** Loads a module's service, checked with `guard`; null if it's unavailable. */
   service<T>(module: ModuleId, guard: (s: unknown) => s is T): Promise<T | null>;
 }

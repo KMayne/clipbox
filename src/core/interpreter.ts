@@ -1,5 +1,6 @@
 import type { EntryContent } from './content';
 import type { Derivation, DerivedContent, Kind, SliceRequest, Summary } from './types';
+import { noTask, type TaskContext } from './progress';
 
 /** What "Copy" puts on the clipboard for a value. */
 export interface ExportPayload {
@@ -43,7 +44,7 @@ export interface Interpreter<V> {
   /** Ways to open the value as a new capture; shown in the Inspector's "Open as" menu. */
   derivations?(v: V): Derivation[];
   /** Produces the content for one of `derivations(v)` (or any id `canDerive` accepts). */
-  derive?(v: V, id: string): MaybePromise<DerivedContent>;
+  derive?(v: V, id: string, task: TaskContext): MaybePromise<DerivedContent>;
   /** For interpreters that list only some derivations (e.g. archive entries); defaults to the list. */
   canDerive?(v: V, id: string): boolean;
 }
@@ -63,7 +64,8 @@ export interface AnyInterpreter {
   export(v: unknown, options?: ExportOptions): Promise<ExportPayload>;
   /** Empty when the interpreter offers none. */
   derivations(v: unknown): Derivation[];
-  derive(v: unknown, id: string): Promise<DerivedContent>;
+  /** `task` carries the cancel signal and progress reporter for slow derivations. */
+  derive(v: unknown, id: string, task?: TaskContext): Promise<DerivedContent>;
 }
 
 export function register<V>(i: Interpreter<V>): AnyInterpreter {
@@ -81,7 +83,7 @@ export function register<V>(i: Interpreter<V>): AnyInterpreter {
     slice: async (v, req) => i.slice(check(v), req),
     export: async (v, options) => i.export(check(v), options),
     derivations: v => i.derivations?.(check(v)) ?? [],
-    derive: async (v, id) => {
+    derive: async (v, id, task = noTask()) => {
       const value = check(v);
       const allowed = i.canDerive
         ? i.canDerive(value, id)
@@ -89,7 +91,7 @@ export function register<V>(i: Interpreter<V>): AnyInterpreter {
       if (!i.derive || !allowed) {
         throw new Error(`${i.kind} has no '${id}' derivation`);
       }
-      return i.derive(value, id);
+      return i.derive(value, id, task);
     },
   };
 }
