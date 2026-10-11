@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { palette, resizeTarget, transformTarget } from '../../src/core/image/ops';
 import { Engine } from '../../src/engine/engine';
 import { service as qrService } from '../../src/modules/qr/worker';
+import { QR_MODULES, QR_TEXT } from '../fixtures/qr';
 import { pngHeader } from './helpers';
 
 const custom = (width: number, height: number, keepAspect = true) =>
@@ -99,5 +100,23 @@ describe('image actions in the engine', () => {
 describe('qr module', () => {
   it('finds nothing in a blank image', () => {
     expect(qrService.decode(new Uint8ClampedArray(64 * 64 * 4).fill(255), 64, 64)).toBeNull();
+  });
+
+  it('decodes the QR fixture', () => {
+    // 4 px a module, with a 4-module quiet zone
+    const scale = 4;
+    const size = (QR_MODULES.length + 8) * scale;
+    const rgba = new Uint8ClampedArray(size * size * 4).fill(255);
+    QR_MODULES.forEach((row, y) =>
+      [...row].forEach((m, x) => {
+        if (m !== '#') return;
+        for (let dy = 0; dy < scale; dy++)
+          for (let dx = 0; dx < scale; dx++) {
+            const i = (((y + 4) * scale + dy) * size + (x + 4) * scale + dx) * 4;
+            rgba.fill(0, i, i + 3);
+          }
+      }),
+    );
+    expect(qrService.decode(rgba, size, size)).toBe(QR_TEXT);
   });
 });
