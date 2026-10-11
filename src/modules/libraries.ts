@@ -19,4 +19,5 @@ export const moduleLibraries: Record<string, ModuleLibrary> = {
   sqlite: { name: 'sql.js', package: 'sql.js' },
   pdf: { name: 'pdf.js', package: 'pdfjs-dist' },
   libarchive: { name: 'libarchive.js', package: 'libarchive.js' },
+  audiotools: { name: 'Mediabunny', package: 'mediabunny' },
 };

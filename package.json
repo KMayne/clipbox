@@ -29,6 +29,7 @@
     "idb-keyval": "^6.3.0",
     "libarchive.js": "^2.0.2",
     "marked": "^18.1.0",
+    "mediabunny": "1.61.3",
     "monaco-editor": "^0.57.0",
     "music-metadata": "^12.1.0",
     "papaparse": "^5.7.0",

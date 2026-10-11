@@ -100,6 +100,16 @@ Legend:
 ### Audio / video
 
 - **Cover art** ✓ · **Metadata as JSON** · **Video frame as PNG** (at a time param)
+- **Normalise audio** ✅ (`media.normalise`, `audiotools` module): two-pass EBU R128 loudness
+  normalisation. Pass 1 decodes and measures integrated loudness (BS.1770-4 gating) and true peak
+  (4× oversampled); pass 2 applies one constant gain and re-encodes the audio only, copying any
+  video track's packets untouched. Settings: target (-14 LUFS, -36 to -5), true-peak ceiling
+  (-1 dBTP), Limit peaks (off: the gain is capped at the ceiling and the result named
+  "peak-capped"; on: an offline true-peak lookahead limiter reaches the target). The result name
+  carries the before loudness and the gain, e.g. `song (normalised -14 LUFS; was -23.1 LUFS,
+  +9.1 dB).wav`. Output keeps the container and codec when WebCodecs can encode it (Opus, AAC
+  where available, PCM, FLAC), else: lossy audio → Opus in Ogg, lossless → WAV, video → Matroska.
+  No progress reporting (the action framework has none yet); not offered for AVI or Ogg Theora.
 
 ### Spreadsheet
 
