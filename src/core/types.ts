@@ -55,8 +55,21 @@ export interface Summary {
   /** Number of sliceable units: lines, rows, top-level children or bytes. */
   extent: number;
   columns?: ColumnInfo[];
+  /**
+   * For values holding several tables (spreadsheet sheets, SQLite tables). `extent` and
+   * `columns` above describe table 0; `rows` slices pick a table with their `table` index.
+   */
+  tables?: TableInfo[];
   /** Ways to open this value as a new capture, e.g. "Decode" or "As CSV". */
   derivations?: Derivation[];
+}
+
+/** One table of a multi-table value. */
+export interface TableInfo {
+  name: string;
+  /** Row count. */
+  extent: number;
+  columns: ColumnInfo[];
 }
 
 /** A way to turn a value into new content, which becomes a derived capture. */
@@ -109,7 +122,8 @@ export interface JsonChild {
 /** Window of a value requested from the engine. Results are validated in engine/valueHandle.ts. */
 export type SliceRequest =
   | { type: 'lines'; from: number; to: number }
-  | { type: 'rows'; from: number; to: number }
+  /** `table` indexes `Summary.tables`; omitted means the value's only (or first) table. */
+  | { type: 'rows'; from: number; to: number; table?: number }
   | { type: 'children'; path: JsonPath; from: number; to: number }
   | { type: 'bytes'; from: number; to: number }
   /** Whole text (text, HTML source). */
@@ -138,7 +152,7 @@ export interface MediaData {
 export interface ValueHandle {
   summary: Summary;
   lines(from: number, to: number): Promise<string[]>;
-  rows(from: number, to: number): Promise<Record<string, unknown>[]>;
+  rows(from: number, to: number, table?: number): Promise<Record<string, unknown>[]>;
   children(path: JsonPath, from: number, to: number): Promise<JsonChild[]>;
   bytes(from: number, to: number): Promise<Uint8Array<ArrayBuffer>>;
   text(): Promise<string>;

@@ -16,6 +16,8 @@ export default defineConfig({
       '@peculiar/x509',
       'reflect-metadata',
       'music-metadata',
+      'xlsx',
+      'sql.js',
       'monaco-editor/editor/editor.api',
       'monaco-editor/languages/definitions/register.all',
       'monaco-editor/languages/features/json/register',

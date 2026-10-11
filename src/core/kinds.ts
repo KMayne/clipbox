@@ -18,6 +18,7 @@ const NAMES: Record<string, string> = {
   pem: 'PEM',
   audio: 'Audio',
   video: 'Video',
+  sqlite: 'SQLite',
 };
 
 export const kindName = (kind: Kind) => NAMES[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);

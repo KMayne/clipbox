@@ -1,4 +1,6 @@
 import { audioDetector, videoDetector } from './media/detect';
+import { spreadsheetDetector } from './sheets/detect';
+import { sqliteDetector } from './sqlite/detect';
 import { pemDetector } from './x509/detect';
 import type { Detector, ModuleId, ModuleInfo, Policies, Policy } from './types';
 
@@ -40,10 +42,34 @@ export const modules: ModuleInfo[] = [
     hasWorker: true,
     hasUi: false,
   },
+  {
+    id: 'sheets',
+    title: 'Spreadsheets',
+    description: 'Reads XLSX, XLSM, XLSB, ODS and legacy XLS workbooks (SheetJS)',
+    approxBytes: 370_000,
+    defaultPolicy: 'auto',
+    hasWorker: true,
+    hasUi: false,
+  },
+  {
+    id: 'sqlite',
+    title: 'SQLite',
+    description: 'Opens SQLite databases read-only in memory (sql.js, WASM)',
+    approxBytes: 700_000,
+    defaultPolicy: 'auto',
+    hasWorker: true,
+    hasUi: false,
+  },
 ];
 
 /** Detectors for kinds owned by lazily-loaded modules. */
-export const detectors: Detector[] = [pemDetector, audioDetector, videoDetector];
+export const detectors: Detector[] = [
+  pemDetector,
+  audioDetector,
+  videoDetector,
+  spreadsheetDetector,
+  sqliteDetector,
+];
 
 export const moduleInfo = (id: ModuleId) => modules.find(m => m.id === id);
 
