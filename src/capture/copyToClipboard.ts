@@ -1,5 +1,5 @@
 import type { Selection } from '../state/captureStore';
-import { useUiStore } from '../state/uiStore';
+import { tableIndexFor, useUiStore } from '../state/uiStore';
 import { engine } from '../engine/engineClient';
 
 async function toPng(bytes: Uint8Array<ArrayBuffer>, mime: string): Promise<Blob> {
@@ -15,10 +15,11 @@ async function toPng(bytes: Uint8Array<ArrayBuffer>, mime: string): Promise<Blob
 
 /** Copies the selected value in its natural format. */
 export async function copySelection(selection: Selection | null): Promise<void> {
-  const { notify } = useUiStore.getState();
+  const { notify, activeTable } = useUiStore.getState();
   if (!selection) return notify('Nothing selected');
   try {
-    const payload = await engine.exportValue(selection.entryId, selection.kind);
+    const table = tableIndexFor(activeTable, selection.entryId, selection.kind);
+    const payload = await engine.exportValue(selection.entryId, selection.kind, { table });
     const parts: Record<string, Blob> = {};
     if (payload.image) parts['image/png'] = await toPng(payload.image.bytes, payload.image.mime);
     if (payload.html) parts['text/html'] = new Blob([payload.html], { type: 'text/html' });

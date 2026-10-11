@@ -146,6 +146,11 @@ describe('spreadsheet interpreter', () => {
       ['Numbers', '3×3 · A1:C3'],
     ]);
     expect((await sheet.export(v)).text?.split('\n')[0]).toBe('name\tage\tactive\tjoined\ttotal');
+    // Copy takes the selected sheet; an out-of-range index falls back to the first
+    expect((await sheet.export(v, { table: 1 })).text?.split('\n')[0]).toBe('col1\tcol2\tcol3');
+    expect((await sheet.export(v, { table: 9 })).text?.split('\n')[0]).toBe(
+      'name\tage\tactive\tjoined\ttotal',
+    );
   });
 
   it('derives each sheet as CSV that records picks up', async () => {

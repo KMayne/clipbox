@@ -8,6 +8,12 @@ export interface ExportPayload {
   image?: { bytes: Uint8Array<ArrayBuffer>; mime: string };
 }
 
+/** What the UI is showing when it asks for a copy. */
+export interface ExportOptions {
+  /** Index into `Summary.tables` of the selected table (multi-table values). */
+  table?: number;
+}
+
 export interface InterpretContext {
   /**
    * Loads a module's service, checked with `guard`; null if the module is off, unavailable,
@@ -33,7 +39,7 @@ export interface Interpreter<V> {
   label(v: V): string;
   summarise(v: V): MaybePromise<SummaryParts>;
   slice(v: V, req: SliceRequest): MaybePromise<unknown>;
-  export(v: V): MaybePromise<ExportPayload>;
+  export(v: V, options?: ExportOptions): MaybePromise<ExportPayload>;
   /** Ways to open the value as a new capture; shown in the Inspector's "Open as" menu. */
   derivations?(v: V): Derivation[];
   /** Produces the content for one of `derivations(v)` (or any id `canDerive` accepts). */
@@ -54,7 +60,7 @@ export interface AnyInterpreter {
   label(v: unknown): string;
   summarise(v: unknown): Promise<SummaryParts>;
   slice(v: unknown, req: SliceRequest): Promise<unknown>;
-  export(v: unknown): Promise<ExportPayload>;
+  export(v: unknown, options?: ExportOptions): Promise<ExportPayload>;
   /** Empty when the interpreter offers none. */
   derivations(v: unknown): Derivation[];
   derive(v: unknown, id: string): Promise<DerivedContent>;
@@ -73,7 +79,7 @@ export function register<V>(i: Interpreter<V>): AnyInterpreter {
     label: v => i.label(check(v)),
     summarise: async v => i.summarise(check(v)),
     slice: async (v, req) => i.slice(check(v), req),
-    export: async v => i.export(check(v)),
+    export: async (v, options) => i.export(check(v), options),
     derivations: v => i.derivations?.(check(v)) ?? [],
     derive: async (v, id) => {
       const value = check(v);

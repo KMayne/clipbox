@@ -1,6 +1,8 @@
 import { css, cx } from '@emotion/css';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { ValueHandle } from '../../core/types';
+import type { Selection } from '../../state/captureStore';
+import { tableIndexFor, useUiStore } from '../../state/uiStore';
 import { theme } from '../../theme';
 import { ui } from '../ui';
 import { RecordsTable } from './RecordsTable';
@@ -40,10 +42,19 @@ const styles = {
   `,
 };
 
-/** Sheet tabs over a records table of the selected sheet. */
-export function SpreadsheetView({ handle }: { handle: ValueHandle }) {
+/** Sheet tabs over a records table of the selected sheet, which is also what "Copy" copies. */
+export function SpreadsheetView({
+  handle,
+  selection,
+}: {
+  handle: ValueHandle;
+  selection: Selection;
+}) {
   const tables = handle.summary.tables ?? [];
-  const [active, setActive] = useState(0);
+  const { entryId, kind } = selection;
+  const active = useUiStore(s => tableIndexFor(s.activeTable, entryId, kind));
+  const setActiveTable = useUiStore(s => s.setActiveTable);
+  const setActive = (index: number) => setActiveTable({ entryId, kind, index });
   const table = tables[active];
   const sheet = useMemo(
     () => (table ? tableHandle(handle, active, table) : null),

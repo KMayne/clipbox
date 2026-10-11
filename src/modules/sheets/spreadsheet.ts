@@ -211,7 +211,11 @@ export const spreadsheetInterpreter: Interpreter<SpreadsheetValue> = {
     if (req.type === 'rows') return sheetAt(v, req.table).records.rows.slice(req.from, req.to);
     return unsupportedSlice('spreadsheet', req);
   },
-  export: v => ({ text: v.sheets[0] ? toTsv(v.sheets[0].records) : '' }),
+  // The sheet showing in the preview, else the first
+  export: (v, options) => {
+    const s = v.sheets[options?.table ?? 0] ?? v.sheets[0];
+    return { text: s ? toTsv(s.records) : '' };
+  },
   derivations: v => v.sheets.map((s, i) => ({ id: `sheet:${i}`, label: `Sheet ${s.name} as CSV` })),
   derive(v, id) {
     const s = sheetAt(v, Number(id.slice('sheet:'.length)));

@@ -2,7 +2,12 @@ import * as Comlink from 'comlink';
 import { makeContent, type EntryContent } from '../core/content';
 import { oneLine, toBase64 } from '../core/format';
 import { sha256 } from '../core/hash';
-import type { AnyInterpreter, ExportPayload, InterpretContext } from '../core/interpreter';
+import type {
+  AnyInterpreter,
+  ExportOptions,
+  ExportPayload,
+  InterpretContext,
+} from '../core/interpreter';
 import { interpreters as coreInterpreters } from '../core/interpreters';
 import type {
   DerivedContent,
@@ -138,10 +143,14 @@ export class Engine {
     return result;
   }
 
-  async exportValue(entryId: EntryId, kind: Kind): Promise<ExportPayload> {
+  async exportValue(
+    entryId: EntryId,
+    kind: Kind,
+    options?: ExportOptions,
+  ): Promise<ExportPayload> {
     const state = this.state(entryId);
     const interpreter = await this.interpreter(this.candidate(state, kind));
-    return interpreter.export(await this.value(entryId, kind));
+    return interpreter.export(await this.value(entryId, kind), options);
   }
 
   /** Runs a derivation; the caller adds the result as a new capture. */

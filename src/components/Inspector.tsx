@@ -180,11 +180,11 @@ function TabBody({
     case 'raw':
       return <RawView entryId={selection.entryId} />;
     case 'preview':
-      return <Preview handle={handle} />;
+      return <Preview handle={handle} selection={selection} />;
   }
 }
 
-function Preview({ handle }: { handle: ValueHandle }) {
+function Preview({ handle, selection }: { handle: ValueHandle; selection: Selection }) {
   switch (handle.summary.kind) {
     case 'json':
     case 'yaml':
@@ -225,7 +225,7 @@ function Preview({ handle }: { handle: ValueHandle }) {
     case 'video':
       return <MediaView handle={handle} />;
     case 'spreadsheet':
-      return <SpreadsheetView handle={handle} />;
+      return <SpreadsheetView handle={handle} selection={selection} />;
     case 'sqlite':
       return <SqliteView handle={handle} />;
     case 'pdf':
