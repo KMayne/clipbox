@@ -3,6 +3,8 @@ import { anyActions } from './any';
 import { imageActions } from './image';
 import { jsonActions } from './json';
 import { mediaActions } from './media';
+import { pdfActions } from './pdf';
+import { presentationActions } from './presentation';
 import { textActions } from './text';
 
 /**
@@ -15,6 +17,8 @@ export const catalog: ActionInfo[] = [
   ...textActions,
   ...imageActions,
   ...mediaActions,
+  ...presentationActions,
+  ...pdfActions,
   ...anyActions,
 ];
 

@@ -3,7 +3,7 @@ import { createMemo } from '../content';
 import { formatBytes, formatCount } from '../format';
 import { hasKind } from '../guards';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
-import { detectMagic, isImageMagic, type MagicType } from '../magic';
+import { detectMagic, isImageMagic, MAGIC_MIME, type MagicType } from '../magic';
 
 export interface Base64Value {
   kind: 'base64';
@@ -22,21 +22,6 @@ export interface Base64Value {
   /** The pasted text, trimmed (base64 or a data URL). */
   source: string;
 }
-
-const MAGIC_MIME: Record<MagicType, string> = {
-  png: 'image/png',
-  jpeg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-  bmp: 'image/bmp',
-  ico: 'image/x-icon',
-  svg: 'image/svg+xml',
-  pdf: 'application/pdf',
-  zip: 'application/zip',
-  gzip: 'application/gzip',
-  wasm: 'application/wasm',
-  elf: 'application/x-elf',
-};
 
 const MIN_LENGTH = 16;
 /** Shorter tokens are only accepted when they decode to word-like ASCII (see `wordy`). */
@@ -73,11 +58,7 @@ function wordy(text: string): boolean {
   );
 }
 
-function build(
-  encoded: string,
-  declaredMime: string | null,
-  source: string,
-): Base64Value | null {
+function build(encoded: string, declaredMime: string | null, source: string): Base64Value | null {
   const shape = base64Shape(encoded);
   const bytes = decodeBase64(encoded);
   if (!shape || !bytes || bytes.length === 0) return null;

@@ -22,6 +22,7 @@ import { JwtView } from './previews/JwtView';
 import { RecordsTable } from './previews/RecordsTable';
 import { PdfView } from './previews/PdfView';
 import { PemView } from './previews/PemView';
+import { PresentationView } from './previews/PresentationView';
 import { SpreadsheetView } from './previews/SpreadsheetView';
 import { SqliteView } from './previews/SqliteView';
 import { TextView } from './previews/TextView';
@@ -250,6 +251,8 @@ function Preview({ handle, selection }: { handle: ValueHandle; selection: Select
       return <PdfView handle={handle} />;
     case 'archive':
       return <ArchiveView handle={handle} />;
+    case 'presentation':
+      return <PresentationView handle={handle} />;
     default:
       return <HexView handle={handle} />;
   }

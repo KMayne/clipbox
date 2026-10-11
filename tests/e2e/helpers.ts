@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /** Dispatches a synthetic paste carrying the given MIME → string entries. */
 export async function paste(page: Page, data: Record<string, string>) {
@@ -17,6 +17,29 @@ export async function dropFile(page: Page, name: string, type: string, content: 
       window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true }));
     },
     { name, type, content },
+  );
+}
+
+/** Drops a binary file (sent to the page as base64). */
+export async function dropBytes(page: Page, name: string, type: string, bytes: Uint8Array) {
+  await page.evaluate(
+    ({ name, type, b64 }) => {
+      const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      const dt = new DataTransfer();
+      dt.items.add(new File([bin], name, { type }));
+      window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true }));
+    },
+    { name, type, b64: Buffer.from(bytes).toString('base64') },
+  );
+}
+
+/** Waits for an <img> to decode and returns its natural size. */
+export async function naturalSize(img: Locator) {
+  await expect
+    .poll(() => img.evaluate(el => (el instanceof HTMLImageElement ? el.naturalWidth : 0)))
+    .toBeGreaterThan(0);
+  return img.evaluate(el =>
+    el instanceof HTMLImageElement ? [el.naturalWidth, el.naturalHeight] : [0, 0],
   );
 }
 

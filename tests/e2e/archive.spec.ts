@@ -1,19 +1,7 @@
 import { readFileSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { strToU8, zipSync } from 'fflate';
-
-/** Drops a binary file (sent to the page as base64). */
-async function dropBytes(page: Page, name: string, type: string, bytes: Uint8Array) {
-  await page.evaluate(
-    ({ name, type, b64 }) => {
-      const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-      const dt = new DataTransfer();
-      dt.items.add(new File([bin], name, { type }));
-      window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true }));
-    },
-    { name, type, b64: Buffer.from(bytes).toString('base64') },
-  );
-}
+import { dropBytes } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');

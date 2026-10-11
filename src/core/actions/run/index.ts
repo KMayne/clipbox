@@ -3,6 +3,8 @@ import { anyImpls } from './any';
 import { imageImpls } from './image';
 import { jsonImpls } from './json';
 import { mediaImpls } from './media';
+import { pdfImpls } from './pdf';
+import { presentationImpls } from './presentation';
 import { textImpls } from './text';
 
 /**
@@ -14,6 +16,8 @@ export const actionImpls: AnyActionImpl[] = [
   ...textImpls,
   ...imageImpls,
   ...mediaImpls,
+  ...presentationImpls,
+  ...pdfImpls,
   ...anyImpls,
 ];
 
