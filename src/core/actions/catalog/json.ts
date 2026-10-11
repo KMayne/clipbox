@@ -86,13 +86,19 @@ export const jsonPick = defineAction({
   id: 'json.pick',
   title: 'Pick by path',
   group: 'Extract',
-  kinds: ['json'],
+  // Records are queried as their rows: an array of objects
+  kinds: ['json', 'records'],
   params: z.object({
-    path: z.string().default('$').meta({
-      title: 'JSONPath',
-      hint: 'regex',
-      description: "e.g. $.items[*].name, $..id, $.list[0:5], $['a key']",
-    }),
+    path: z
+      .string()
+      .default('$')
+      .meta({
+        title: 'JSONPath',
+        hint: 'regex',
+        description:
+          "JSONPath (RFC 9535), e.g. $.items[*].name, $..id, $[0:5], $['a key'], " +
+          '$[?@.price < 10 && @.tags], $[?length(@.name) > 3], $[?@.email =~ /@example\\.com$/]',
+      }),
     wrap: z.boolean().default(false).meta({ title: 'Always return an array' }),
   }),
   label: p => `Pick ${p.path}`,

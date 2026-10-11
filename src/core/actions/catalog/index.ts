@@ -21,6 +21,7 @@ import { xmlActions } from './xml';
 import { yamlActions } from './yaml';
 import { ndjsonActions } from './ndjson';
 import { recordsActions } from './records';
+import { queryActions } from './query';
 import { timestampActions } from './timestamp';
 import { urlActions } from './url';
 import { uuidActions } from './uuid';
@@ -37,6 +38,7 @@ export const catalog: ActionInfo[] = [
   ...yamlActions,
   ...ndjsonActions,
   ...recordsActions,
+  ...queryActions,
   ...imageActions,
   ...mediaActions,
   ...presentationActions,

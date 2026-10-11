@@ -21,6 +21,7 @@ import { xmlImpls } from './xml';
 import { yamlImpls } from './yaml';
 import { ndjsonImpls } from './ndjson';
 import { recordsImpls } from './records';
+import { queryImpls } from './query';
 import { timestampImpls } from './timestamp';
 import { urlImpls } from './url';
 import { uuidImpls } from './uuid';
@@ -36,6 +37,7 @@ export const actionImpls: AnyActionImpl[] = [
   ...yamlImpls,
   ...ndjsonImpls,
   ...recordsImpls,
+  ...queryImpls,
   ...imageImpls,
   ...mediaImpls,
   ...presentationImpls,

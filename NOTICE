@@ -57,5 +57,9 @@ The colour schemes are based on these palettes, all under the MIT License:
 - One Dark, GitHub Inc. (Atom), https://github.com/atom/atom
 - Gruvbox, Pavel Pertsev (morhetz), https://github.com/morhetz/gruvbox
 
+The jq module bundles jq (MIT, https://jqlang.org) built to WebAssembly by
+jq-wasm (MIT, Owen Ou), which includes Oniguruma (BSD-2-Clause, K. Kosako) and
+decNumber (ICU License, IBM Corporation).
+
 Other dependencies are under MIT, ISC or BSD licences; see each package's
 licence file in node_modules or its published package.

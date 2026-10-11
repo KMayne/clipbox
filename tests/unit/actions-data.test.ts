@@ -147,7 +147,8 @@ describe('JSON actions (batch 2)', () => {
     const engine = await engineWith(doc);
     const runPick = (path: string) => engine.runAction('en-1', 'json', 'json.pick', { path });
     await expect(runPick('$.nope')).rejects.toThrow('Nothing matches $.nope');
-    await expect(runPick('$.items[?(@.id)]')).rejects.toThrow('Invalid path: Filter');
+    await expect(runPick('$.items[?(@.id ==)]')).rejects.toThrow('Invalid path: ');
+    expect(await pick('$.items[?(@.id > 1)].name')).toEqual(['b']);
   });
 });
 

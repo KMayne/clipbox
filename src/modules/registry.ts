@@ -99,6 +99,14 @@ export const modules: ModuleInfo[] = (
       hasWorker: true,
       hasUi: false,
     },
+    {
+      id: 'jq',
+      title: 'jq',
+      description: 'Runs jq filters on JSON, YAML, NDJSON and records (jq 1.8, WASM)',
+      approxBytes: 1_060_000,
+      hasWorker: true,
+      hasUi: false,
+    },
   ] satisfies Omit<ModuleInfo, 'library'>[]
 ).map(m => ({ ...m, library: moduleLibraries[m.id] }));
 
