@@ -4,6 +4,7 @@ import { sqliteDetector } from './sqlite/detect';
 import { pdfDetector } from './pdf/detect';
 import { libarchiveDetector } from './libarchive/detect';
 import { pemDetector } from './x509/detect';
+import { imageformatsDetector } from './imageformats/detect';
 import { moduleLibraries } from './libraries';
 import type { Detector, ModuleId, ModuleInfo } from './types';
 
@@ -82,6 +83,14 @@ export const modules: ModuleInfo[] = (
       hasWorker: true,
       hasUi: false,
     },
+    {
+      id: 'imageformats',
+      title: 'More image formats',
+      description: 'Previews TIFF (multi-page, fax), EMF/EMF+, WMF, PSD, TGA and PCX images',
+      approxBytes: 170_000,
+      hasWorker: true,
+      hasUi: false,
+    },
   ] satisfies Omit<ModuleInfo, 'library'>[]
 ).map(m => ({ ...m, library: moduleLibraries[m.id] }));
 
@@ -94,6 +103,7 @@ export const detectors: Detector[] = [
   spreadsheetDetector,
   sqliteDetector,
   libarchiveDetector,
+  imageformatsDetector,
 ];
 
 export const moduleInfo = (id: ModuleId) => modules.find(m => m.id === id);

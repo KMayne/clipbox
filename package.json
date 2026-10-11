@@ -39,6 +39,7 @@
     "react-resizable-panels": "^4.14.4",
     "reflect-metadata": "^0.2.2",
     "sql.js": "^1.14.2",
+    "utif2": "4.1.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "yaml": "^2.9.1",
     "zod": "^4.6.5",

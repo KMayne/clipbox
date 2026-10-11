@@ -25,4 +25,12 @@ export const imageConvert = defineAction({
     `Convert to ${IMAGE_FORMATS[p.format]}${p.format === 'png' ? '' : ` (${p.quality}%)`}`,
 });
 
-export const imageActions = [imageConvert];
+export const imagePagesAsPng = defineAction({
+  id: 'image.pagesAsPng',
+  title: 'Pages as PNG',
+  group: 'Convert',
+  kinds: ['image'],
+  params: z.object({}),
+});
+
+export const imageActions = [imageConvert, imagePagesAsPng];

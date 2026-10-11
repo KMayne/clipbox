@@ -20,4 +20,5 @@ export const moduleLibraries: Record<string, ModuleLibrary> = {
   pdf: { name: 'pdf.js', package: 'pdfjs-dist' },
   libarchive: { name: 'libarchive.js', package: 'libarchive.js' },
   audiotools: { name: 'Mediabunny', package: 'mediabunny' },
+  imageformats: { name: 'UTIF.js', package: 'utif2' },
 };
