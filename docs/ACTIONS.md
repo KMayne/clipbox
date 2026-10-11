@@ -36,7 +36,8 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
 
 - **Group by** ✅: outputs: Summary table (key, count and aggregates such as `sum:price, avg:age`; functions count, sum, avg, min, max, distinct, first, last, with `mean`/`average`/`unique` aliases; columns named `sum_price`), Object of arrays (`{ "UK": [...] }`, written in the chosen order even for number-like keys) or Array of groups (`[{ key, count, items }]`). Sort by key (natural, numbers numerically) or count, either way, or first seen; ties keep first-seen order. Missing values group as `(none)` (last for key orders) or are skipped; for records, empty cells are missing. Keys: numbers, booleans and null spelled out, so `1` and `"1"` share a group (the first value seen is kept). Summary tables are CSV (TSV for tab sources) from delimited records, else JSON; files named e.g. `people-by-team.csv`.
 - **Count by** ✅ (key and count, largest first) · **Distinct values** ✅ (a JSON array; first seen, A → Z or most common first)
-- **jq** ✅ (`query.jq`, the lazy `jq` module: jq 1.8.2 via `jq-wasm`, MIT, ~930 KB wasm): JSON, YAML (several documents are several inputs), NDJSON (one input per line) and records (the rows array). Settings: filter (multiline, default `.`), raw output `-r` (text lines), compact `-c`, slurp `-s`, variables (`name=value` per line for `--arg`, `name:=JSON` for `--argjson`). One output stays as it is; several become a JSON array (pretty or compact); the input is the parsed value re-serialised, so integers beyond 2^53 have already lost digits. jq's compile and runtime errors come back as the notice, on one line; output over 32 MB is refused. Known gap: a filter that never ends (e.g. `repeat(.)`) blocks the worker, since the wasm call is synchronous.
+- All three report progress ("Grouping N items", then "Summarising N groups") and can be cancelled.
+- **jq** ✅ (`query.jq`, the lazy `jq` module: jq 1.8.2 via `jq-wasm`, MIT, ~930 KB wasm): JSON, YAML (several documents are several inputs), NDJSON (one input per line) and records (the rows array). Settings: filter (multiline, default `.`), raw output `-r` (text lines), compact `-c`, slurp `-s`, variables (`name=value` per line for `--arg`, `name:=JSON` for `--argjson`). One output stays as it is; several become a JSON array (pretty or compact); the input is the parsed value re-serialised, so integers beyond 2^53 have already lost digits. jq's compile and runtime errors come back as the notice, on one line; output over 32 MB is refused. Each run goes to a runner worker nested in the engine worker (`modules/jq/runner.worker.ts`; one idle runner is kept warm), so a filter that never ends (e.g. `repeat(.)`) blocks only that: Cancel terminates the runner, as does the Timeout setting (seconds, default 30, 1–300; "jq timed out after 30 s"), which also frees whatever memory the filter took. Progress is an indeterminate "Running jq…".
 
 ### Records (CSV/TSV)
 
@@ -64,7 +65,9 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
   against the Base URL setting, else the document's `<base>`) · **Extract tables → CSV** ✅ (one CSV
   per table, spans filled; several make a collection) · extract images · format/minify · sanitise
 - All run on `core/html/`: a small tolerant HTML parser (the worker has no DOM), the converter and an
-  allowlist sanitiser.
+  allowlist sanitiser. None of them recurse on the call stack (the converter is trampolined with
+  `core/trampoline.ts`; the tree walks use explicit stacks), so 10k-deep nesting and 200k-row tables
+  work.
 
 ### Markdown
 

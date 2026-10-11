@@ -44,6 +44,47 @@ test('runs a jq select/map filter in the jq module', async ({ page }) => {
   await expect(page.getByTestId('capture')).toHaveCount(2);
 });
 
+/** Opens the jq form and runs `filter`. */
+async function runJq(page: Page, filter: string, timeout?: string) {
+  const pane = actionsPane(page);
+  await pane.getByRole('button', { name: 'jq', exact: true }).click();
+  const form = pane.getByRole('form', { name: 'jq settings' });
+  await form.getByLabel('Filter').fill(filter);
+  if (timeout !== undefined) await form.getByLabel('Timeout (seconds)').fill(timeout);
+  await form.getByRole('button', { name: 'Run' }).click();
+}
+
+test('a jq filter that never ends shows progress, cancels, and leaves the app responsive', async ({
+  page,
+}) => {
+  await runJq(page, 'repeat(.)');
+  const pane = actionsPane(page);
+  const bar = pane.getByRole('progressbar', { name: /^jq.* progress$/ });
+  await expect(bar).toBeVisible();
+  await expect(bar).toHaveAttribute('aria-valuetext', /Running jq/);
+  await page.waitForTimeout(500); // jq is well into its endless loop by now
+  await pane.getByRole('button', { name: /^Cancel jq/ }).click();
+  await expect(bar).toHaveCount(0);
+
+  // The engine isn't stuck behind jq: a new paste is interpreted at once
+  await paste(page, { 'text/plain': '[1, 2, 3]' });
+  await expect(page.getByTestId('capture')).toHaveCount(2);
+  await expect(page.getByTestId('chip').first()).toHaveText('JSON array · 3', { timeout: 5000 });
+  await expect(page.getByRole('status')).toHaveCount(0);
+
+  // And jq itself still works (a fresh runner worker)
+  await page.getByTestId('capture').first().locator('[data-kind=json]').click();
+  await runJq(page, 'add');
+  await expect(page.getByTestId('capture')).toHaveCount(3);
+  await expectRaw(page, '6');
+});
+
+test('a jq run that takes longer than its timeout stops with a clear error', async ({ page }) => {
+  await runJq(page, 'repeat(.)', '1');
+  await expect(page.getByText('jq failed: jq timed out after 1 s')).toBeVisible();
+  await expect(page.getByTestId('capture')).toHaveCount(1);
+});
+
 test('groups an array of objects into a summary table', async ({ page }) => {
   const pane = actionsPane(page);
   await pane.getByRole('button', { name: 'Group by' }).click();

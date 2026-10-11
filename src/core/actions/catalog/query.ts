@@ -117,6 +117,10 @@ export const queryJq = defineAction({
       hint: 'multiline',
       description: 'One name=value per line, used as $name; name:=JSON for --argjson',
     }),
+    timeout: z.number().int().min(1).max(300).default(30).meta({
+      title: 'Timeout (seconds)',
+      description: 'jq is stopped after this long (some programs, e.g. repeat(.), never end)',
+    }),
   }),
   label: p => {
     const filter = p.filter.trim().replace(/\s+/g, ' ');

@@ -480,17 +480,18 @@ export const queryImpls = [
   }),
   implement(queryJq, {
     value: jqSource,
-    async run({ value }, { filter, raw, compact, slurp, args }, ctx) {
+    async run({ value }, { filter, raw, compact, slurp, args, timeout }, ctx) {
       if (filter.trim() === '') throw new Error('Enter a jq filter, e.g. .');
       const parsedArgs = parseJqArgs(args);
       const jq = await ctx.service('jq', isJqService);
       if (!jq) throw new Error("The jq module isn't available");
-      const stdout = await jq.run(jqInput(value), filter, {
-        raw,
-        compact,
-        slurp,
-        args: parsedArgs,
-      });
+      ctx.progress(undefined, 'Running jq…');
+      const stdout = await jq.run(
+        jqInput(value),
+        filter,
+        { raw, compact, slurp, args: parsedArgs },
+        { signal: ctx.signal, timeout },
+      );
       return jqResult(stdout, raw, compact);
     },
   }),
