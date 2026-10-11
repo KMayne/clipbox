@@ -1,8 +1,9 @@
 import { copySelection } from './capture/copyToClipboard';
+import { currentCapture, currentEntry, downloadAll, downloadEntry } from './capture/saveFiles';
 import { openFile, readClipboard } from './capture/sources';
 import { hasSettings } from './core/actions/types';
 import { runAction, runDerivation, selectionActions } from './state/actions';
-import { findEntry, useCaptureStore, type Selection } from './state/captureStore';
+import { useCaptureStore, type Selection } from './state/captureStore';
 import { useUiStore, type InspectorTab } from './state/uiStore';
 
 export interface Command {
@@ -22,9 +23,8 @@ const tabCommand = (tab: InspectorTab, key: string): Command => ({
 });
 
 export function removeSelectedCapture(): void {
-  const { captures, selection, remove } = useCaptureStore.getState();
-  const found = selection && findEntry(captures, selection.entryId);
-  if (found) remove(found.capture.id);
+  const capture = currentCapture();
+  if (capture) useCaptureStore.getState().remove(capture.id);
 }
 
 /**
@@ -58,6 +58,26 @@ export const commands: Command[] = [
     title: 'Copy current value',
     shortcut: 'Ctrl+C',
     run: () => void copySelection(useCaptureStore.getState().selection),
+  },
+  {
+    id: 'value.download',
+    title: 'Download current entry',
+    name: 'Download',
+    run() {
+      const entry = currentEntry();
+      if (entry) downloadEntry(entry.id);
+      else useUiStore.getState().notify('Select an entry to download');
+    },
+  },
+  {
+    id: 'capture.downloadAll',
+    title: 'Download all items of this capture…',
+    name: 'Download all',
+    run() {
+      const capture = currentCapture();
+      if (capture) void downloadAll(capture.id);
+      else useUiStore.getState().notify('Nothing selected');
+    },
   },
   {
     id: 'view.actions',

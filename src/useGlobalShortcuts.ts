@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { isEditable, openFile } from './capture/sources';
 import { copySelection } from './capture/copyToClipboard';
 import { removeSelectedCapture } from './commands';
-import { chipOrder, useCaptureStore } from './state/captureStore';
+import { navOrder, useCaptureStore } from './state/captureStore';
 import { useUiStore, type InspectorTab } from './state/uiStore';
 
 const TABS: Record<string, InspectorTab> = {
@@ -12,14 +12,20 @@ const TABS: Record<string, InspectorTab> = {
   '4': 'raw',
 };
 
-/** Moves the chip selection by `delta` through the visible chips. */
+/** Moves the selection by `delta` through the visible chips and collection headers. */
 export function moveSelection(delta: number): void {
-  const { captures, selection, select } = useCaptureStore.getState();
-  const order = chipOrder(captures);
+  const { captures, selection, collection, select, selectCollection } = useCaptureStore.getState();
+  const order = navOrder(captures);
   if (order.length === 0) return;
-  const i = order.findIndex(s => s.entryId === selection?.entryId && s.kind === selection?.kind);
+  const i = order.findIndex(s =>
+    'collection' in s
+      ? s.collection === collection
+      : s.entryId === selection?.entryId && s.kind === selection?.kind,
+  );
   const next = order[Math.min(order.length - 1, Math.max(0, i + delta))];
-  if (next) select(next);
+  if (!next) return;
+  if ('collection' in next) selectCollection(next.collection);
+  else select(next);
 }
 
 export function useGlobalShortcuts() {
