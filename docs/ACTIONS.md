@@ -16,37 +16,37 @@ Legend:
 
 ### Text
 
-- **Trim**, **remove blank lines**, **sort lines** ✅ (A → Z / Z → A, natural order), **dedupe lines** ✅ (Sort lines' "Remove duplicates"; an order-keeping dedupe is still open), **reverse lines**, number lines
+- **Trim** ✅ (leading/trailing/both; each line or whole), **remove blank lines** ✅, **sort lines** ✅ (A → Z / Z → A, natural order), **dedupe lines** ✅ (order-keeping, optionally ignoring case; also Sort lines' "Remove duplicates"), **reverse lines** ✅, number lines
 - **Change case** ✅: UPPER, lower, Title, camelCase, snake_case, kebab-case; slugify (not done)
 - **Find & replace** (regex, param) ✅
-- **Encode/decode**: base64, URL (percent), HTML entities, JSON string escape/unescape
-- **Split lines → JSON array**; wrap at N columns
+- **Encode/decode** ✅ (`text.encode` / `text.decode`, a format setting): base64 (standard or URL-safe; decoding ignores whitespace, and non-text bytes come out as binary), URL percent-encoding (component, where decoding also reads `+` as a space, or full URL), HTML entities (the HTML 4 named set plus numeric, in `core/htmlEntities.ts`; optional `&#N;` for non-ASCII), JSON string escape/unescape (optional quotes and `\uXXXX`)
+- **Split lines → JSON array** ✅ (trim and skip-empty settings); wrap at N columns
 
 ### JSON
 
 - **Format** (2-space) ✅ (2 spaces, 4 spaces or tabs) · **Minify** ✅ · **Sort keys** ✅
-- **To YAML** ✅ · **To CSV** ✓ (arrays of objects) · **To NDJSON** (arrays) · to XML
+- **To YAML** ✅ · **To CSV** ✓ (arrays of objects) · **To NDJSON** ✅ (arrays only) · to XML
 - **Generate TypeScript types** (`schemaToTs` in `core/schema.ts`) ✅ (root type name param) · generate JSON Schema
-- **Flatten to dot-path keys** · unflatten
-- **Pick by path / JSONPath** (param) · stringify as a string literal
+- **Flatten to dot-path keys** ✅ (separator setting; indices as `a.0.b` or `a[0].b`; empty objects and arrays kept as leaves) · unflatten
+- **Pick by path / JSONPath** ✅: a subset in `core/jsonPath.ts` (`$.a.b`, `['key']`, `*`, `..`, indices, negative indices, slices, unions; no filters). A definite path gives the value, others an array of matches (or always an array, a setting) · stringify as a string literal
 
 ### Records (CSV/TSV)
 
-- **As JSON** ✓ · **To TSV / To CSV** (swap delimiter) · **To Markdown table** · to HTML table · to NDJSON
-- **To SQL INSERTs** (param: table name) · **Generate TypeScript types**
-- **Pick/rename columns**, **sort by column**, **filter rows** (params) · dedupe rows · transpose
+- **As JSON** ✓ · **To TSV / To CSV** ✅ (re-reads delimited sources, so cells like `007` and `1.50` stay as written) · **To Markdown table** ✅ (pipes escaped, line breaks as `<br>`; alignment setting, auto right-aligns numeric columns) · to HTML table · to NDJSON
+- **To SQL INSERTs** ✅ (table name, which may include a schema; rows per INSERT; empty cells as NULL; dialect for identifier quoting: ANSI, MySQL, PostgreSQL, SQLite. Numbers unquoted except ones with leading zeros, JSON booleans as TRUE/FALSE, MySQL also escapes backslashes) · **Generate TypeScript types** ✅ (row type name)
+- **Pick/rename columns** ✅ (`id, 3, name:title`), **sort by column** ✅ (stable; natural, numeric or text; empties last), **filter rows** ✅ (equals, not equals, contains, starts with, regex, >, <, empty, not empty; ignore case). Columns are a header name or a 1-based number. Results keep the source format (same delimiter, JSON array or NDJSON) · dedupe rows · transpose
 
 ### NDJSON
 
-- **To JSON array** · **To CSV** (objects) · **Extract invalid lines**
+- **To JSON array** ✅ (invalid lines skipped; the label notes how many) · **To CSV** ✅ (objects; union of keys) · **Extract invalid lines** ✅ (`12: …`, offered when there are some)
 
 ### YAML
 
-- **To JSON** · **Format** · sort keys
+- **To JSON** ✅ (several documents become one JSON array, in order, so the result is one value you can keep transforming; the label notes it) · **Format** ✅ (indent setting; comments, anchors and document markers kept) · sort keys
 
 ### XML
 
-- **Format** · **Minify** · **To JSON**
+- **Format** ✅ (indent setting; works on the source text, so comments, CDATA, PIs and attribute order are kept; text-only elements stay inline, and mixed content and `xml:space="preserve"` elements are copied verbatim; `core/xmlFormat.ts`) · **Minify** ✅ (drops whitespace-only text between tags except under `xml:space="preserve"`, tightens tags; optional comment removal) · **To JSON** ✅ (fast-xml-parser; attributes as `@_` keys (prefix setting), grouped under `:@`, or left out; optional number/boolean parsing)
 
 ### HTML
 
@@ -137,6 +137,7 @@ Legend:
 
 ## Notes for batch 2
 
+- Results can set `note` on `DerivedContent` (e.g. "2 invalid lines skipped"); the UI appends it to the capture's label.
 - Actions that don't produce a new capture (Copy, Download, Open in new tab) don't fit
   `run → DerivedContent` yet; they need a small extension (e.g. a result type that the UI handles
   instead of adding a capture).
