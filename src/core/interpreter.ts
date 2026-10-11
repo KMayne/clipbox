@@ -36,8 +36,10 @@ export interface Interpreter<V> {
   export(v: V): MaybePromise<ExportPayload>;
   /** Ways to open the value as a new capture; shown in the Inspector's "Open as" menu. */
   derivations?(v: V): Derivation[];
-  /** Produces the content for one of `derivations(v)`. */
+  /** Produces the content for one of `derivations(v)` (or any id `canDerive` accepts). */
   derive?(v: V, id: string): MaybePromise<DerivedContent>;
+  /** For interpreters that list only some derivations (e.g. archive entries); defaults to the list. */
+  canDerive?(v: V, id: string): boolean;
 }
 
 /**
@@ -75,7 +77,10 @@ export function register<V>(i: Interpreter<V>): AnyInterpreter {
     derivations: v => i.derivations?.(check(v)) ?? [],
     derive: async (v, id) => {
       const value = check(v);
-      if (!i.derive || !i.derivations?.(value).some(d => d.id === id)) {
+      const allowed = i.canDerive
+        ? i.canDerive(value, id)
+        : (i.derivations?.(value).some(d => d.id === id) ?? false);
+      if (!i.derive || !allowed) {
         throw new Error(`${i.kind} has no '${id}' derivation`);
       }
       return i.derive(value, id);

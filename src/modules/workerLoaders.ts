@@ -8,4 +8,5 @@ export const workerLoaders: Partial<Record<ModuleId, () => Promise<WorkerModule>
   sheets: () => import('./sheets/worker'),
   sqlite: () => import('./sqlite/worker'),
   pdf: () => import('./pdf/worker'),
+  libarchive: () => import('./libarchive/worker'),
 };

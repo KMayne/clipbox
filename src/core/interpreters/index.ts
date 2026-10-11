@@ -1,6 +1,7 @@
 import type { EntryContent } from '../content';
 import { register, type AnyInterpreter } from '../interpreter';
 import type { Kind } from '../types';
+import { archiveCoreInterpreter } from './archive';
 import { base64Interpreter } from './base64';
 import { binaryInterpreter } from './binary';
 import { colourInterpreter } from './colour';
@@ -29,6 +30,7 @@ export const interpreters: AnyInterpreter[] = [
   register(xmlInterpreter),
   register(htmlInterpreter),
   register(imageInterpreter),
+  register(archiveCoreInterpreter),
   register(timestampInterpreter),
   register(uuidInterpreter),
   register(urlInterpreter),
