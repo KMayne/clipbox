@@ -1,7 +1,9 @@
 import type { ActionInfo } from '../types';
 import { anyActions } from './any';
+import { htmlActions } from './html';
 import { imageActions } from './image';
 import { jsonActions } from './json';
+import { markdownActions } from './markdown';
 import { mediaActions } from './media';
 import { pdfActions } from './pdf';
 import { presentationActions } from './presentation';
@@ -19,6 +21,8 @@ export const catalog: ActionInfo[] = [
   ...mediaActions,
   ...presentationActions,
   ...pdfActions,
+  ...htmlActions,
+  ...markdownActions,
   ...anyActions,
 ];
 
