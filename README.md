@@ -7,6 +7,8 @@ schema for each. A node graph for transforming the data is planned.
 Chromium only. No backend: everything runs in your browser, and pastes are kept on this device
 (IndexedDB, 7 days by default; see Settings → History).
 
+Source: https://github.com/KMayne/clipbox
+
 ## What it understands
 
 - **Data:** JSON, NDJSON, CSV/TSV records, YAML, XML, HTML, Markdown

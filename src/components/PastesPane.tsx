@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { mdiArrowTopRight, mdiChevronDown, mdiChevronRight, mdiClose } from '@mdi/js';
+import { mdiArrowTopRight, mdiChevronDown, mdiChevronRight, mdiClose, mdiGithub } from '@mdi/js';
 import { Icon } from '@mdi/react';
 import { kindName } from '../core/kinds';
 import { useCaptureStore, type CaptureView } from '../state/captureStore';
@@ -66,8 +66,12 @@ const styles = {
       text-decoration: underline;
     }
   `,
-  credit: css`
+  links: css`
     margin-left: auto;
+    display: flex;
+    gap: 10px;
+  `,
+  credit: css`
     display: inline-flex;
     align-items: center;
     gap: 2px;
@@ -92,6 +96,7 @@ const time = (at: number) => new Date(at).toLocaleTimeString('en-GB');
 
 /** The author's site: its root when deployed under a subpath (e.g. /clipbox/), else the live URL. */
 const SITE_URL = import.meta.env.BASE_URL !== '/' ? '/' : 'https://kianmayne.co.uk/';
+const REPO_URL = 'https://github.com/KMayne/clipbox';
 
 export function PastesPane() {
   const captures = useCaptureStore(s => s.captures);
@@ -121,16 +126,29 @@ export function PastesPane() {
             Clear all
           </button>
         )}
-        <a
-          className={styles.credit}
-          href={SITE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Opens in a new tab"
-        >
-          KianMayne.co.uk
-          <Icon path={mdiArrowTopRight} size={0.45} />
-        </a>
+        <div className={styles.links}>
+          <a
+            className={styles.credit}
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Source on GitHub (opens in a new tab)"
+          >
+            <Icon path={mdiGithub} size={0.5} />
+            Source
+            <Icon path={mdiArrowTopRight} size={0.45} />
+          </a>
+          <a
+            className={styles.credit}
+            href={SITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Opens in a new tab"
+          >
+            KianMayne.co.uk
+            <Icon path={mdiArrowTopRight} size={0.45} />
+          </a>
+        </div>
       </div>
     </section>
   );
