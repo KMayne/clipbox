@@ -5,8 +5,7 @@ does and how to run it, see `README.md`.
 
 ## Picking this up on another machine
 
-1. Clone `git@github.com:KMayne/clipbox.git`. If you want the theme work, also check out the
-   `feat/theme-switcher` branch (see "Open branches" below).
+1. Clone `git@github.com:KMayne/clipbox.git`.
 2. Install Node 26 (this machine uses nvm: `~/.nvm/versions/node/v26.11.1`) and pnpm 10.14
    (`packageManager` in `package.json` pins it).
 3. Run `pnpm install`. This also applies `patches/@vscode__vscode-languagedetection@1.0.23.patch`.
@@ -14,7 +13,7 @@ does and how to run it, see `README.md`.
 5. If your shell exports `NODE_ENV=development`, `pnpm build` still produces a production build
    (the script pins it), but plain `vite build` won't.
 6. Check everything works: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e`. All should pass:
-   242 unit tests and 41 e2e tests on `main` (43 on the theme branch).
+   242 unit tests and 43 e2e tests.
 
 Claude Code context that lives outside the repo and won't come with it:
 
@@ -22,14 +21,6 @@ Claude Code context that lives outside the repo and won't come with it:
   below;
 - one saved preference: plans should spell out the first deliverable in detail (UI, files,
   verification) and list risks up front.
-
-## Open branches
-
-- **`feat/theme-switcher`** (unmerged, one commit on top of `main` at `a535ba1`): colour schemes with a
-  switcher in Settings → Appearance. Nord is the default; the others are Tokyo Night, Catppuccin Mocha,
-  One Dark and Gruvbox. `?theme=<id>` previews a scheme without saving it. It credits all five palettes
-  (MIT) in `NOTICE`. To merge, rebase it on `main` (`main` has moved on with the credit link) and check
-  the credit's colours in each scheme.
 
 ## Done
 
@@ -56,10 +47,15 @@ Claude Code context that lives outside the repo and won't come with it:
   - Background module downloads on fast connections.
   - Subpath deploys via `BASE_PATH`.
   - A theme with native controls, focus rings and text selection all themed.
+  - Colour schemes with a switcher in Settings → Appearance: Nord (default), Tokyo Night, Catppuccin
+    Mocha, One Dark and Gruvbox. `?theme=<id>` previews one without saving. All five palettes (MIT) are
+    credited in `NOTICE`.
   - The KianMayne.co.uk credit, and a "Source" link to the GitHub repo beside it (also in the README).
+    Both are at least 4.5:1 contrast against the panel in every scheme.
   - README, NOTICE and the MIT licence.
-- **Push:** `main` and `feat/theme-switcher` matched `origin` as of 11 October 2026. Commits made
-  locally after that (the Vite config fix, the GitHub link, and the rebased theme branch) are unpushed.
+- **Push:** `main` matched `origin` as of 11 October 2026. Commits made locally after that (the Vite
+  config fix, the GitHub link, the merged colour schemes and the credit contrast fix) are unpushed.
+  `feat/theme-switcher` is merged into `main`; its copy on `origin` is stale and can be deleted.
 - **Deployment:** to be served at `kianmayne.co.uk/clipbox/`, built with `BASE_PATH=/clipbox/`.
   A separate Claude session handled the site side and a local preview (port 8080), and it needs a
   rebuild to show recent changes.
@@ -83,18 +79,17 @@ Claude Code context that lives outside the repo and won't come with it:
      module Off. Several tests depend on it: `tests/e2e/modules.spec.ts`, the Engine unit tests, and
      the x509 "module off" e2e test.
    - The background-download toggle should stay; it's a useful control on metered connections.
-2. **Merge `feat/theme-switcher`** once it has been reviewed.
 
 ### Original roadmap (from the plan)
 
-3. **Deliverable 1b: the canvas.**
+2. **Deliverable 1b: the canvas.**
    - Add a React Flow canvas between the Pastes pane and the Inspector.
    - Source nodes are created from a chip with "+" or Enter.
    - Shift+Enter replaces a source's data with the latest paste.
    - Undo/redo with `zundo`.
    - Save the graph (history persistence already exists), and pin each source node's blob so expiry
      can't remove it.
-4. **Deliverable 2: ops and edges.**
+3. **Deliverable 2: ops and edges.**
    - Op registry: input and output kinds, Zod params, and async `run(inputs, params, { signal })`.
    - Engine `setGraph` with reactive, debounced re-evaluation that cancels stale runs.
    - Per-node results; when a node errors, the nodes downstream show as blocked.
@@ -102,15 +97,15 @@ Claude Code context that lives outside the repo and won't come with it:
    - Ops: pick/rename, filter, sort, group by, flatten, count/unique, to Markdown, to CSV/TSV,
      stringify, split lines, regex replace.
    - Palette: typing an op name adds it after the selected node.
-5. **Spike, then Deliverable 3: inline TypeScript node.**
+4. **Spike, then Deliverable 3: inline TypeScript node.**
    - Monaco in the existing `editor` module.
    - Inject the upstream value's `Schema` as `declare const input: …` for type checking.
    - Transpile with sucrase and run in a disposable sandbox worker with a timeout.
-6. **Deliverable 4: quick-task UX.**
+5. **Deliverable 4: quick-task UX.**
    - Tab on a node opens the op picker, filtered by output kind, which auto-wires the chosen op.
    - Auto-layout.
    - Saved pipelines as templates.
-7. **Extras:**
+6. **Extras:**
    - Diffing two inputs.
    - Image ops.
    - HTML→Markdown.
