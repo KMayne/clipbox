@@ -17,6 +17,7 @@ import { OpenAsMenu } from './OpenAsMenu';
 import { Base64Preview } from './previews/Base64Preview';
 import { JwtView } from './previews/JwtView';
 import { RecordsTable } from './previews/RecordsTable';
+import { PdfView } from './previews/PdfView';
 import { PemView } from './previews/PemView';
 import { TextView } from './previews/TextView';
 import { ValueCard } from './previews/ValueCard';
@@ -216,6 +217,8 @@ function Preview({ handle }: { handle: ValueHandle }) {
       return <ValueCard handle={handle} />;
     case 'pem':
       return <PemView handle={handle} />;
+    case 'pdf':
+      return <PdfView handle={handle} />;
     default:
       return <HexView handle={handle} />;
   }

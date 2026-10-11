@@ -119,7 +119,9 @@ export type SliceRequest =
   /** Whole JSON value (used for top-level scalars). */
   | { type: 'json' }
   /** Rendered HTML (Markdown). */
-  | { type: 'html' };
+  | { type: 'html' }
+  /** One page (0-based) rendered to PNG at `scale` × its natural size (PDF). */
+  | { type: 'page'; index: number; scale: number };
 
 export interface ImageData {
   bytes: Uint8Array<ArrayBuffer>;
@@ -137,6 +139,8 @@ export interface ValueHandle {
   image(): Promise<ImageData>;
   json(): Promise<unknown>;
   html(): Promise<string>;
+  /** PNG of page `index` (0-based) at `scale`. */
+  page(index: number, scale: number): Promise<ImageData>;
 }
 
 export interface RawView {

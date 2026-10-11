@@ -13,6 +13,8 @@ export default defineConfig({
       '@vscode/vscode-languagedetection',
       '@peculiar/x509',
       'reflect-metadata',
+      'pdfjs-dist',
+      'pdfjs-dist/build/pdf.worker.mjs',
       'monaco-editor/editor/editor.api',
       'monaco-editor/languages/definitions/register.all',
       'monaco-editor/languages/features/json/register',

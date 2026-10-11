@@ -16,6 +16,7 @@ const NAMES: Record<string, string> = {
   uuid: 'UUID',
   url: 'URL',
   pem: 'PEM',
+  pdf: 'PDF',
 };
 
 export const kindName = (kind: Kind) => NAMES[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);

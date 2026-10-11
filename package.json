@@ -28,6 +28,7 @@
     "marked": "^18.1.0",
     "monaco-editor": "^0.57.0",
     "papaparse": "^5.7.0",
+    "pdfjs-dist": "^6.4.299",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-resizable-panels": "^4.14.4",
