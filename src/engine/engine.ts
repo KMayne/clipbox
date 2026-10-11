@@ -15,8 +15,8 @@ import type {
   SliceRequest,
   Summary,
 } from '../core/types';
-import { detectors, policyOf } from '../modules/registry';
-import type { ModuleId, Policies, WorkerModule } from '../modules/types';
+import { detectors } from '../modules/registry';
+import type { ModuleId, WorkerModule } from '../modules/types';
 import { workerLoaders } from '../modules/workerLoaders';
 
 interface Candidate {
@@ -42,7 +42,6 @@ export interface EngineOptions {
 /** Owns parsing, stats and values. Runs in a worker; plain class so it is unit-testable in Node. */
 export class Engine {
   private entries = new Map<EntryId, EntryState>();
-  private policies: Policies = {};
   private modules = new Map<ModuleId, Promise<WorkerModule>>();
   private moduleStates = new Map<ModuleId, ModuleLoadState>();
   private loaders: Partial<Record<string, () => Promise<WorkerModule>>>;
@@ -50,13 +49,6 @@ export class Engine {
 
   constructor(options: EngineOptions = {}) {
     this.loaders = options.loaders ?? workerLoaders;
-  }
-
-  setPolicies(policies: Policies): void {
-    this.policies = policies;
-    for (const id of Object.keys(this.loaders)) {
-      if (policyOf(policies, id) === 'preload') void this.loadModule(id).catch(() => {});
-    }
   }
 
   moduleLoadStates(): Record<string, ModuleLoadState> {
@@ -74,11 +66,9 @@ export class Engine {
     const interpretations: Interpretation[] = [];
     for (const c of candidates) {
       const base = { entryId: entry.id, kind: c.kind, confidence: c.confidence };
-      const blocked = this.blockingModule(c);
-      if (blocked) {
-        interpretations.push({ ...base, status: 'off', module: blocked });
-      } else if (this.pendingModules(c).length > 0) {
-        interpretations.push({ ...base, status: 'loading', module: this.pendingModules(c)[0] });
+      const pending = this.pendingModules(c);
+      if (pending.length > 0) {
+        interpretations.push({ ...base, status: 'loading', module: pending[0] });
       } else {
         const r = await this.resolve(entry.id, c.kind);
         if (r.status !== 'error') interpretations.push(r);
@@ -185,19 +175,14 @@ export class Engine {
       .sort((a, b) => b.confidence - a.confidence);
   }
 
-  /** The owning module, if it is switched off. */
-  private blockingModule(c: Candidate): ModuleId | null {
-    return c.module !== 'core' && policyOf(this.policies, c.module) === 'off' ? c.module : null;
-  }
-
-  /** Modules (owning or required, not off) that still have to load before parsing. */
+  /**
+   * Modules (owning or required) that still have to load before parsing. One with no loader
+   * can't load: a required one is skipped (its service is null), an owning one fails on resolve.
+   */
   private pendingModules(c: Candidate): ModuleId[] {
     const required = c.module === 'core' ? (this.coreInterpreter(c.kind)?.requires ?? []) : [];
     return [c.module, ...required].filter(
-      id =>
-        id !== 'core' &&
-        policyOf(this.policies, id) !== 'off' &&
-        this.moduleStates.get(id) !== 'loaded',
+      id => id !== 'core' && this.loaders[id] && this.moduleStates.get(id) !== 'loaded',
     );
   }
 
@@ -206,8 +191,6 @@ export class Engine {
     let value = state.values.get(kind);
     if (!value) {
       const c = this.candidate(state, kind);
-      const blocked = this.blockingModule(c);
-      if (blocked) return Promise.reject(new Error(`Module '${blocked}' is off`));
       value = this.interpreter(c).then(i => i.parse(state.content, this.ctx));
       value.catch(() => state.values.delete(kind));
       state.values.set(kind, value);
@@ -232,7 +215,6 @@ export class Engine {
   }
 
   private async service<T>(id: ModuleId, guard: (s: unknown) => s is T): Promise<T | null> {
-    if (policyOf(this.policies, id) === 'off') return null;
     try {
       const { service } = await this.loadModule(id);
       return guard(service) ? service : null;
@@ -277,7 +259,6 @@ const errorMessage = (err: unknown) => (err instanceof Error ? err.message : Str
 
 export type EngineApi = Pick<
   Engine,
-  | 'setPolicies'
   | 'moduleLoadStates'
   | 'ingest'
   | 'resolve'

@@ -21,12 +21,13 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
   - `schema.ts` (inference plus TS rendering) and `magic.ts` (format and dimensions from file headers).
 - `src/engine/` — `Engine` runs in a Web Worker via Comlink.
   - **Values never leave the worker.** The UI gets a `Summary` and fetches windows of data with `engine.slice` (`valueHandle.ts`).
-  - Ingest has two phases: `ingest` returns interpretations as `ready`, `loading` or `off`, and `resolve` loads the needed modules and finishes parsing.
+  - Ingest has two phases: `ingest` returns interpretations as `ready` or `loading`, and `resolve` loads the needed modules and finishes parsing.
 - `src/modules/` — lazily-loaded feature modules.
   - `registry.ts`: metadata and cheap detectors, shared by both threads.
   - `workerLoaders.ts` / `uiLoaders.ts`: the `import()` for each half. These are kept separate so the worker build doesn't pull in UI chunks and vice versa.
-  - Policies are Auto, Preload or Off, stored in localStorage under `clipbox.modules`.
-  - Interpreters use module services through `ctx.service(id)`, which returns null when the module is off or fails to load.
+  - There are no per-module policies: every module loads when a paste first needs it. One global **Module downloads** setting (`modules/downloadMode.ts`, localStorage `clipbox.moduleDownloads`, Zod-validated) decides what goes into the offline cache: Automatic (default; background downloads on fast connections), On demand (none) or Everything now (all, whatever the connection). It's UI-thread only; the worker doesn't need it. On load it migrates the old `clipbox.backgroundDownloads` toggle (off → On demand) and deletes it and the old `clipbox.modules` policies.
+  - `libraries.ts`: each module's main library (display name and npm package). It has no imports because `vite/modulesManifest.ts` loads it too.
+  - Interpreters use module services through `ctx.service(id)`, which returns null when the module fails to load (or has no loader).
   - Current modules:
     - `editor`: Monaco, UI only.
     - `langdetect`: VS Code's ML model.
@@ -37,8 +38,8 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
     - `pdf`: pdf.js in fake-worker mode inside the engine worker, rendering pages to PNG with `OffscreenCanvas`.
     - `libarchive`: 7z, RAR, tar.xz, tar.bz2 and zstd, owning the same `archive` kind as core.
   - Every module except `editor` is worker-only; their previews live in core.
-- `src/state/backgroundDownloads.ts` (with the pure rules in `modules/backgroundPolicy.ts`) — on a fast, apparently unmetered connection (4G-class, at least 5 Mbps, Data Saver off, not cellular, read from `navigator.connection`), downloads Auto-policy modules into the SW cache while idle, smallest first. Modules the user removes by hand are skipped. Toggle and status are in Settings → Modules. The e2e tests fake `navigator.connection` with `addInitScript`.
-- `src/sw.ts` + `vite/modulesManifest.ts` — the plugin maps each module's entry to its files (chunks, workers, assets), emits `modules-manifest.json`, and emits `sw.js` with the manifest inlined. The SW precaches the core files and handles per-module download, remove and update. It only runs in production builds. `src/swClient.ts` is the page side.
+- `src/state/backgroundDownloads.ts` (with the pure rules in `modules/backgroundPolicy.ts`) — on a fast, apparently unmetered connection (4G-class, at least 5 Mbps, Data Saver off, not cellular, read from `navigator.connection`), downloads modules into the SW cache while idle, smallest first, when the setting is Automatic; Everything now skips the connection and idle checks. The setting and status are in Settings → Modules, whose rows are status-only (library and version, size, state). The e2e tests fake `navigator.connection` with `addInitScript`.
+- `src/sw.ts` + `vite/modulesManifest.ts` — the plugin maps each module's entry to its files (chunks, workers, assets), emits `modules-manifest.json` (including each module's library version, read from `node_modules/<package>/package.json`; absent in dev), and emits `sw.js` with the manifest inlined. The SW precaches the core files and handles per-module download, repair (delete and re-download this version's caches) and update. Settings shows the manifest hash as the app version with the build date (`__BUILD_DATE__`, a `define`, via `src/buildInfo.ts`), plus Check for updates and Repair offline cache. It only runs in production builds. `src/swClient.ts` is the page side.
 - `src/capture/` — capture sources (paste, read, drop, file) → `captureStore.add()`.
 - `src/state/` — Zustand stores (`captureStore`, `moduleStore`, `uiStore`).
 - `src/state/persistence.ts` — saves captures to IndexedDB (idb-keyval). Metadata and blobs live in separate databases, and blobs are keyed by SHA-256 and garbage-collected. It's on by default with a 7-day expiry (Settings → History). Records are validated with Zod on read. It talks to the store through the `CaptureHost` interface, so it doesn't import the store (that would start the worker in Node tests).

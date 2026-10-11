@@ -91,7 +91,7 @@ export interface DerivedContent {
  * ready: parsed · loading: waiting on a module (call engine.resolve) · off: module disabled ·
  * error: parse or module load failed
  */
-export type InterpretationStatus = 'ready' | 'loading' | 'off' | 'error';
+export type InterpretationStatus = 'ready' | 'loading' | 'error';
 
 export interface Interpretation {
   entryId: EntryId;

@@ -25,20 +25,21 @@ describe('nextToDownload', () => {
   const none = { state: 'none' } as const;
   const cached = { state: 'cached' } as const;
 
-  it('picks the smallest auto module that is not cached, tried or skipped', () => {
+  it('picks the smallest module that is not cached, downloading or excluded', () => {
     const cache = { editor: none, langdetect: none, x509: cached, pdf: none };
-    expect(nextToDownload(sizes, {}, cache, new Set())).toBe('langdetect');
-    expect(nextToDownload(sizes, {}, cache, new Set(['langdetect']))).toBe('pdf');
+    expect(nextToDownload(sizes, cache, new Set())).toBe('langdetect');
+    expect(nextToDownload(sizes, cache, new Set(['langdetect']))).toBe('pdf');
+    const downloading = { ...cache, langdetect: { state: 'downloading', progress: 0.5 } } as const;
+    expect(nextToDownload(sizes, downloading, new Set())).toBe('pdf');
   });
 
-  it('respects policies: off is never fetched, preload is handled elsewhere', () => {
-    const cache = { editor: none, langdetect: none, x509: none, pdf: none };
-    const policies = { x509: 'off', langdetect: 'preload' } as const;
-    expect(nextToDownload(sizes, policies, cache, new Set())).toBe('pdf');
+  it('ignores modules the build manifest does not list', () => {
+    expect(nextToDownload({ pdf: 1 }, {}, new Set())).toBe('pdf');
+    expect(nextToDownload({ unknown: 1 }, {}, new Set())).toBeNull();
   });
 
   it('returns null when everything is cached', () => {
     const cache = { editor: cached, langdetect: cached, x509: cached, pdf: cached };
-    expect(nextToDownload(sizes, {}, cache, new Set())).toBeNull();
+    expect(nextToDownload(sizes, cache, new Set())).toBeNull();
   });
 });

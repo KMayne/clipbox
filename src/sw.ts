@@ -16,10 +16,10 @@ function parseRequest(data: unknown): SwRequest | null {
   const id = 'id' in data && typeof data.id === 'string' ? data.id : null;
   switch (data.type) {
     case 'status':
+    case 'repair':
     case 'skipWaiting':
       return { type: data.type };
     case 'download':
-    case 'remove':
       return id === null ? null : { type: data.type, id };
     default:
       return null;
@@ -72,12 +72,30 @@ async function isCached(id: string): Promise<boolean> {
   return keys.length >= mod.files.length;
 }
 
+async function precacheCore(): Promise<void> {
+  await (
+    await caches.open(CORE_CACHE)
+  ).addAll([BASE, url('modules-manifest.json'), ...MANIFEST.core.map(url)]);
+}
+
+/** Deletes this version's caches, then fetches the core and the downloaded modules again. */
+async function repair(onProgress: (done: number, total: number) => void): Promise<void> {
+  const downloaded = (await readDownloaded()).filter(id => MANIFEST.modules[id]);
+  await caches.delete(CORE_CACHE);
+  for (const id of Object.keys(MANIFEST.modules)) await caches.delete(moduleCache(id));
+  const total = 1 + downloaded.length;
+  await precacheCore();
+  onProgress(1, total);
+  for (const [i, id] of downloaded.entries()) {
+    await download(id, () => {});
+    onProgress(i + 2, total);
+  }
+}
+
 self.addEventListener('install', e => {
   e.waitUntil(
     (async () => {
-      await (
-        await caches.open(CORE_CACHE)
-      ).addAll([BASE, url('modules-manifest.json'), ...MANIFEST.core.map(url)]);
+      await precacheCore();
       // First install: take over immediately. Updates wait for the user to click Reload.
       if (!self.registration.active) await self.skipWaiting();
     })(),
@@ -132,9 +150,8 @@ self.addEventListener('message', e => {
         case 'download':
           await download(req.id, (done, total) => reply({ type: 'progress', done, total }));
           return reply({ type: 'done' });
-        case 'remove':
-          await caches.delete(moduleCache(req.id));
-          await writeDownloaded((await readDownloaded()).filter(id => id !== req.id));
+        case 'repair':
+          await repair((done, total) => reply({ type: 'progress', done, total }));
           return reply({ type: 'done' });
         case 'skipWaiting':
           await self.skipWaiting();

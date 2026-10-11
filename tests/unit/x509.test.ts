@@ -122,7 +122,7 @@ describe('pem interpreter', () => {
     expect(exported).toContain('-----BEGIN PUBLIC KEY-----');
   });
 
-  it('runs as a lazily-loaded module and respects Off', async () => {
+  it('runs as a lazily-loaded module and reports an error when it fails to load', async () => {
     const text = await selfSigned('lazy.example', 10);
     const entry = {
       id: 'en-1' as const,
@@ -133,7 +133,6 @@ describe('pem interpreter', () => {
     const loaders = { x509: () => import('../../src/modules/x509/worker') };
 
     const engine = new Engine({ loaders });
-    engine.setPolicies({ langdetect: 'off' });
     const res = await engine.ingest(entry);
     expect(res.interpretations[0]).toMatchObject({
       kind: 'pem',
@@ -145,11 +144,14 @@ describe('pem interpreter', () => {
       label: 'PEM · certificate · CN=lazy.example · expires in 10d',
     });
 
-    const off = new Engine({ loaders });
-    off.setPolicies({ langdetect: 'off', x509: 'off' });
-    expect((await off.ingest(entry)).interpretations[0]).toMatchObject({
+    const offline = new Engine({ loaders: { x509: () => Promise.reject(new Error('offline')) } });
+    expect((await offline.ingest(entry)).interpretations[0]).toMatchObject({
       kind: 'pem',
-      status: 'off',
+      status: 'loading',
+    });
+    expect(await offline.resolve('en-1', 'pem')).toMatchObject({
+      status: 'error',
+      error: 'offline',
     });
   });
 });

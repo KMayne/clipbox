@@ -2,7 +2,6 @@ import { css, cx } from '@emotion/css';
 import { formatBytes } from '../core/format';
 import { kindName } from '../core/kinds';
 import { moduleInfo } from '../modules/registry';
-import { useUiStore } from '../state/uiStore';
 import type { Interpretation } from '../core/types';
 import { useCaptureStore, type EntryView } from '../state/captureStore';
 import { kindColor, theme } from '../theme';
@@ -122,8 +121,6 @@ function chipText(i: Interpretation): string {
       return i.label ?? name;
     case 'loading':
       return `${name} · …`;
-    case 'off':
-      return `${name} · module off`;
     case 'error':
       return `${name} · unavailable`;
   }
@@ -134,15 +131,13 @@ function InterpretationChip({ interpretation: i }: { interpretation: Interpretat
     s => s.selection?.entryId === i.entryId && s.selection.kind === i.kind,
   );
   const select = useCaptureStore(s => s.select);
-  const inactive = i.status === 'off' || i.status === 'error';
+  const inactive = i.status === 'error';
   const title =
-    i.status === 'off'
-      ? `${moduleInfo(i.module ?? '')?.title ?? i.module} is off — click to open Settings`
-      : i.status === 'error'
-        ? i.error
-        : i.status === 'loading'
-          ? `Loading ${moduleInfo(i.module ?? '')?.title ?? 'module'}…`
-          : undefined;
+    i.status === 'error'
+      ? i.error
+      : i.status === 'loading'
+        ? `Loading ${moduleInfo(i.module ?? '')?.title ?? 'module'}…`
+        : undefined;
   return (
     <button
       className={cx(styles.chip, selected && styles.selected, inactive && styles.inactive)}
@@ -151,11 +146,7 @@ function InterpretationChip({ interpretation: i }: { interpretation: Interpretat
       data-kind={i.kind}
       data-status={i.status}
       title={title}
-      onClick={() =>
-        i.status === 'off'
-          ? useUiStore.getState().openSettings(i.module)
-          : select({ entryId: i.entryId, kind: i.kind })
-      }
+      onClick={() => select({ entryId: i.entryId, kind: i.kind })}
     >
       <span className={styles.dot} style={{ background: kindColor(i.kind) }} />
       {chipText(i)}

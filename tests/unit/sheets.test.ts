@@ -170,7 +170,6 @@ describe('spreadsheet interpreter', () => {
     const engine = new Engine({
       loaders: { sheets: () => import('../../src/modules/sheets/worker') },
     });
-    engine.setPolicies({ langdetect: 'off' });
     const entry = {
       id: 'en-1' as const,
       mime: 'application/octet-stream',

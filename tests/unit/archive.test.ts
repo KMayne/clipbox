@@ -284,7 +284,6 @@ describe('gzip and tgz', () => {
 describe('archive derive through the engine', () => {
   it('opens a zip entry as a new capture detected as JSON', async () => {
     const engine = new Engine({ loaders: {} });
-    engine.setPolicies({ langdetect: 'off', libarchive: 'off' });
     const zip = u8(
       zipSync({ 'data.json': strToU8('{"hello":"world"}'), 'notes.txt': strToU8('hi') }),
     );

@@ -11,8 +11,6 @@ import type {
 } from '../core/types';
 import { engine } from '../engine/engineClient';
 import { dropHandles } from '../engine/valueHandle';
-import type { ModuleId } from '../modules/types';
-import { onPolicyChange } from './moduleStore';
 
 export const MAX_CAPTURES = 50;
 export const CONFIRM_BYTES = 50 * 1024 * 1024;
@@ -135,20 +133,6 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
     }
   };
 
-  /** When a module is switched back on, re-resolve chips that were blocked by it. */
-  onPolicyChange((id: ModuleId, policy) => {
-    if (policy === 'off') return;
-    for (const c of get().captures) {
-      for (const e of c.entries) {
-        for (const i of e.interpretations) {
-          if (i.module !== id || (i.status !== 'off' && i.status !== 'error')) continue;
-          setInterpretation(e.id, { ...i, status: 'loading', error: undefined });
-          void resolve(e.id, i.kind);
-        }
-      }
-    }
-  });
-
   return {
     captures: [],
     selection: null,
@@ -268,11 +252,7 @@ export function chipOrder(captures: CaptureView[]): Selection[] {
   return captures.flatMap(c =>
     c.collapsed
       ? []
-      : c.entries.flatMap(e =>
-          e.interpretations
-            .filter(i => i.status !== 'off')
-            .map(i => ({ entryId: e.id, kind: i.kind })),
-        ),
+      : c.entries.flatMap(e => e.interpretations.map(i => ({ entryId: e.id, kind: i.kind }))),
   );
 }
 

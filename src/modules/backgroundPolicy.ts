@@ -1,5 +1,5 @@
-import { modules, policyOf } from './registry';
-import type { ModuleId, Policies } from './types';
+import { modules } from './registry';
+import type { ModuleId } from './types';
 import type { CacheState } from '../swClient';
 
 /** Pure decisions for background module downloads (see state/backgroundDownloads.ts). */
@@ -28,10 +28,9 @@ export function judgeConnection(c: ConnectionInfo | null): Verdict {
   return { ok: true };
 }
 
-/** The smallest Auto-policy module that isn't cached, tried or skipped; null when none are left. */
+/** The smallest module that isn't cached, downloading or excluded; null when none are left. */
 export function nextToDownload(
   sizes: Record<string, number>,
-  policies: Policies,
   cache: Record<string, CacheState>,
   exclude: ReadonlySet<ModuleId>,
 ): ModuleId | null {
@@ -40,7 +39,6 @@ export function nextToDownload(
     .filter(
       id =>
         id in sizes &&
-        policyOf(policies, id) === 'auto' &&
         cache[id]?.state !== 'cached' &&
         cache[id]?.state !== 'downloading' &&
         !exclude.has(id),

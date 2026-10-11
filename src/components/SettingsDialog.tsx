@@ -1,22 +1,22 @@
 import { css, cx } from '@emotion/css';
 import { useCallback, useEffect, useState } from 'react';
+import { BUILD_DATE } from '../buildInfo';
 import { formatBytes } from '../core/format';
+import type { DownloadMode } from '../modules/downloadMode';
 import { moduleInfo, modules } from '../modules/registry';
-import type { ModuleInfo, Policy } from '../modules/types';
-import { useBackgroundDownloads, type BackgroundStatus } from '../state/backgroundDownloads';
+import type { ModuleInfo } from '../modules/types';
+import {
+  resumeBackgroundDownloads,
+  useBackgroundDownloads,
+  type BackgroundStatus,
+} from '../state/backgroundDownloads';
 import { useModuleStore } from '../state/moduleStore';
 import { storageUsed, useHistoryStore, type KeepFor } from '../state/persistence';
 import { useUiStore } from '../state/uiStore';
-import { sw, type CacheState } from '../swClient';
+import { sw, type CacheState, type ModulesManifest } from '../swClient';
 import { theme } from '../theme';
 import { ui } from './ui';
 import { useAsync } from './useAsync';
-
-const POLICIES: { value: Policy; label: string; title: string }[] = [
-  { value: 'auto', label: 'Auto', title: 'Load the first time it is needed' },
-  { value: 'preload', label: 'Preload', title: 'Load at startup and keep available offline' },
-  { value: 'off', label: 'Off', title: 'Never load' },
-];
 
 const styles = {
   backdrop: css`
@@ -71,9 +71,6 @@ const styles = {
       vertical-align: middle;
     }
   `,
-  focused: css`
-    background: ${theme.accentSoft};
-  `,
   description: css`
     color: ${theme.muted};
     font-size: 12px;
@@ -93,7 +90,7 @@ const styles = {
       border-left: 1px solid ${theme.border};
     }
   `,
-  activePolicy: css`
+  activeOption: css`
     background: ${theme.accent} !important;
     color: ${theme.onAccent};
   `,
@@ -115,6 +112,7 @@ const styles = {
   `,
   rowLabel: css`
     width: 110px;
+    flex-shrink: 0;
   `,
   end: css`
     margin-left: auto;
@@ -125,17 +123,36 @@ const styles = {
     gap: 8px;
     color: ${theme.error};
   `,
-  backgroundToggle: css`
+  modes: css`
     display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 4px;
+    label {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      cursor: pointer;
+    }
   `,
-  footer: css`
+  modeName: css`
+    min-width: 110px;
+  `,
+  status: css`
+    margin-top: 6px;
+  `,
+  alignTop: css`
+    align-items: flex-start;
+  `,
+  nowrap: css`
+    white-space: nowrap;
+  `,
+  appFooter: css`
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
     margin-top: 12px;
+    color: ${theme.muted};
   `,
 };
 
@@ -145,11 +162,10 @@ export function SettingsDialog() {
 }
 
 function Settings() {
-  const focus = useUiStore(s => s.settings.focus);
   const close = useUiStore(s => s.closeSettings);
   const refresh = useModuleStore(s => s.refresh);
-  const download = useModuleStore(s => s.download);
   const manifest = useAsync('manifest', () => sw.manifest());
+  const built = manifest.status === 'ok' ? manifest.value : null;
 
   useEffect(() => {
     void refresh();
@@ -157,9 +173,6 @@ function Settings() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [refresh, close]);
-
-  const sizeOf = (m: ModuleInfo) =>
-    (manifest.status === 'ok' && manifest.value?.modules[m.id]?.bytes) || m.approxBytes;
 
   return (
     <div className={styles.backdrop} onMouseDown={close}>
@@ -176,164 +189,260 @@ function Settings() {
           </button>
         </div>
         <HistorySection />
-        <h3 className={styles.h3}>MODULES</h3>
-        {!sw.supported && (
-          <p className={styles.description}>
-            Offline cache is only available in production builds.
-          </p>
-        )}
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Module</th>
-              <th>Size</th>
-              <th>Status</th>
-              <th>Policy</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>
-                Core
-                <div className={styles.description}>
-                  JSON, Records, Text, HTML, Image, YAML, XML, Markdown, NDJSON, Base64, JWT, small
-                  values, zip/gzip/tar
-                </div>
-              </td>
-              <td className={ui.muted}>built-in</td>
-              <td>ready</td>
-              <td className={ui.muted}>always on</td>
-              <td />
-            </tr>
-            {modules.map(m => (
-              <ModuleRow key={m.id} info={m} size={sizeOf(m)} focused={focus === m.id} />
-            ))}
-          </tbody>
-        </table>
-        {sw.supported && (
-          <div className={styles.footer}>
-            <BackgroundDownloads />
-            <button
-              className={ui.button}
-              onClick={() =>
-                modules.forEach(m => {
-                  useBackgroundDownloads.getState().unskip(m.id);
-                  void download(m.id);
-                })
-              }
-            >
-              Download all
-            </button>
-          </div>
-        )}
+        <section aria-label="Modules">
+          <h3 className={styles.h3}>MODULES</h3>
+          <DownloadModeSetting />
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Module</th>
+                <th>Library</th>
+                <th>Size</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  Core
+                  <div className={styles.description}>
+                    JSON, Records, Text, HTML, Image, YAML, XML, Markdown, NDJSON, Base64, JWT,
+                    small values, zip/gzip/tar
+                  </div>
+                </td>
+                <td className={ui.muted}>—</td>
+                <td className={cx(ui.muted, styles.nowrap)}>built-in</td>
+                <td>ready</td>
+              </tr>
+              {modules.map(m => (
+                <ModuleRow key={m.id} info={m} built={built?.modules[m.id]} />
+              ))}
+            </tbody>
+          </table>
+          <AppFooter version={built?.version ?? null} />
+        </section>
+      </div>
+    </div>
+  );
+}
+
+// ---- Modules -------------------------------------------------------------------------------
+
+const DOWNLOAD_OPTIONS: { value: DownloadMode; label: string; description: string }[] = [
+  {
+    value: 'automatic',
+    label: 'Automatic',
+    description:
+      'Download a module when a paste first needs it, and the rest in the background on fast, unmetered connections',
+  },
+  {
+    value: 'onDemand',
+    label: 'On demand',
+    description: 'Download a module only when a paste needs it; best for metered connections',
+  },
+  {
+    value: 'everything',
+    label: 'Everything now',
+    description: 'Download every module straight away, so the whole app works offline',
+  },
+];
+
+function backgroundStatusText(s: BackgroundStatus): string {
+  switch (s.state) {
+    case 'unsupported':
+      return 'The offline cache is only available in production builds';
+    case 'off':
+      return 'No background downloads';
+    case 'waiting':
+      return 'Waiting for the app to be idle';
+    case 'paused':
+      return `Background downloads paused: ${s.reason}`;
+    case 'downloading':
+      return `Downloading ${moduleInfo(s.module)?.title ?? s.module}…`;
+    case 'done':
+      return 'All modules downloaded';
+  }
+}
+
+function DownloadModeSetting() {
+  const mode = useBackgroundDownloads(s => s.mode);
+  const status = useBackgroundDownloads(s => s.status);
+  const setMode = useBackgroundDownloads(s => s.setMode);
+  return (
+    <div className={cx(styles.row, styles.alignTop)}>
+      <span className={styles.rowLabel}>Module downloads</span>
+      <div>
+        <div className={styles.modes} role="radiogroup" aria-label="Module downloads">
+          {DOWNLOAD_OPTIONS.map(o => (
+            <label key={o.value}>
+              <input
+                type="radio"
+                name="module-downloads"
+                checked={mode === o.value}
+                aria-describedby={`module-downloads-${o.value}`}
+                onChange={() => setMode(o.value)}
+              />
+              <span className={styles.modeName}>{o.label}</span>
+              <span id={`module-downloads-${o.value}`} className={styles.description}>
+                {o.description}
+              </span>
+            </label>
+          ))}
+        </div>
+        <div className={cx(styles.description, styles.status)} data-testid="background-status">
+          {backgroundStatusText(status)}
+        </div>
       </div>
     </div>
   );
 }
 
 function statusText(loaded: boolean, cache: CacheState | undefined): string {
-  const parts: string[] = [];
-  if (loaded) parts.push('loaded');
-  if (cache?.state === 'cached') parts.push('✓ offline');
-  if (cache?.state === 'downloading')
-    parts.push(`downloading ${Math.round(cache.progress * 100)}%`);
-  return parts.join(' · ') || 'not loaded';
+  if (cache?.state === 'downloading') return `downloading ${Math.round(cache.progress * 100)}%`;
+  const cached = cache?.state === 'cached';
+  if (loaded && cached) return 'loaded · available offline';
+  if (cached) return 'available offline';
+  if (loaded) return 'loaded';
+  return sw.supported ? 'not downloaded' : 'not loaded';
 }
 
-function ModuleRow({ info, size, focused }: { info: ModuleInfo; size: number; focused: boolean }) {
-  const policy = useModuleStore(s => s.policies[info.id] ?? info.defaultPolicy);
+type BuiltModule = ModulesManifest['modules'][string];
+
+function ModuleRow({ info, built }: { info: ModuleInfo; built: BuiltModule | undefined }) {
   const loaded = useModuleStore(
     s => s.workerStates[info.id] === 'loaded' || s.uiStates[info.id] === 'loaded',
   );
   const cache = useModuleStore(s => s.cache[info.id]);
-  const { setPolicy, download, remove } = useModuleStore.getState();
-
+  const library = [info.library?.name, built?.version].filter(Boolean).join(' ');
   return (
-    <tr className={cx(focused && styles.focused)} data-testid={`module-${info.id}`}>
+    <tr data-testid={`module-${info.id}`}>
       <td>
         {info.title}
         <div className={styles.description}>{info.description}</div>
       </td>
-      <td>{formatBytes(size)}</td>
-      <td data-testid="module-status">{statusText(loaded, cache)}</td>
-      <td>
-        <span className={styles.segmented} role="radiogroup" aria-label={`${info.title} policy`}>
-          {POLICIES.map(p => (
-            <button
-              key={p.value}
-              role="radio"
-              aria-checked={policy === p.value}
-              title={p.title}
-              className={cx(policy === p.value && styles.activePolicy)}
-              onClick={() => setPolicy(info.id, p.value)}
-            >
-              {p.label}
-            </button>
-          ))}
-        </span>
-      </td>
-      <td>
-        {sw.supported &&
-          (cache?.state === 'cached' ? (
-            <button
-              className={ui.button}
-              onClick={() => {
-                // A manual removal shouldn't be undone by background downloads
-                useBackgroundDownloads.getState().skip(info.id);
-                void remove(info.id);
-              }}
-            >
-              Remove
-            </button>
-          ) : (
-            <button
-              className={ui.button}
-              disabled={cache?.state === 'downloading'}
-              onClick={() => {
-                useBackgroundDownloads.getState().unskip(info.id);
-                void download(info.id);
-              }}
-            >
-              Download
-            </button>
-          ))}
+      <td data-testid="module-library">{library || '—'}</td>
+      <td className={styles.nowrap}>{formatBytes(built?.bytes ?? info.approxBytes)}</td>
+      <td className={styles.nowrap} data-testid="module-status">
+        {statusText(loaded, cache)}
       </td>
     </tr>
   );
 }
 
-function backgroundStatusText(s: BackgroundStatus): string {
-  switch (s.state) {
-    case 'unsupported':
-      return 'unavailable here';
-    case 'off':
-      return 'off';
-    case 'waiting':
-      return 'waiting for the app to be idle';
-    case 'paused':
-      return `paused: ${s.reason}`;
-    case 'downloading':
-      return `downloading ${moduleInfo(s.module)?.title ?? s.module}…`;
+// ---- Version, updates and repair -----------------------------------------------------------
+
+type UpdateState = 'idle' | 'checking' | 'current' | 'available' | 'failed';
+
+const UPDATE_TEXT: Record<UpdateState, string> = {
+  idle: '',
+  checking: 'Checking for updates…',
+  current: 'Up to date',
+  available: 'Update found, installing…',
+  failed: 'Couldn’t check for updates',
+};
+
+type RepairState =
+  | { state: 'idle' }
+  | { state: 'confirm' }
+  | { state: 'repairing'; progress: number }
+  | { state: 'done' }
+  | { state: 'failed'; error: string };
+
+function repairText(r: RepairState): string {
+  switch (r.state) {
+    case 'repairing':
+      return `Repairing the offline cache… ${Math.round(r.progress * 100)}%`;
     case 'done':
-      return 'all modules downloaded';
+      return 'Offline cache repaired';
+    case 'failed':
+      return `Repair failed: ${r.error}`;
+    default:
+      return '';
   }
 }
 
-function BackgroundDownloads() {
-  const enabled = useBackgroundDownloads(s => s.enabled);
-  const status = useBackgroundDownloads(s => s.status);
-  const setEnabled = useBackgroundDownloads(s => s.setEnabled);
+function formatBuildDate(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? iso
+    : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function AppFooter({ version }: { version: string | null }) {
+  const [update, setUpdate] = useState<UpdateState>('idle');
+  const [repair, setRepair] = useState<RepairState>({ state: 'idle' });
+  const busy = update === 'checking' || repair.state === 'repairing';
+
+  // No service worker in dev: nothing to version, update or repair
+  if (!sw.supported) {
+    return (
+      <div className={styles.appFooter} data-testid="app-version">
+        Development build
+      </div>
+    );
+  }
+
+  const checkForUpdates = async () => {
+    setRepair(r => (r.state === 'repairing' ? r : { state: 'idle' }));
+    setUpdate('checking');
+    try {
+      setUpdate(await sw.checkForUpdate());
+    } catch {
+      setUpdate('failed');
+    }
+  };
+
+  const runRepair = async () => {
+    setUpdate('idle');
+    setRepair({ state: 'repairing', progress: 0 });
+    try {
+      await sw.repair(progress => setRepair({ state: 'repairing', progress }));
+      setRepair({ state: 'done' });
+    } catch (err) {
+      setRepair({ state: 'failed', error: err instanceof Error ? err.message : String(err) });
+    }
+    await useModuleStore.getState().refresh();
+    // Fetch whatever the download setting wants that the repair didn't bring back
+    resumeBackgroundDownloads();
+  };
+
   return (
-    <label className={styles.backgroundToggle}>
-      <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} />
-      Download modules in the background on fast connections
-      <span className={ui.muted} data-testid="background-status">
-        ({backgroundStatusText(status)})
-      </span>
-    </label>
+    <>
+      <div className={styles.appFooter}>
+        <span data-testid="app-version">
+          Version <span className={ui.mono}>{version ?? 'unknown'}</span> · built{' '}
+          {formatBuildDate(BUILD_DATE)}
+        </span>
+        <span className={styles.end} data-testid="update-status">
+          {UPDATE_TEXT[update] || repairText(repair)}
+        </span>
+        <button className={ui.button} disabled={busy} onClick={() => void checkForUpdates()}>
+          Check for updates
+        </button>
+        <button
+          className={ui.button}
+          disabled={busy}
+          onClick={() => setRepair({ state: 'confirm' })}
+        >
+          Repair offline cache
+        </button>
+      </div>
+      {repair.state === 'confirm' && (
+        <div className={cx(styles.row, styles.confirm)} role="alert">
+          Delete the offline cache and download it again?
+          <button className={ui.button} onClick={() => void runRepair()}>
+            Repair
+          </button>
+          <button className={ui.button} onClick={() => setRepair({ state: 'idle' })}>
+            Cancel
+          </button>
+        </div>
+      )}
+    </>
   );
 }
+
+// ---- History -------------------------------------------------------------------------------
 
 const KEEP_FOR_OPTIONS: { value: KeepFor; label: string }[] = [
   { value: '1d', label: '1 day' },
@@ -388,7 +497,7 @@ function HistorySection() {
               role="radio"
               aria-checked={keepFor === o.value}
               disabled={!keepHistory}
-              className={cx(keepFor === o.value && styles.activePolicy)}
+              className={cx(keepFor === o.value && styles.activeOption)}
               onClick={() => setKeepFor(o.value)}
             >
               {o.label}

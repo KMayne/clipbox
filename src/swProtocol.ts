@@ -11,7 +11,8 @@ export interface ModulesManifest {
 export type SwRequest =
   | { type: 'status' }
   | { type: 'download'; id: string }
-  | { type: 'remove'; id: string }
+  /** Deletes this version's caches and downloads them again (core plus downloaded modules). */
+  | { type: 'repair' }
   | { type: 'skipWaiting' };
 
 /** Service worker → page, over the request's MessagePort. */

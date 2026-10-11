@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { paste } from './helpers';
 
 const TS = [
@@ -22,37 +22,84 @@ test('detects the language of pasted code and shows it in Monaco', async ({ page
   await expect(page.getByTestId('stats')).toContainText('TypeScript (');
 });
 
-test('turning language detection off skips the model entirely', async ({ page }) => {
-  const modelRequests: string[] = [];
-  page.on('request', r => {
-    if (/model\.json|group1-shard/.test(r.url())) modelRequests.push(r.url());
-  });
+const openSettings = async (page: Page) => {
+  await page.getByRole('button', { name: 'Settings' }).click();
+  return page.getByRole('dialog', { name: 'Settings' });
+};
+
+test('module rows show status only: library, size and state, with no per-module controls', async ({
+  page,
+}) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Settings' }).click();
-  const row = page.getByTestId('module-langdetect');
-  await row.getByRole('radio', { name: 'Off' }).click();
-  await expect(row.getByRole('radio', { name: 'Off' })).toHaveAttribute('aria-checked', 'true');
-  await page.keyboard.press('Escape');
-
   await paste(page, { 'text/plain': TS });
-  await expect(page.getByTestId('chip').first()).toHaveText('Text · 4 lines');
-  expect(modelRequests).toEqual([]);
+  await expect(page.getByTestId('chip').first()).toHaveText('TypeScript · 4 lines');
 
-  // Policy persists across reloads
-  await page.reload();
-  await page.getByRole('button', { name: 'Settings' }).click();
-  await expect(
-    page.getByTestId('module-langdetect').getByRole('radio', { name: 'Off' }),
-  ).toHaveAttribute('aria-checked', 'true');
+  const settings = await openSettings(page);
+  const pdf = settings.getByTestId('module-pdf');
+  // No build manifest in dev, so the library has no version
+  await expect(pdf.getByTestId('module-library')).toHaveText('pdf.js');
+  await expect(pdf.getByTestId('module-status')).toHaveText('not loaded');
+  await expect(settings.getByTestId('module-sheets').getByTestId('module-library')).toHaveText(
+    'SheetJS',
+  );
+  await expect(settings.getByTestId('module-langdetect').getByTestId('module-status')).toHaveText(
+    'loaded',
+  );
+  await expect(settings.getByTestId('module-editor').getByTestId('module-status')).toHaveText(
+    'loaded',
+  );
+
+  const table = settings.getByRole('table');
+  await expect(table.getByRole('button')).toHaveCount(0);
+  await expect(table.getByRole('radio')).toHaveCount(0);
+
+  // No service worker in dev: no version, update check or repair
+  await expect(settings.getByTestId('app-version')).toHaveText('Development build');
+  await expect(settings.getByRole('button', { name: 'Check for updates' })).toHaveCount(0);
+  await expect(settings.getByRole('button', { name: 'Repair offline cache' })).toHaveCount(0);
 });
 
-test('with the editor off, text falls back to the plain view', async ({ page }) => {
+test('the Module downloads setting defaults to Automatic and persists', async ({ page }) => {
   await page.goto('/');
-  await page.evaluate(() =>
-    localStorage.setItem('clipbox.modules', JSON.stringify({ editor: 'off' })),
+  let settings = await openSettings(page);
+  const group = settings.getByRole('radiogroup', { name: 'Module downloads' });
+  await expect(group.getByRole('radio', { name: 'Automatic' })).toBeChecked();
+  await expect(group.getByRole('radio', { name: 'On demand' })).toHaveAccessibleDescription(
+    /metered/,
+  );
+  await expect(settings.getByTestId('background-status')).toContainText('production builds');
+
+  await group.getByRole('radio', { name: 'Everything now' }).check();
+  expect(await page.evaluate(() => localStorage.getItem('clipbox.moduleDownloads'))).toBe(
+    '{"mode":"everything"}',
   );
   await page.reload();
+  settings = await openSettings(page);
+  await expect(settings.getByRole('radio', { name: 'Everything now' })).toBeChecked();
+});
+
+test('migrates a disabled background-download toggle to On demand', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'clipbox.backgroundDownloads',
+      JSON.stringify({ enabled: false, skipped: ['x509'] }),
+    );
+    localStorage.setItem('clipbox.modules', JSON.stringify({ editor: 'off' }));
+  });
+  await page.reload();
+  const settings = await openSettings(page);
+  await expect(settings.getByRole('radio', { name: 'On demand' })).toBeChecked();
+  expect(
+    await page.evaluate(() => ({
+      mode: localStorage.getItem('clipbox.moduleDownloads'),
+      background: localStorage.getItem('clipbox.backgroundDownloads'),
+      policies: localStorage.getItem('clipbox.modules'),
+    })),
+  ).toEqual({ mode: '{"mode":"onDemand"}', background: null, policies: null });
+
+  // The old editor: 'off' no longer applies
+  await page.keyboard.press('Escape');
   await paste(page, { 'text/plain': TS });
-  await expect(page.getByTestId('text-view')).toContainText('greet');
-  await expect(page.getByTestId('monaco-view')).toHaveCount(0);
+  await expect(page.getByTestId('monaco-view').locator('.monaco-editor')).toBeVisible();
 });
