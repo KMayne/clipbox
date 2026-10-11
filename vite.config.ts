@@ -5,6 +5,8 @@ import { modulesManifest } from './vite/modulesManifest';
 const manifest = modulesManifest();
 
 export default defineConfig({
+  // Served from a subpath in production (e.g. /clipbox/); the deploy sets BASE_PATH.
+  base: process.env.BASE_PATH ?? '/',
   plugins: [react(), manifest.main],
   worker: { format: 'es', plugins: () => [manifest.worker()] },
   optimizeDeps: {

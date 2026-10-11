@@ -34,7 +34,9 @@ const CORE_CACHE = `${PREFIX}core-${MANIFEST.version}`;
 const META_CACHE = `${PREFIX}meta`;
 const DOWNLOADED_KEY = '/__clipbox/downloaded';
 const moduleCache = (id: string) => `${PREFIX}mod-${id}-${MANIFEST.version}`;
-const url = (file: string) => `/${file}`;
+/** Directory the app is served from (e.g. https://host/clipbox/), so it works under any base path. */
+const BASE = self.registration.scope;
+const url = (file: string) => new URL(file, BASE).href;
 
 async function readDownloaded(): Promise<string[]> {
   const res = await (await caches.open(META_CACHE)).match(DOWNLOADED_KEY);
@@ -75,7 +77,7 @@ self.addEventListener('install', e => {
     (async () => {
       await (
         await caches.open(CORE_CACHE)
-      ).addAll(['/', '/modules-manifest.json', ...MANIFEST.core.map(url)]);
+      ).addAll([BASE, url('modules-manifest.json'), ...MANIFEST.core.map(url)]);
       // First install: take over immediately. Updates wait for the user to click Reload.
       if (!self.registration.active) await self.skipWaiting();
     })(),
@@ -108,7 +110,7 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     (async () => {
       // Build files are content-hashed, so Vary (e.g. Origin from vite preview) can be ignored
-      const key = req.mode === 'navigate' ? '/' : req;
+      const key = req.mode === 'navigate' ? BASE : req;
       return (await caches.match(key, { ignoreVary: true })) ?? fetch(req);
     })(),
   );

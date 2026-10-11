@@ -59,21 +59,23 @@ export const sw = {
 
   register(): void {
     if (!supported) return;
-    void navigator.serviceWorker.register('/sw.js', { type: 'module' }).then(reg => {
-      const announce = (waiting: ServiceWorker) =>
-        useUiStore.getState().notify('Update available', 'info', {
-          label: 'Reload',
-          run: () => waiting.postMessage({ type: 'skipWaiting' } satisfies SwRequest),
-        });
-      if (reg.waiting && navigator.serviceWorker.controller) announce(reg.waiting);
-      reg.addEventListener('updatefound', () => {
-        const installing = reg.installing;
-        installing?.addEventListener('statechange', () => {
-          if (installing.state === 'installed' && navigator.serviceWorker.controller)
-            announce(installing);
+    void navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`, { type: 'module' })
+      .then(reg => {
+        const announce = (waiting: ServiceWorker) =>
+          useUiStore.getState().notify('Update available', 'info', {
+            label: 'Reload',
+            run: () => waiting.postMessage({ type: 'skipWaiting' } satisfies SwRequest),
+          });
+        if (reg.waiting && navigator.serviceWorker.controller) announce(reg.waiting);
+        reg.addEventListener('updatefound', () => {
+          const installing = reg.installing;
+          installing?.addEventListener('statechange', () => {
+            if (installing.state === 'installed' && navigator.serviceWorker.controller)
+              announce(installing);
+          });
         });
       });
-    });
     // Reload only when an update replaces the controlling worker. On a first visit the new
     // worker claims the page (controller goes null → set), which must not reload it.
     let hadController = navigator.serviceWorker.controller !== null;
@@ -90,7 +92,7 @@ export const sw = {
   },
 
   manifest(): Promise<ModulesManifest | null> {
-    manifest ??= fetch('/modules-manifest.json')
+    manifest ??= fetch(`${import.meta.env.BASE_URL}modules-manifest.json`)
       .then(async r => (r.ok ? manifestSchema.parse(await r.json()) : null))
       .catch(() => null);
     return manifest;
