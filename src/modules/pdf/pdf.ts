@@ -7,6 +7,7 @@ import {
 import { formatBytes, formatCount, plural } from '../../core/format';
 import { hasKind, isRecord } from '../../core/guards';
 import { unsupportedSlice, type Interpreter } from '../../core/interpreter';
+import { raceAbort, type TaskContext } from '../../core/progress';
 import type { Derivation, StatRow } from '../../core/types';
 import { openDocument, renderPage } from './pdfjs';
 import type { PageSize, PdfLayout } from './types';
@@ -255,12 +256,19 @@ export async function parsePdf(bytes: Uint8Array, name?: string): Promise<PdfVal
 const texts = new WeakMap<PDFDocumentProxy, Promise<string>>();
 
 /** All pages' text, separated by form feeds. Memoised per document. */
-export function extractText(doc: PDFDocumentProxy): Promise<string> {
+/**
+ * Every page's text, memoised per document. `task` (the first caller's) gets per-page progress;
+ * cancelling only stops this caller waiting, since others may share the extraction.
+ */
+export function extractText(doc: PDFDocumentProxy, task?: TaskContext): Promise<string> {
   let text = texts.get(doc);
   if (!text) {
     text = (async () => {
       const pages: string[] = [];
-      for (let i = 0; i < doc.numPages; i++) pages.push(await pageText(doc, i));
+      for (let i = 0; i < doc.numPages; i++) {
+        task?.progress(i / doc.numPages, `Page ${i + 1} of ${doc.numPages}`);
+        pages.push(await pageText(doc, i));
+      }
       return pages.join('\n\f\n');
     })();
     text.catch(() => texts.delete(doc));
@@ -391,14 +399,11 @@ export const pdfInterpreter: Interpreter<PdfValue> = {
     return v.doc ? { text: await extractText(v.doc) } : {};
   },
   derivations: v => pdfDerivations(v.info),
-  async derive(v, id) {
+  async derive(v, id, task) {
     const base = baseName(v.name);
     if (id === 'text') {
-      return {
-        mime: 'text/plain',
-        name: `${base}.txt`,
-        bytes: new TextEncoder().encode(await extractText(openDoc(v))),
-      };
+      const text = await raceAbort(extractText(openDoc(v), task), task.signal);
+      return { mime: 'text/plain', name: `${base}.txt`, bytes: new TextEncoder().encode(text) };
     }
     const page = /^page-(\d+)$/.exec(id)?.[1];
     if (!page) throw new Error(`Unknown derivation '${id}'`);

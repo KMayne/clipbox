@@ -1,5 +1,6 @@
 /** Text and JSON renderings of a deck, shared by the interpreter (copy) and the actions. */
 
+import { throwIfAborted, type TaskContext } from '../progress';
 import { sha256 } from '../hash';
 import { MAGIC_EXTENSION, MAGIC_MIME, detectMagic, isImageMagic } from '../magic';
 import { LEGACY_IMAGE_INFO, sniffLegacyImage } from '../../modules/imageformats/detect';
@@ -67,6 +68,7 @@ export async function deckImages(
   slides?: Set<number>,
   limit = Infinity,
   convert?: LegacyConverter,
+  task?: TaskContext,
 ): Promise<{ images: DeckImage[]; truncated: boolean }> {
   const order: { media: number; prefix: string }[] = [];
   const seen = new Set<number>();
@@ -85,7 +87,9 @@ export async function deckImages(
   const hashes = new Set<string>();
   const counts = new Map<string, number>();
   const images: DeckImage[] = [];
-  for (const { media, prefix } of order) {
+  for (const [i, { media, prefix }] of order.entries()) {
+    throwIfAborted(task?.signal);
+    task?.progress(i / order.length, `Image ${i + 1} of ${order.length}`);
     let bytes: Uint8Array<ArrayBuffer>;
     try {
       bytes = readMedia(v, media);

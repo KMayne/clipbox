@@ -36,6 +36,7 @@ import {
   type InputFormat,
   type OutputFormat,
 } from 'mediabunny';
+import { throwIfAborted } from '../../core/progress';
 import { GainCurve, planGain, planLimited } from './limiter';
 import { LoudnessMeter, type SubBlocks } from './loudness';
 import type { NormaliseOptions, NormaliseResult } from './service';
@@ -50,8 +51,20 @@ function planesOf(sample: AudioSample): Float32Array[] {
   });
 }
 
-function checkAborted(signal: AbortSignal | undefined) {
-  if (signal?.aborted) throw new Error('Cancelled');
+type Progress = NonNullable<NormaliseOptions['progress']>;
+
+/** Reports a pass's progress as decoded time over the track's span. */
+function passProgress(
+  progress: Progress | undefined,
+  message: string,
+  span: { start: number; end: number },
+) {
+  const length = span.end - span.start;
+  return (sample: AudioSample) =>
+    progress?.(
+      length > 0 ? (sample.timestamp + sample.duration - span.start) / length : undefined,
+      message,
+    );
 }
 
 interface Analysis {
@@ -68,12 +81,14 @@ async function analyse(
   track: InputAudioTrack,
   keepPeaks: boolean,
   signal: AbortSignal | undefined,
+  report: (sample: AudioSample) => void,
 ): Promise<Analysis> {
   let loudness: LoudnessMeter | null = null;
   let peaks: TruePeakMeter | null = null;
   for await (const sample of new AudioSampleSink(track).samples()) {
     try {
-      checkAborted(signal);
+      throwIfAborted(signal);
+      report(sample);
       loudness ??= new LoudnessMeter(sample.sampleRate, sample.numberOfChannels);
       peaks ??= new TruePeakMeter(sample.numberOfChannels, keepPeaks ? loudness.frames : undefined);
       const planes = planesOf(sample);
@@ -179,7 +194,7 @@ export async function normalise(
   bytes: Uint8Array<ArrayBuffer>,
   options: NormaliseOptions,
 ): Promise<NormaliseResult> {
-  const { target, ceiling, limit, signal } = options;
+  const { target, ceiling, limit, signal, progress } = options;
   const input = new Input({ source: new BufferSource(bytes), formats: ALL_FORMATS });
   try {
     const track = await input.getPrimaryAudioTrack();
@@ -188,7 +203,14 @@ export async function normalise(
       throw new Error(`This browser can't decode ${track.codec ?? 'this'} audio`);
     const hasVideo = (await input.getVideoTracks()).length > 0;
 
-    const analysis = await analyse(track, limit, signal);
+    const span = { start: await track.getFirstTimestamp(), end: await track.computeDuration() };
+    const analysis = await analyse(
+      track,
+      limit,
+      signal,
+      passProgress(progress, 'Pass 1 of 2 · measuring loudness', span),
+    );
+    throwIfAborted(signal);
     const plan = planGain({
       integrated: analysis.integrated,
       truePeakDb: analysis.truePeak,
@@ -225,8 +247,10 @@ export async function normalise(
       loudness: LoudnessMeter | null;
       peak: TruePeakMeter | null;
     } = { start: null, loudness: null, peak: null };
+    const report = passProgress(progress, 'Pass 2 of 2 · encoding', span);
     const process = (sample: AudioSample) => {
-      checkAborted(signal);
+      throwIfAborted(signal);
+      report(sample);
       after.start ??= sample.timestamp;
       const planes = planesOf(sample);
       curve.apply(planes, sample.timestamp - after.start, sample.sampleRate);

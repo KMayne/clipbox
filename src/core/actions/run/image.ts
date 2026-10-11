@@ -1,3 +1,4 @@
+import { throwIfAborted } from '../../progress';
 import { z } from 'zod';
 import { toBase64 } from '../../format';
 import { palette, resizeTarget, transformTarget } from '../../image/ops';
@@ -164,10 +165,13 @@ export const imageImpls = [
   implement(imageResize, {
     value: imageInterpreter.isValue,
     applies: decodable,
-    async run({ value, content }, params) {
+    async run({ value, content }, params, ctx) {
+      // The browser resamples in one call: nothing finer to report
+      ctx.progress(undefined, 'Resampling');
       const probe = await decode(value);
       const target = resizeTarget(probe, params);
       probe.close();
+      throwIfAborted(ctx.signal);
       // The browser's high-quality resampler, rather than a single bilinear draw
       const bitmap = await decode(value, {
         resizeWidth: target.width,
@@ -249,13 +253,15 @@ export const imageImpls = [
   implement(imagePagesAsPng, {
     value: imageInterpreter.isValue,
     applies: ({ value }) => (value.decoded?.pages.length ?? 1) > 1,
-    async run({ value, content }) {
+    async run({ value, content }, _params, ctx) {
       const { decoded } = value;
       if (!decoded) throw new Error('This image has one page');
       const stem = withExtension(content.name, '', 'page').slice(0, -1);
       const pad = String(decoded.pages.length).length;
       const pages = [];
       for (let i = 0; i < decoded.pages.length; i++) {
+        throwIfAborted(ctx.signal);
+        ctx.progress(i / decoded.pages.length, `Page ${i + 1} of ${decoded.pages.length}`);
         pages.push({
           mime: 'image/png',
           name: `${stem}-page${String(i + 1).padStart(Math.max(2, pad), '0')}.png`,

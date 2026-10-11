@@ -21,6 +21,7 @@ export const pdfImpls = [
         pages: picked,
         minSize,
         max: MAX_EXTRACTED,
+        task: ctx,
       });
       return truncated ? [...images, truncatedNote('page')] : images;
     },

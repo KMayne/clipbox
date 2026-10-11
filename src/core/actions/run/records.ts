@@ -14,10 +14,14 @@ import {
   recordsToTsv,
   recordsTypes,
 } from '../catalog/records';
+import { checkpoint, loop, type TaskContext } from '../../progress';
+import { formatCount } from '../../format';
 import { implement } from '../types';
 import { textResult, withExtension } from './util';
 
 const value = recordsInterpreter.isValue;
+
+type Row = unknown[];
 
 /**
  * Records as rows of cells in column order. Delimited sources are re-read as the original strings
@@ -80,26 +84,36 @@ export function resolveColumn(columns: readonly string[], ref: string): number {
   throw new Error(`No column "${r}" (columns: ${list})`);
 }
 
-function writeDelimited(t: Table, delimiter: string, header = t.header): string {
+async function writeDelimited(
+  t: Table,
+  delimiter: string,
+  header = t.header,
+  task?: TaskContext,
+): Promise<string> {
   const cell = (v: unknown) => quoteCell(cellText(v), delimiter);
   const lines = header ? [t.columns.map(cell).join(delimiter)] : [];
-  for (const row of t.rows) {
+  await loop(t.rows.length, task, `Writing ${formatCount(t.rows.length)} rows`, r => {
+    const row = t.rows[r] ?? [];
     let line = '';
     for (let i = 0; i < t.columns.length; i++) {
       if (i > 0) line += delimiter;
       line += cell(row[i]);
     }
     lines.push(line);
-  }
+  });
   return lines.join(delimiter === '\t' ? '\n' : '\r\n') + (delimiter === '\t' ? '\n' : '\r\n');
 }
 
-const csvResult = (t: Table, content: EntryContent) =>
-  textResult(writeDelimited(t, ','), 'text/csv', withExtension(content.name, 'csv', 'data'));
-
-const tsvResult = (t: Table, content: EntryContent) =>
+const csvResult = async (t: Table, content: EntryContent, task: TaskContext) =>
   textResult(
-    writeDelimited(t, '\t'),
+    await writeDelimited(t, ',', t.header, task),
+    'text/csv',
+    withExtension(content.name, 'csv', 'data'),
+  );
+
+const tsvResult = async (t: Table, content: EntryContent, task: TaskContext) =>
+  textResult(
+    await writeDelimited(t, '\t', t.header, task),
     'text/tab-separated-values',
     withExtension(content.name, 'tsv', 'data'),
   );
@@ -111,16 +125,17 @@ const toObject = (columns: readonly string[], row: readonly unknown[]) => {
 };
 
 /** Table-shaped results keep the source's format: the same delimiter, NDJSON or a JSON array. */
-function sameFormat(
+async function sameFormat(
   v: RecordsValue,
   t: Table,
   content: EntryContent,
+  task: TaskContext,
   header?: boolean,
-): DerivedContent {
+): Promise<DerivedContent> {
   if (v.delimiter !== null) {
     const tab = v.delimiter === '\t';
     return textResult(
-      writeDelimited(t, v.delimiter, header),
+      await writeDelimited(t, v.delimiter, header, task),
       tab ? 'text/tab-separated-values' : 'text/csv',
       withExtension(content.name, tab ? 'tsv' : 'csv', 'data'),
     );
@@ -182,7 +197,7 @@ function sqlValue(cell: unknown, raw: boolean, dialect: Dialect, emptyAsNull: bo
   return quoteString(JSON.stringify(cell), dialect);
 }
 
-export function toSql(
+export async function toSql(
   t: Table,
   {
     table,
@@ -190,7 +205,8 @@ export function toSql(
     batch,
     emptyAsNull,
   }: { table: string; dialect: Dialect; batch: number; emptyAsNull: boolean },
-): string {
+  task?: TaskContext,
+): Promise<string> {
   const target = table
     .split('.')
     .map(part => quoteIdent(part.trim(), dialect))
@@ -198,15 +214,24 @@ export function toSql(
   const cols = t.columns.map(c => quoteIdent(c, dialect)).join(', ');
   const head = `INSERT INTO ${target} (${cols}) VALUES`;
   const out: string[] = [];
-  for (let start = 0; start < t.rows.length; start += batch) {
-    const values = t.rows
-      .slice(start, start + batch)
-      .map(
-        row =>
-          `(${t.columns.map((_, i) => sqlValue(row[i], t.raw, dialect, emptyAsNull)).join(', ')})`,
-      );
-    out.push(batch === 1 ? `${head} ${values[0] ?? ''};` : `${head}\n  ${values.join(',\n  ')};`);
-  }
+  const batches = Math.ceil(t.rows.length / batch);
+  const every = Math.max(1, Math.ceil(2048 / batch));
+  await loop(
+    batches,
+    task,
+    `Writing ${formatCount(t.rows.length)} rows`,
+    b => {
+      const start = b * batch;
+      const values = t.rows
+        .slice(start, start + batch)
+        .map(
+          row =>
+            `(${t.columns.map((_, i) => sqlValue(row[i], t.raw, dialect, emptyAsNull)).join(', ')})`,
+        );
+      out.push(batch === 1 ? `${head} ${values[0] ?? ''};` : `${head}\n  ${values.join(',\n  ')};`);
+    },
+    every,
+  );
   return out.join('\n') + '\n';
 }
 
@@ -217,19 +242,25 @@ const collators = {
   text: new Intl.Collator(undefined),
 };
 
-export function sortTable(
+export async function sortTable(
   t: Table,
   col: number,
   order: 'asc' | 'desc',
   compare: 'natural' | 'numeric' | 'text',
-): Table {
+  task?: TaskContext,
+): Promise<Table> {
   const sign = order === 'asc' ? 1 : -1;
   // Decorate once; empty (and, for numeric, non-numeric) keys sort last either way
-  const keyed = t.rows.map(row => {
+  const keyed: { row: Row; key: number | string | null }[] = [];
+  await loop(t.rows.length, task, 'Reading sort keys', i => {
+    const row = t.rows[i] ?? [];
     const cell = row[col];
     const key = compare === 'numeric' ? numberOf(cell) : isEmpty(cell) ? null : cellText(cell);
-    return { row, key };
+    keyed.push({ row, key });
   });
+  // One call to Array.sort: it can't report or stop part-way
+  task?.progress(undefined, `Sorting ${formatCount(keyed.length)} rows`);
+  if (task) await checkpoint(task.signal);
   const cmp = (a: number | string, b: number | string) =>
     typeof a === 'number' && typeof b === 'number'
       ? a - b
@@ -327,18 +358,19 @@ export function parseColumnPicks(spec: string, columns: readonly string[]): Pick
 export const recordsImpls = [
   implement(recordsSort, {
     value,
-    run({ value, content }, { column, order, compare }) {
+    async run({ value, content }, { column, order, compare }, ctx) {
       const t = toTable(value, content);
       return sameFormat(
         value,
-        sortTable(t, resolveColumn(t.columns, column), order, compare),
+        await sortTable(t, resolveColumn(t.columns, column), order, compare, ctx),
         content,
+        ctx,
       );
     },
   }),
   implement(recordsPick, {
     value,
-    run({ value, content }, { columns }) {
+    run({ value, content }, { columns }, ctx) {
       const t = toTable(value, content);
       const picks = parseColumnPicks(columns, t.columns);
       const renamed = picks.some(p => p.name !== t.columns[p.from]);
@@ -347,29 +379,33 @@ export const recordsImpls = [
         columns: picks.map(p => p.name),
         rows: t.rows.map(row => picks.map(p => row[p.from])),
       };
-      return sameFormat(value, picked, content, t.header || renamed);
+      return sameFormat(value, picked, content, ctx, t.header || renamed);
     },
   }),
   implement(recordsFilter, {
     value,
-    run({ value, content }, { column, op, value: target, ignoreCase }) {
+    async run({ value, content }, { column, op, value: target, ignoreCase }, ctx) {
       const t = toTable(value, content);
       const col = resolveColumn(t.columns, column);
       const keep = rowFilter(op, target, ignoreCase);
-      const rows = t.rows.filter(row => keep(row[col]));
+      const rows: Row[] = [];
+      await loop(t.rows.length, ctx, `Filtering ${formatCount(t.rows.length)} rows`, i => {
+        const row = t.rows[i];
+        if (row && keep(row[col])) rows.push(row);
+      });
       if (rows.length === 0) throw new Error('No rows match');
-      return sameFormat(value, { ...t, rows }, content);
+      return sameFormat(value, { ...t, rows }, content, ctx);
     },
   }),
   implement(recordsToCsv, {
     value,
     applies: ({ value }) => value.delimiter !== ',',
-    run: ({ value, content }) => csvResult(toTable(value, content), content),
+    run: ({ value, content }, _params, ctx) => csvResult(toTable(value, content), content, ctx),
   }),
   implement(recordsToTsv, {
     value,
     applies: ({ value }) => value.delimiter !== '\t',
-    run: ({ value, content }) => tsvResult(toTable(value, content), content),
+    run: ({ value, content }, _params, ctx) => tsvResult(toTable(value, content), content, ctx),
   }),
   implement(recordsToMarkdown, {
     value,
@@ -382,9 +418,9 @@ export const recordsImpls = [
   }),
   implement(recordsToSql, {
     value,
-    run: ({ value, content }, params) =>
+    run: async ({ value, content }, params, ctx) =>
       textResult(
-        toSql(toTable(value, content), params),
+        await toSql(toTable(value, content), params, ctx),
         'text/x-sql',
         withExtension(content.name, 'sql', 'data'),
       ),

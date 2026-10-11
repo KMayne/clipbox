@@ -1,3 +1,4 @@
+import { formatBytes } from '../../format';
 import { digestHex } from '../../hash';
 import { hexDump } from '../../hexdump';
 import { anyHash, anyHexDump, anyOpenAsText } from '../catalog/any';
@@ -16,8 +17,11 @@ export function decodeAs(
 export const anyImpls = [
   implement(anyHash, {
     value: anyValue,
-    run: async ({ content }, { algorithm }) =>
-      textResult(await digestHex(algorithm, content.bytes)),
+    // crypto.subtle digests in one call (it can't stream), so the bar is indeterminate
+    async run({ content }, { algorithm }, ctx) {
+      ctx.progress(undefined, `Hashing ${formatBytes(content.size)}`);
+      return textResult(await digestHex(algorithm, content.bytes));
+    },
   }),
   implement(anyOpenAsText, {
     value: anyValue,

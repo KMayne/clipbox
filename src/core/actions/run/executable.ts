@@ -1,7 +1,7 @@
 import { toCsv } from '../../csv';
 import { executableLayout, exportRows, iconFile, largestIconPng } from '../../executable/describe';
 import { toHexAddress } from '../../executable/reader';
-import { findStrings } from '../../executable/strings';
+import { findStringsAsync } from '../../executable/strings';
 import type { ExecutableValue, SignatureInfo } from '../../executable/types';
 import { formatCount, toBase64 } from '../../format';
 import { executableInterpreter } from '../../interpreters/executable';
@@ -148,12 +148,12 @@ export const executableImpls = [
   }),
   implement(executableStrings, {
     value,
-    run({ value, content }, { minLength, encoding, offsets }) {
-      const { strings, truncated } = findStrings(value.bytes, {
-        minLength,
-        encoding,
-        max: MAX_STRINGS,
-      });
+    async run({ value, content }, { minLength, encoding, offsets }, ctx) {
+      const { strings, truncated } = await findStringsAsync(
+        value.bytes,
+        { minLength, encoding, max: MAX_STRINGS },
+        ctx,
+      );
       const lines = strings.map(s =>
         offsets ? `${s.offset.toString(16).padStart(8, '0')} ${s.text}` : s.text,
       );
