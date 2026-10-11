@@ -6,6 +6,7 @@ import { register } from '../../src/core/interpreter';
 import { Engine } from '../../src/engine/engine';
 import { createSqliteInterpreter } from '../../src/modules/sqlite/sqlite';
 import { service as sqliteService } from '../../src/modules/sqlite/worker';
+import { pdfBytes, samplePdf } from '../fixtures/pdf';
 
 const td = new TextDecoder();
 
@@ -157,5 +158,34 @@ describe('archive actions', () => {
         'dir/,,,2024-01-02T03:04:06,directory\r\n' +
         '"dir/a, b.txt",2,4,2024-01-02T03:04:06,file\r\n',
     );
+  });
+});
+
+describe('pdf actions', () => {
+  it('writes the metadata as JSON', async () => {
+    const e = new Engine({ loaders: { pdf: () => import('../../src/modules/pdf/worker') } });
+    await ingest(e, pdfBytes(samplePdf()), 'application/pdf', 'sample.pdf');
+    await e.resolve('en-1', 'pdf');
+    const [out] = await run(e, 'pdf', 'pdf.metadata');
+    expect(out).toMatchObject({ name: 'sample-metadata.json', mime: 'application/json' });
+    const meta: unknown = JSON.parse(out?.text ?? '');
+    expect(meta).toMatchObject({
+      file: 'sample.pdf',
+      version: '1.7',
+      pageCount: 2,
+      encrypted: false,
+      document: { title: 'Clipbox sample', author: 'Ada Lovelace' },
+      info: { Title: 'Clipbox sample', Author: 'Ada Lovelace', Producer: 'Clipbox test' },
+      xmp: null,
+      pages: [
+        { page: 1, width: 595, height: 842, size: 'A4' },
+        { page: 2, width: 595, height: 842, size: 'A4' },
+      ],
+      outline: [
+        { title: 'Chapter 1', page: 1, children: [{ title: 'Section 1.1', page: 1 }] },
+        { title: 'Chapter 2', page: 2 },
+      ],
+      attachments: [],
+    });
   });
 });

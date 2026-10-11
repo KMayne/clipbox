@@ -204,7 +204,13 @@ async function describe(doc: PDFDocumentProxy, bytes: Uint8Array): Promise<PdfIn
     pageSizes,
     hasText,
     outline: await outlineNodes(doc, await doc.getOutline()),
-    attachments: isRecord(attachments) ? Object.keys(attachments).length : 0,
+    // A Map in current pdf.js; a plain object in older versions
+    attachments:
+      attachments instanceof Map
+        ? attachments.size
+        : isRecord(attachments)
+          ? Object.keys(attachments).length
+          : 0,
     error: null,
   };
 }

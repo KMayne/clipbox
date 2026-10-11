@@ -21,4 +21,14 @@ export const pdfExtractImages = defineAction({
   label: p => (p.pages.trim() ? `Extract images (pages ${p.pages.trim()})` : 'Extract images'),
 });
 
-export const pdfActions = [pdfExtractImages];
+/** Info dictionary, XMP, page count and sizes, outline and attachments. */
+export const pdfMetadata = defineAction({
+  id: 'pdf.metadata',
+  title: 'Metadata as JSON',
+  group: 'Inspect',
+  kinds: ['pdf'],
+  module: 'pdf',
+  params: z.object({}),
+});
+
+export const pdfActions = [pdfExtractImages, pdfMetadata];
