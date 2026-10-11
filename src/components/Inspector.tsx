@@ -9,7 +9,7 @@ import { getHandle } from '../engine/valueHandle';
 import { findEntry, useCaptureStore, type Selection } from '../state/captureStore';
 import { showView } from '../commands';
 import { useUiStore, type InspectorView } from '../state/uiStore';
-import { canSplit, viewFor } from '../state/views';
+import { viewFor, viewsFor } from '../state/views';
 import { kindColor, theme } from '../theme';
 import { HexView } from './previews/HexView';
 import { HtmlView } from './previews/HtmlView';
@@ -30,19 +30,13 @@ import { SpreadsheetView } from './previews/SpreadsheetView';
 import { SqliteView } from './previews/SqliteView';
 import { TextView } from './previews/TextView';
 import { ValueCard } from './previews/ValueCard';
-import { RawView } from './RawView';
+import { HexSource, RawView } from './RawView';
 import { media, TOUCH_TARGET, ui } from './ui';
 import { useAsync } from './useAsync';
 import { useIsMobile } from './useMediaQuery';
 
 /** Above this, Monaco gets sluggish; use the lightweight virtualised view. */
 const MONACO_MAX_BYTES = 20 * 1024 * 1024;
-
-const VIEWS: { view: InspectorView; label: string; key: string }[] = [
-  { view: 'preview', label: 'Preview', key: '1' },
-  { view: 'split', label: 'Split', key: '2' },
-  { view: 'raw', label: 'Raw', key: '3' },
-];
 
 const styles = {
   inspector: css`
@@ -175,7 +169,7 @@ export function Inspector() {
 
 function SelectionInspector({ selection }: { selection: Selection }) {
   const view = useUiStore(s => viewFor(selection.kind, s.views));
-  const splittable = canSplit(selection.kind);
+  const options = viewsFor(selection.kind);
   const entry = useCaptureStore(s => findEntry(s.captures, selection.entryId)?.entry);
   const handle = useAsync(`${selection.entryId}:${selection.kind}`, () =>
     getHandle(selection.entryId, selection.kind),
@@ -193,25 +187,17 @@ function SelectionInspector({ selection }: { selection: Selection }) {
         <span className={styles.source}>{entry?.name ?? entry?.mime}</span>
         <span className={styles.actions}>
           <span className={styles.views} role="group" aria-label="View">
-            {VIEWS.map(v => {
-              const disabled = v.view === 'split' && !splittable;
-              return (
-                <button
-                  key={v.view}
-                  className={cx(styles.viewButton, view === v.view && styles.activeView)}
-                  aria-pressed={view === v.view}
-                  disabled={disabled}
-                  title={
-                    disabled
-                      ? 'The preview already shows the source'
-                      : `${v.label} (${v.key})`
-                  }
-                  onClick={() => showView(v.view)}
-                >
-                  {v.label}
-                </button>
-              );
-            })}
+            {options.map((v, i) => (
+              <button
+                key={v.view}
+                className={cx(styles.viewButton, view === v.view && styles.activeView)}
+                aria-pressed={view === v.view}
+                title={`${v.label} (${i + 1})`}
+                onClick={() => showView(v.view)}
+              >
+                {v.label}
+              </button>
+            ))}
           </span>
           <button className={ui.button} onClick={() => void copySelection(selection)}>
             <Icon path={mdiContentCopy} size={0.6} />
@@ -250,10 +236,17 @@ function ViewBody({
   // Phones stack the source above the preview
   const mobile = useIsMobile();
   switch (view) {
-    case 'raw':
-      return <RawView entryId={selection.entryId} />;
-    case 'preview':
+    case 'rendered':
       return <Preview handle={handle} selection={selection} />;
+    case 'text':
+      // Plain text's rendering is its text (the editor view)
+      return selection.kind === 'text' ? (
+        <Preview handle={handle} selection={selection} />
+      ) : (
+        <RawView entryId={selection.entryId} />
+      );
+    case 'hex':
+      return <HexSource entryId={selection.entryId} />;
     case 'split':
       return (
         <Group className={styles.split} orientation={mobile ? 'vertical' : 'horizontal'}>

@@ -46,7 +46,7 @@ test('dropped PDF renders pages and extracts text as a derived capture', async (
   await expect(stat(page, 'Author')).toHaveText('Ada Lovelace');
   await expect(stat(page, 'Page size')).toHaveText('A4');
   await expect(stat(page, 'Section 1.1')).toHaveText('p. 1');
-  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Preview' }).click();
+  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Pages' }).click();
 
   await actionsPane(page).getByRole('button', { name: 'Extract text' }).click();
   await expect(page.getByTestId('capture')).toHaveCount(2);

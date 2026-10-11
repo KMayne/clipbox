@@ -88,6 +88,6 @@ test('JWT shows claims and expiry', async ({ page }) => {
 
   await paste(page, { 'text/plain': jwt({ sub: 'old', exp: now() - 3 * 86400 - 60 }) });
   await expect(page.locator('[data-kind=jwt]').first()).toHaveText('JWT · HS256 · expired 3d ago');
-  await page.keyboard.press('1');
+  await page.keyboard.press('2'); // Claims
   await expect(page.getByTestId('jwt-status')).toHaveText('Expired 3 days ago');
 });

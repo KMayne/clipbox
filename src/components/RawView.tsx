@@ -29,14 +29,20 @@ export function RawView({ entryId }: { entryId: EntryId }) {
   if (raw.status !== 'ok')
     return <div className={ui.empty}>{raw.status === 'error' ? raw.error : 'Loading…'}</div>;
   const { text, truncated } = raw.value;
-  if (text === undefined) {
-    return <HexDump id={entryId} size={size} read={(from, to) => readBytes(entryId, from, to)} />;
-  }
+  if (text === undefined) return <HexSource entryId={entryId} size={size} />;
   return (
     <div className={styles.wrap}>
       <pre className={styles.pre}>{text}</pre>
       {truncated && <p className={ui.muted}>Truncated at 100 KB</p>}
     </div>
+  );
+}
+
+/** A paged hex dump of the entry's original bytes. */
+export function HexSource({ entryId, size }: { entryId: EntryId; size?: number }) {
+  const known = useCaptureStore(s => findEntry(s.captures, entryId)?.entry.size ?? 0);
+  return (
+    <HexDump id={entryId} size={size ?? known} read={(from, to) => readBytes(entryId, from, to)} />
   );
 }
 

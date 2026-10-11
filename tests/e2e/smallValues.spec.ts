@@ -34,7 +34,7 @@ test('URL with a query shows a query table and a records interpretation', async 
   await expect(stat(page, 'q')).toHaveText('clip box');
 
   await page.locator('[data-kind=records]').click();
-  await page.keyboard.press('1');
+  await page.keyboard.press('2'); // Table
   await expect(page.getByTestId('records-table')).toContainText('clip box');
 });
 

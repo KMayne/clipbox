@@ -2,10 +2,20 @@ import { expect, test, type Page } from '@playwright/test';
 import { solidPng } from '../fixtures/pptx';
 import { actionsPane, dropBytes, paste } from './helpers';
 
-/** The selected value's raw text (Raw tab). */
+/**
+ * The selected value's text (Text view): a <pre> for structured kinds, the editor for plain text,
+ * where it's checked line by line.
+ */
 async function expectRaw(page: Page, text: string) {
-  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Raw' }).click();
-  await expect(page.getByRole('region', { name: 'View' }).locator('pre')).toHaveText(text);
+  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Text' }).click();
+  const view = page.getByRole('region', { name: 'View' });
+  const editor = view.getByTestId('monaco-view');
+  await expect(view.locator('pre').or(editor).first()).toBeVisible();
+  if (await editor.count()) {
+    for (const line of text.split('\n')) await expect(editor).toContainText(line);
+  } else {
+    await expect(view.locator('pre')).toHaveText(text);
+  }
 }
 
 const derivedFrom = (page: Page) => page.getByTestId('capture').first().getByTestId('derived-from');
@@ -155,9 +165,10 @@ test('the sidebar shows Info and Actions, each collapsible and remembered', asyn
   // Info holds the stats; the Inspector has no Stats tab any more
   await expect(info.getByTestId('stats').first()).toContainText('Top-level type');
   await expect(page.getByRole('group', { name: 'View' }).getByRole('button')).toHaveText([
-    'Preview',
+    'Text',
+    'Tree',
     'Split',
-    'Raw',
+    'Hex dump',
   ]);
 
   await infoToggle.click();
@@ -185,74 +196,68 @@ test('the sidebar shows Info and Actions, each collapsible and remembered', asyn
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('the view switcher shows raw text, the preview, or both side by side', async ({ page }) => {
+test('each kind offers its own views; text-based ones open in Split', async ({ page }) => {
   await paste(page, { 'text/plain': '{"name":"Ada","langs":["en","fr"]}' });
   const views = page.getByRole('group', { name: 'View' });
   const view = page.getByRole('region', { name: 'View' });
+  const pressed = (name: string) =>
+    expect(views.getByRole('button', { name, exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
 
-  // Split by default: the raw text beside the tree
-  await expect(views.getByRole('button', { name: 'Split' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  // JSON: Text | Tree | Split | Hex dump, opening in Split (the text beside the tree)
+  await expect(views.getByRole('button')).toHaveText(['Text', 'Tree', 'Split', 'Hex dump']);
+  await pressed('Split');
   await expect(view.locator('pre')).toHaveText('{"name":"Ada","langs":["en","fr"]}');
   await expect(view.getByTestId('json-tree')).toBeVisible();
 
-  // Preview (1) alone; remembered across reloads
-  await page.keyboard.press('1');
+  // 2 is the second button: Tree alone, remembered across reloads
+  await page.keyboard.press('2');
   await expect(view.locator('pre')).toHaveCount(0);
   await expect(view.getByTestId('json-tree')).toBeVisible();
   await page.reload();
   await paste(page, { 'text/plain': '[1,2,3]' });
-  await expect(views.getByRole('button', { name: 'Preview' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await pressed('Tree');
 
-  // Plain text's preview is already its source, so Split isn't offered there
-  await page.keyboard.press('2');
+  // Hex dump of the original bytes
+  await page.keyboard.press('4');
+  await expect(view.locator('pre')).toContainText('00000000  5b 31 2c 32 2c 33 5d');
+
+  // Plain text: Text | Hex dump; the hex choice carries over
   await paste(page, { 'text/plain': 'just some words' });
-  await expect(views.getByRole('button', { name: 'Split' })).toBeDisabled();
-  await expect(views.getByRole('button', { name: 'Preview' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-
-  await page.keyboard.press('3');
-  await expect(view.locator('pre')).toHaveText('just some words');
+  await expect(views.getByRole('button')).toHaveText(['Text', 'Hex dump']);
+  await pressed('Hex dump');
+  await page.keyboard.press('1');
+  await pressed('Text');
 });
 
-test('binary kinds open in Preview, with a hex dump for Raw and Split', async ({ page }) => {
+test('binary kinds offer their rendering and a hex dump', async ({ page }) => {
   await dropBytes(page, 'dot.png', 'image/png', solidPng(4, 3, [200, 40, 40]));
   await expect(page.locator('[data-kind=image]')).toHaveAttribute('aria-pressed', 'true');
   const views = page.getByRole('group', { name: 'View' });
   const view = page.getByRole('region', { name: 'View' });
-  await expect(views.getByRole('button', { name: 'Preview' })).toHaveAttribute(
+  await expect(views.getByRole('button')).toHaveText(['Image', 'Hex dump']);
+  await expect(views.getByRole('button', { name: 'Image' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-
-  // Split: the PNG's bytes in hex beside the image
-  await page.keyboard.press('2');
-  await expect(view.locator('pre')).toContainText('00000000  89 50 4e 47 0d 0a 1a 0a');
   await expect(view.locator('img')).toBeVisible();
 
-  // Binary and text views are remembered separately: JSON still opens in Split
+  await page.keyboard.press('2');
+  await expect(view.locator('img')).toHaveCount(0);
+  await expect(view.locator('pre')).toContainText('00000000  89 50 4e 47 0d 0a 1a 0a');
+
+  // Binary and text choices are remembered separately: JSON still opens in Split
   await paste(page, { 'text/plain': '{"a":1}' });
   await expect(views.getByRole('button', { name: 'Split' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await page.keyboard.press('1');
   await dropBytes(page, 'other.png', 'image/png', solidPng(2, 2, [0, 0, 255]));
   await expect(page.locator('[data-kind=image]').first()).toHaveAttribute('aria-pressed', 'true');
-  await expect(views.getByRole('button', { name: 'Split' })).toHaveAttribute(
+  await expect(views.getByRole('button', { name: 'Hex dump' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-
-  // Raw: hex only
-  await page.keyboard.press('3');
-  await expect(view.locator('img')).toHaveCount(0);
-  await expect(view.locator('pre')).toContainText('89 50 4e 47');
 });

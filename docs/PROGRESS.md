@@ -77,9 +77,9 @@ Claude Code context that lives outside the repo and won't come with it:
     validated in the worker, forms generated from the Zod settings schemas.
   - A right sidebar (toggle with `A` or the top bar's panel icon) with collapsible **Info** (the
     stats; `I` toggles it), **Actions** and **Schema** sections.
-  - The Inspector's tabs became a **Preview / Split / Raw** view switcher (1–3). Split shows the
-    source beside the preview: raw text, or a hex dump for binary kinds (Raw is hex for those too).
-    Remembered separately for text-based kinds (default Split) and binary ones (default Preview).
+  - The Inspector's tabs became **per-kind view buttons**: e.g. HTML has Text | Preview | Split |
+    Hex dump, JSON Text | Tree | Split | Hex dump, images Image | Hex dump. Text-based kinds open in
+    Split, binary ones in their rendered view; each class remembers its choice (1–4 by position).
   - Actions can return several results, which arrive as one collection capture.
   - Ten proof actions: JSON format, minify, sort keys, to YAML and TypeScript types; text change case,
     sort lines and find & replace; hash (any kind); image convert.

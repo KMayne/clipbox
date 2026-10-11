@@ -6,7 +6,7 @@ import { runAction, runDerivation, selectionActions } from './state/actions';
 import { useCaptureStore, type Selection } from './state/captureStore';
 import { useInstallStore } from './state/install';
 import { useUiStore, type InspectorView } from './state/uiStore';
-import { viewClassOf } from './state/views';
+import { viewClassOf, viewsFor } from './state/views';
 
 export interface Command {
   id: string;
@@ -23,10 +23,16 @@ export function showView(view: InspectorView): void {
   useUiStore.getState().setView(viewClassOf(selection?.kind), view);
 }
 
-const viewCommand = (view: InspectorView, title: string, key: string): Command => ({
+/** Shows the selected value's `index`th view (the 1–4 shortcuts), if it has one. */
+export function showViewAt(index: number): void {
+  const { selection } = useCaptureStore.getState();
+  const option = selection ? viewsFor(selection.kind)[index] : undefined;
+  if (option) showView(option.view);
+}
+
+const viewCommand = (view: InspectorView, title: string): Command => ({
   id: `view.${view}`,
   title,
-  shortcut: key,
   run: () => showView(view),
 });
 
@@ -112,9 +118,10 @@ export const commands: Command[] = [
     run: () => useUiStore.getState().toggleSection('actions'),
   },
   { id: 'settings.open', title: 'Settings', run: () => useUiStore.getState().openSettings() },
-  viewCommand('preview', 'Show Preview', '1'),
-  viewCommand('split', 'Show Split view (raw and preview)', '2'),
-  viewCommand('raw', 'Show Raw', '3'),
+  viewCommand('rendered', 'Show the rendered view (Tree, Table, Image…)'),
+  viewCommand('text', 'Show Text'),
+  viewCommand('split', 'Show Split view (text and rendered)'),
+  viewCommand('hex', 'Show Hex dump'),
   {
     id: 'view.schema',
     title: 'Toggle Schema section',

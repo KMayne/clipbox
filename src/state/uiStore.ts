@@ -3,7 +3,11 @@ import { create } from 'zustand';
 import type { EntryId, Kind } from '../core/types';
 
 /** How the Inspector shows a value: rendered, raw text, or both side by side. */
-export type InspectorView = 'preview' | 'split' | 'raw';
+/**
+ * How the Inspector shows a value: rendered (named per kind: Tree, Table, Image…), its text, both
+ * side by side, or a hex dump of its bytes. See `state/views.ts` for which kinds offer which.
+ */
+export type InspectorView = 'rendered' | 'text' | 'split' | 'hex';
 
 /** Views are remembered separately for text-based and binary kinds. */
 export type ViewClass = 'text' | 'binary';
@@ -91,12 +95,17 @@ const DEFAULT_SECTIONS: Record<SidebarSection, boolean> = {
   actions: true,
   schema: false,
 };
-const viewSchema = z.enum(['preview', 'split', 'raw']);
-const DEFAULT_VIEWS: Record<ViewClass, InspectorView> = { text: 'split', binary: 'preview' };
-const viewsSchema = z.object({
-  text: viewSchema.catch(DEFAULT_VIEWS.text),
-  binary: viewSchema.catch(DEFAULT_VIEWS.binary),
-});
+const viewSchema = z.enum(['rendered', 'text', 'split', 'hex']);
+const DEFAULT_VIEWS: Record<ViewClass, InspectorView> = { text: 'split', binary: 'rendered' };
+/** Names saved before views were per kind: Preview, Split and Raw. */
+const legacyViewSchema = z.enum(['preview', 'split', 'raw']);
+const fromLegacy = (viewClass: ViewClass, v: z.infer<typeof legacyViewSchema>): InspectorView =>
+  v === 'preview' ? 'rendered' : v === 'raw' ? (viewClass === 'text' ? 'text' : 'hex') : v;
+const savedView = (viewClass: ViewClass) =>
+  z
+    .union([viewSchema, legacyViewSchema.transform(v => fromLegacy(viewClass, v))])
+    .catch(DEFAULT_VIEWS[viewClass]);
+const viewsSchema = z.object({ text: savedView('text'), binary: savedView('binary') });
 
 function load<T>(key: string, parse: (raw: string | null) => T | undefined): T | undefined {
   try {
@@ -129,12 +138,15 @@ const parseSections = (raw: string | null) => {
 };
 
 export const parseViews = (raw: string | null): Record<ViewClass, InspectorView> | undefined => {
-  // Before views were split by class, a single view name was saved; it was a text-kind choice
-  const single = viewSchema.safeParse(raw);
-  if (single.success) return { ...DEFAULT_VIEWS, text: single.data };
+  // Before views were remembered per class, one view name was saved; it was a text-kind choice
+  const single = legacyViewSchema.safeParse(raw);
+  if (single.success) return { ...DEFAULT_VIEWS, text: fromLegacy('text', single.data) };
   try {
     const parsed = viewsSchema.safeParse(JSON.parse(raw ?? ''));
-    return parsed.success ? parsed.data : undefined;
+    if (!parsed.success) return undefined;
+    // Binary kinds no longer split
+    const { text, binary } = parsed.data;
+    return { text, binary: binary === 'split' ? 'rendered' : binary };
   } catch {
     return undefined;
   }

@@ -68,6 +68,6 @@ test('Extract text gives the slides as Markdown', async ({ page }) => {
     .getByRole('button', { name: 'Run' })
     .click();
   await expect(page.getByTestId('capture')).toHaveCount(2);
-  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Raw' }).click();
+  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Text' }).click();
   await expect(page.getByRole('region', { name: 'View' })).toContainText('## Slide 1: Welcome');
 });

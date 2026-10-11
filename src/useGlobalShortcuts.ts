@@ -1,15 +1,9 @@
 import { useEffect } from 'react';
 import { isEditable, openFile } from './capture/sources';
 import { copySelection } from './capture/copyToClipboard';
-import { removeSelectedCapture, showView } from './commands';
+import { removeSelectedCapture, showViewAt } from './commands';
 import { navOrder, useCaptureStore } from './state/captureStore';
-import { useUiStore, type InspectorView } from './state/uiStore';
-
-const VIEWS: Record<string, InspectorView> = {
-  '1': 'preview',
-  '2': 'split',
-  '3': 'raw',
-};
+import { useUiStore } from './state/uiStore';
 
 /** Moves the selection by `delta` through the visible chips and collection headers. */
 export function moveSelection(delta: number): void {
@@ -38,7 +32,7 @@ export function useGlobalShortcuts() {
         return;
       }
       if (ui.paletteOpen || isEditable(e.target)) return;
-      const view = VIEWS[e.key];
+      const viewIndex = ['1', '2', '3', '4'].indexOf(e.key);
       if (mod && e.key.toLowerCase() === 'o') {
         e.preventDefault();
         openFile();
@@ -48,8 +42,8 @@ export function useGlobalShortcuts() {
         void copySelection(useCaptureStore.getState().selection);
       } else if (mod || e.altKey) {
         return;
-      } else if (view) {
-        showView(view);
+      } else if (viewIndex >= 0) {
+        showViewAt(viewIndex);
       } else if (e.key === 'w') {
         ui.toggleWrap();
       } else if (e.key === 'a') {
