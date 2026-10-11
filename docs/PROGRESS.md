@@ -84,17 +84,19 @@ Claude Code context that lives outside the repo and won't come with it:
 2. **Merge `feat/theme-switcher`** once it has been reviewed.
 3. **Push:** none of this work since the licence commit has been pushed to GitHub (`main` and the
    theme branch).
+4. **Add a link to the GitHub repo** (https://github.com/KMayne/clipbox) in the app, e.g. next to the
+   KianMayne.co.uk credit at the bottom of the Pastes pane, and in the README.
 
 ### Original roadmap (from the plan)
 
-4. **Deliverable 1b: the canvas.**
+5. **Deliverable 1b: the canvas.**
    - Add a React Flow canvas between the Pastes pane and the Inspector.
    - Source nodes are created from a chip with "+" or Enter.
    - Shift+Enter replaces a source's data with the latest paste.
    - Undo/redo with `zundo`.
    - Save the graph (history persistence already exists), and pin each source node's blob so expiry
      can't remove it.
-5. **Deliverable 2: ops and edges.**
+6. **Deliverable 2: ops and edges.**
    - Op registry: input and output kinds, Zod params, and async `run(inputs, params, { signal })`.
    - Engine `setGraph` with reactive, debounced re-evaluation that cancels stale runs.
    - Per-node results; when a node errors, the nodes downstream show as blocked.
@@ -102,15 +104,15 @@ Claude Code context that lives outside the repo and won't come with it:
    - Ops: pick/rename, filter, sort, group by, flatten, count/unique, to Markdown, to CSV/TSV,
      stringify, split lines, regex replace.
    - Palette: typing an op name adds it after the selected node.
-6. **Spike, then Deliverable 3: inline TypeScript node.**
+7. **Spike, then Deliverable 3: inline TypeScript node.**
    - Monaco in the existing `editor` module.
    - Inject the upstream value's `Schema` as `declare const input: …` for type checking.
    - Transpile with sucrase and run in a disposable sandbox worker with a timeout.
-7. **Deliverable 4: quick-task UX.**
+8. **Deliverable 4: quick-task UX.**
    - Tab on a node opens the op picker, filtered by output kind, which auto-wires the chosen op.
    - Auto-layout.
    - Saved pipelines as templates.
-8. **Extras:**
+9. **Extras:**
    - Diffing two inputs.
    - Image ops.
    - HTML→Markdown.
