@@ -3,6 +3,7 @@
  * decoded image from pdf.js's object stores and encodes it as PNG.
  */
 
+import { throwIfAborted } from '../../core/progress';
 import { ImageKind, OPS } from 'pdfjs-dist';
 import { sha256 } from '../../core/hash';
 import { isRecord } from '../../core/guards';
@@ -175,7 +176,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
  */
 export async function extractPdfImages(
   doc: ImageDocument,
-  { pages, minSize, max }: PdfImageOptions,
+  { pages, minSize, max, task }: PdfImageOptions,
   encode: ImageEncoder = canvasEncoder,
 ): Promise<PdfImageResult> {
   const numbers = (pages ?? Array.from({ length: doc.numPages }, (_, i) => i + 1)).filter(
@@ -184,7 +185,9 @@ export async function extractPdfImages(
   const seenKeys = new Set<string>();
   const seenHashes = new Set<string>();
   const images: DerivedContent[] = [];
-  for (const number of numbers) {
+  for (const [n, number] of numbers.entries()) {
+    throwIfAborted(task?.signal);
+    task?.progress(n / numbers.length, `Page ${n + 1} of ${numbers.length}`);
     const page = await doc.getPage(number);
     const ops = await page.getOperatorList();
     let onPage = 0;
@@ -196,6 +199,7 @@ export async function extractPdfImages(
           if (seenKeys.has(c.key)) continue;
           seenKeys.add(c.key);
         }
+        throwIfAborted(task?.signal);
         const raw = await c.load();
         if (!raw || Math.min(raw.width, raw.height) < minSize) continue;
         const bytes = await encode(raw);

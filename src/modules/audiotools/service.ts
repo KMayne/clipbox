@@ -11,7 +11,10 @@ export interface NormaliseOptions {
   ceiling: number;
   /** Use the lookahead limiter instead of capping the gain. */
   limit: boolean;
+  /** Aborting stops at the next decoded chunk, rejecting with an AbortError. */
   signal?: AbortSignal;
+  /** Per pass: decoded time over the duration (`TaskContext.progress`). */
+  progress?(fraction: number | undefined, message?: string): void;
 }
 
 export interface LoudnessReading {
@@ -55,6 +58,7 @@ export interface FrameOptions {
   /** Seconds from the start of the media, or a fraction (0–1) of the way through. */
   at: { seconds: number } | { fraction: number };
   signal?: AbortSignal;
+  progress?(fraction: number | undefined, message?: string): void;
 }
 
 export interface FrameResult {

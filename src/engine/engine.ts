@@ -4,6 +4,7 @@ import { appliesToKind, type ActionContext, type ActionEffect } from '../core/ac
 import { makeContent, type EntryContent } from '../core/content';
 import { oneLine, toBase64 } from '../core/format';
 import { sha256 } from '../core/hash';
+import { abortError, throttle, type ProgressReport, type TaskContext } from '../core/progress';
 import type {
   AnyInterpreter,
   ExportOptions,
@@ -40,6 +41,19 @@ interface EntryState {
   summaries: Map<Kind, Promise<Summary>>;
 }
 
+/** A progress report for one run (`runAction`/`derive` with a run id), sent to the UI. */
+export interface RunProgress extends ProgressReport {
+  runId: string;
+}
+
+/** Receives every run's progress; the UI passes a `Comlink.proxy`'d function. */
+export type ProgressListener = (progress: RunProgress) => void;
+
+interface Run {
+  entryId: EntryId;
+  controller: AbortController;
+}
+
 export type ModuleLoadState = 'idle' | 'loading' | 'loaded' | 'failed';
 
 export interface EngineOptions {
@@ -53,6 +67,9 @@ export class Engine {
   private moduleStates = new Map<ModuleId, ModuleLoadState>();
   private loaders: Partial<Record<string, () => Promise<WorkerModule>>>;
   private ctx: InterpretContext = { service: (id, guard) => this.service(id, guard) };
+  private runs = new Map<string, Run>();
+  private progressListener: ProgressListener | null = null;
+  private nextRun = 0;
 
   constructor(options: EngineOptions = {}) {
     this.loaders = options.loaders ?? workerLoaders;
@@ -142,13 +159,69 @@ export class Engine {
   }
 
   /** Runs a derivation; the caller adds the result as a new capture. */
-  async derive(entryId: EntryId, kind: Kind, derivationId: string): Promise<DerivedContent> {
-    const state = this.state(entryId);
-    const interpreter = await this.interpreter(this.candidate(state, kind));
-    const result = await interpreter.derive(await this.value(entryId, kind), derivationId);
-    // Copy: the bytes may share a buffer with the value, and transferring would detach it
-    const bytes = result.bytes.slice();
-    return Comlink.transfer({ ...result, bytes }, [bytes.buffer]);
+  derive(
+    entryId: EntryId,
+    kind: Kind,
+    derivationId: string,
+    runId?: string,
+  ): Promise<DerivedContent> {
+    return this.track(runId, entryId, async task => {
+      const state = this.state(entryId);
+      const interpreter = await this.interpreter(this.candidate(state, kind));
+      const value = await this.value(entryId, kind);
+      return transferCopy(await interpreter.derive(value, derivationId, task));
+    });
+  }
+
+  /** Subscribes to every run's progress (one listener; null unsubscribes). */
+  onProgress(listener: ProgressListener | null): void {
+    this.progressListener = listener;
+  }
+
+  /**
+   * Aborts a run started with `runId`: its signal fires, and it rejects with an AbortError (even
+   * if the action finishes anyway). Unknown or finished runs are ignored.
+   */
+  cancelAction(runId: string): void {
+    this.runs.get(runId)?.controller.abort();
+  }
+
+  /** Ids of the runs still going (for tests). */
+  activeRuns(): string[] {
+    return [...this.runs.keys()];
+  }
+
+  /**
+   * Registers a run (synchronously, so a cancel sent right after the call finds it), gives the
+   * work a signal and a throttled progress reporter, and turns any failure after a cancel into an
+   * AbortError.
+   */
+  private async track<T>(
+    runId: string | undefined,
+    entryId: EntryId,
+    work: (task: TaskContext) => Promise<T>,
+  ): Promise<T> {
+    const id = runId ?? `run-${++this.nextRun}`;
+    if (this.runs.has(id)) throw new Error(`Run ${id} is already going`);
+    const controller = new AbortController();
+    this.runs.set(id, { entryId, controller });
+    const reporter = throttle(report => {
+      const listener = this.progressListener;
+      // Across Comlink this returns a promise; a closed page shouldn't become an unhandled error
+      if (listener) void Promise.resolve(listener({ runId: id, ...report })).catch(() => {});
+    });
+    const { signal } = controller;
+    try {
+      const result = await work({ signal, progress: (f, m) => reporter.report(f, m) });
+      if (signal.aborted) throw abortError();
+      reporter.flush();
+      return result;
+    } catch (err) {
+      reporter.dispose();
+      throw signal.aborted ? abortError() : err;
+    } finally {
+      this.runs.delete(id);
+    }
   }
 
   /** Ids of the actions that apply to this interpretation, in catalog order. */
@@ -164,35 +237,41 @@ export class Engine {
    * Runs an action; the caller adds the result as a new capture. `params` comes from the UI, so
    * the action validates it against its schema before running.
    */
-  async runAction(
+  runAction(
     entryId: EntryId,
     kind: Kind,
     actionId: string,
     params: unknown,
+    runId?: string,
   ): Promise<DerivedContent[]> {
-    const { impl, value, content, ctx } = await this.prepareAction(entryId, kind, actionId);
-    const results = await impl.run(value, content, params, ctx);
-    // Copy: the bytes may share a buffer with the value, and transferring would detach it
-    const copies = results.map(r => ({ ...r, bytes: r.bytes.slice() }));
-    return Comlink.transfer(
-      copies,
-      copies.map(c => c.bytes.buffer),
-    );
+    return this.track(runId, entryId, async task => {
+      const { impl, value, content, ctx } = await this.prepareAction(entryId, kind, actionId, task);
+      const results = await impl.run(value, content, params, ctx);
+      // Copy: the bytes may share a buffer with the value, and transferring would detach it
+      const copies = results.map(r => ({ ...r, bytes: r.bytes.slice() }));
+      return Comlink.transfer(
+        copies,
+        copies.map(c => c.bytes.buffer),
+      );
+    });
   }
 
   /** Runs an effect action (`info.effect`); the caller carries out the returned effect. */
-  async actionEffect(
+  actionEffect(
     entryId: EntryId,
     kind: Kind,
     actionId: string,
     params: unknown,
+    runId?: string,
   ): Promise<ActionEffect> {
-    const { impl, value, content, ctx } = await this.prepareAction(entryId, kind, actionId);
-    if (!impl.effect) throw new Error(`${impl.info.title} makes a capture; use runAction`);
-    return impl.effect(value, content, params, ctx);
+    return this.track(runId, entryId, async task => {
+      const { impl, value, content, ctx } = await this.prepareAction(entryId, kind, actionId, task);
+      if (!impl.effect) throw new Error(`${impl.info.title} makes a capture; use runAction`);
+      return impl.effect(value, content, params, ctx);
+    });
   }
 
-  private async prepareAction(entryId: EntryId, kind: Kind, actionId: string) {
+  private async prepareAction(entryId: EntryId, kind: Kind, actionId: string, task: TaskContext) {
     const { content } = this.state(entryId);
     const impl = actionImpl(actionId);
     if (!impl || !appliesToKind(impl.info, kind)) {
@@ -202,7 +281,7 @@ export class Engine {
     if (module) await this.loadModule(module); // fail clearly if it can't load
     const value = await this.value(entryId, kind);
     const ctx: ActionContext = {
-      signal: new AbortController().signal,
+      ...task,
       service: (id, guard) => this.service(id, guard),
     };
     return { impl, value, content, ctx };
@@ -223,12 +302,15 @@ export class Engine {
     return Comlink.transfer(slice, [slice.buffer]);
   }
 
+  /** Drops an entry, cancelling any run on it. */
   forget(entryId: EntryId): void {
     this.entries.delete(entryId);
+    for (const run of this.runs.values()) if (run.entryId === entryId) run.controller.abort();
   }
 
   clear(): void {
     this.entries.clear();
+    for (const run of this.runs.values()) run.controller.abort();
   }
 
   private detect(content: EntryContent): Candidate[] {
@@ -327,6 +409,12 @@ export class Engine {
   }
 }
 
+/** Copies the bytes (they may share a buffer with the value, which transferring would detach). */
+function transferCopy(result: DerivedContent): DerivedContent {
+  const bytes = result.bytes.slice();
+  return Comlink.transfer({ ...result, bytes }, [bytes.buffer]);
+}
+
 const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 export type EngineApi = Pick<
@@ -341,6 +429,8 @@ export type EngineApi = Pick<
   | 'actions'
   | 'runAction'
   | 'actionEffect'
+  | 'onProgress'
+  | 'cancelAction'
   | 'raw'
   | 'rawBytes'
   | 'forget'

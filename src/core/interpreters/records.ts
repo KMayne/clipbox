@@ -115,7 +115,8 @@ export function parseDelimited(text: string, delimiter: string): RecordsValue {
   const { data } = Papa.parse<string[]>(text, { delimiter, skipEmptyLines: true });
   const first = data[0] ?? [];
   const hasHeader = looksLikeHeader(first);
-  const width = Math.max(...data.map(r => r.length));
+  // Not Math.max(...rows): big tables overflow the call stack
+  const width = data.reduce((w, r) => Math.max(w, r.length), 0);
   const columns = hasHeader
     ? first.map(h => h.trim())
     : Array.from({ length: width }, (_, i) => `col${i + 1}`);

@@ -84,6 +84,7 @@ export const mediaImpls = [
         ceiling,
         limit,
         signal: ctx.signal,
+        progress: ctx.progress,
       });
       return {
         mime: result.mime,
@@ -115,7 +116,11 @@ export const mediaImpls = [
       const at = parseFrameTime(time);
       const tools = await ctx.service('audiotools', isVideoFrameTool);
       if (!tools) throw new Error('The audio tools module is unavailable');
-      const frame = await tools.videoFrame(content.bytes, { at, signal: ctx.signal });
+      const frame = await tools.videoFrame(content.bytes, {
+        at,
+        signal: ctx.signal,
+        progress: ctx.progress,
+      });
       const stem = (content.name ?? '').replace(/\.[^./\\]*$/, '') || 'video';
       return {
         mime: 'image/png',

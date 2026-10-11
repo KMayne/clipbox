@@ -143,7 +143,9 @@ Legend:
   carries the before loudness and the gain, e.g. `song (normalised -14 LUFS; was -23.1 LUFS,
   +9.1 dB).wav`. Output keeps the container and codec when WebCodecs can encode it (Opus, AAC
   where available, PCM, FLAC), else: lossy audio → Opus in Ogg, lossless → WAV, video → Matroska.
-  No progress reporting (the action framework has none yet); not offered for AVI or Ogg Theora.
+  Reports progress per pass ("Pass 1 of 2 · measuring loudness", "Pass 2 of 2 · encoding", by
+  decoded time over the duration) and cancels at the next decoded chunk; not offered for AVI or
+  Ogg Theora.
 
 ### Spreadsheet
 
@@ -177,6 +179,23 @@ Parsed in core (`src/core/executable/`), no dependency. Actions in the `executab
 - **Certificate details as JSON** ✅ (x509 module service: names, validity, SANs, key usage, EKU, basic constraints, key ids, extensions, fingerprints; leaf first) · **SHA-256 fingerprint** ✅ (Fingerprint: SHA-256, SHA-1 or both, colon-separated uppercase hex, computed in core) · **Extract public key (PEM)** ✅ (SPKI; the leaf, or every block) · PEM ↔ DER
 
 ## Notes for batch 2
+
+- **Progress and cancelling** (done, `feat/action-progress`): `ctx.progress(fraction, message?)`
+  (0..1, or `undefined` for indeterminate) and a real `ctx.signal`. The engine throttles reports to
+  about 10 a second (always sending the last), gives each run an id (`runAction(…, runId)`,
+  `derive(…, runId)`), and `engine.cancelAction(runId)` aborts it; `forget`/`clear` abort runs on
+  the removed entries. A cancelled run rejects with an AbortError, which the UI treats as quiet
+  ("Cancelled"), not a failure notice. UI: `state/runs.ts` (one proxied progress listener,
+  validated with Zod; a UI AbortController per run, so Cancel is instant even while the worker is
+  busy) and `components/RunProgress.tsx` (the bar under the sidebar row, and the running-actions
+  strip above the notice for runs whose row isn't on screen). Bars show only after 300 ms.
+  Instrumented: Normalise audio, Video frame as PNG (indeterminate steps), PDF Extract images and
+  the Extract text derivation (per page), PowerPoint Extract images, TIFF Pages as PNG, Extract
+  strings (per MiB, cancellable), Hash (indeterminate: `crypto.subtle` can't stream), records
+  Sort, Filter, Pick columns, To CSV/TSV and To SQL (per row), Image resize (indeterminate). The
+  rest are quick single calls (one `JSON.parse`, one `Array.sort`, one canvas encode) with no loop
+  to report from; they still get an indeterminate "Working…" bar and a Cancel that drops the
+  result if they take over 300 ms.
 
 - Results can set `note` on `DerivedContent` (e.g. "2 invalid lines skipped"); the UI appends it to the capture's label.
 - Actions that don't produce a new capture: set `effect: 'open-url'` in the catalog entry and use

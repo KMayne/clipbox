@@ -34,6 +34,7 @@ export const presentationImpls = [
         picked ? new Set(picked) : undefined,
         MAX_EXTRACTED,
         converter,
+        ctx,
       );
       return truncated ? [...images, truncatedNote('slide')] : images;
     },

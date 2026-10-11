@@ -1,3 +1,4 @@
+import type { TaskContext } from '../../core/progress';
 import { z } from 'zod';
 import { isRecord } from '../../core/guards';
 import type { DerivedContent } from '../../core/types';
@@ -31,6 +32,8 @@ export interface PdfImageOptions {
   minSize: number;
   /** Stop after this many images (and say so with `truncated`). */
   max: number;
+  /** Cancel and progress (per page). */
+  task?: TaskContext;
 }
 
 export interface PdfImageResult {
