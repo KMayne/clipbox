@@ -15,7 +15,7 @@ import { storageUsed, useHistoryStore, type KeepFor } from '../state/persistence
 import { useUiStore } from '../state/uiStore';
 import { sw, type CacheState, type ModulesManifest } from '../swClient';
 import { type SchemeId, schemeId, schemes, setScheme, theme } from '../theme';
-import { ui } from './ui';
+import { media, ui } from './ui';
 import { useAsync } from './useAsync';
 
 const styles = {
@@ -28,10 +28,18 @@ const styles = {
     justify-content: center;
     padding-top: 10vh;
     z-index: 150;
+    ${media.mobile} {
+      padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+    }
   `,
   dialog: css`
     width: min(860px, 94vw);
     max-height: 80vh;
+    ${media.mobile} {
+      width: 100%;
+      max-height: 100%;
+      padding: 12px;
+    }
     overflow: auto;
     background: ${theme.panel};
     border: 1px solid ${theme.border};
@@ -69,6 +77,18 @@ const styles = {
       padding: 8px;
       border-top: 1px solid ${theme.subtle};
       vertical-align: middle;
+    }
+    /* Phones: no room for the Library column */
+    ${media.mobile} {
+      th:nth-child(2),
+      td:nth-child(2) {
+        display: none;
+      }
+      th,
+      td {
+        padding-left: 4px;
+        padding-right: 4px;
+      }
     }
   `,
   description: css`
@@ -109,6 +129,9 @@ const styles = {
       gap: 6px;
       cursor: pointer;
     }
+    ${media.mobile} {
+      flex-wrap: wrap;
+    }
   `,
   rowLabel: css`
     width: 110px;
@@ -132,6 +155,16 @@ const styles = {
       align-items: baseline;
       gap: 6px;
       cursor: pointer;
+    }
+    /* Phones: each option's description goes under its name */
+    ${media.mobile} {
+      label {
+        flex-wrap: wrap;
+      }
+      label > span:last-child {
+        flex-basis: 100%;
+        padding-left: 22px;
+      }
     }
   `,
   appearance: css`

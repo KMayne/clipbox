@@ -1,7 +1,7 @@
 import { css, cx } from '@emotion/css';
 import { useUiStore } from '../state/uiStore';
 import { theme } from '../theme';
-import { ui } from './ui';
+import { media, ui } from './ui';
 
 const styles = {
   notice: css`
@@ -16,6 +16,12 @@ const styles = {
     border: 1px solid ${theme.border};
     border-radius: 4px;
     z-index: 200;
+    /* Phones: above the bottom navigation */
+    ${media.mobile} {
+      left: 12px;
+      right: 12px;
+      bottom: calc(68px + env(safe-area-inset-bottom));
+    }
   `,
   error: css`
     border-color: ${theme.error};

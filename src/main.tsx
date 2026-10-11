@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { onCaptureEvent, useCaptureStore } from './state/captureStore';
 import { startBackgroundDownloads } from './state/backgroundDownloads';
+import { startMobileNavigation } from './state/mobileNav';
 import { useModuleStore } from './state/moduleStore';
 import { startPersistence } from './state/persistence';
 import { sw } from './swClient';
@@ -17,6 +18,9 @@ injectGlobal`
     color: ${theme.text};
     font: 13px/1.4 ${theme.sans};
     color-scheme: dark;
+    /* App-like on phones: no pull-to-refresh or rubber-banding, no grey tap flashes */
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
     /* Native controls (checkboxes, radios, ranges) */
     accent-color: ${theme.accent};
   }
@@ -30,6 +34,7 @@ injectGlobal`
 `;
 
 sw.register();
+startMobileNavigation();
 useModuleStore.getState().init();
 startBackgroundDownloads();
 void startPersistence(
