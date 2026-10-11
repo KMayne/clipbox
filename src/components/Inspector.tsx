@@ -13,6 +13,9 @@ import { ImageView } from './previews/ImageView';
 import { JsonTree } from './previews/JsonTree';
 import { MarkdownView } from './previews/MarkdownView';
 import { ModulePreview } from './ModulePreview';
+import { OpenAsMenu } from './OpenAsMenu';
+import { Base64Preview } from './previews/Base64Preview';
+import { JwtView } from './previews/JwtView';
 import { RecordsTable } from './previews/RecordsTable';
 import { TextView } from './previews/TextView';
 import { RawView } from './RawView';
@@ -55,6 +58,8 @@ const styles = {
   `,
   actions: css`
     margin-left: auto;
+    display: flex;
+    gap: 6px;
   `,
   tabs: css`
     display: flex;
@@ -117,6 +122,9 @@ function SelectionInspector({ selection }: { selection: Selection }) {
         <span>{handle.status === 'ok' ? handle.value.summary.label : '…'}</span>
         <span className={styles.source}>{entry?.name ?? entry?.mime}</span>
         <span className={styles.actions}>
+          {handle.status === 'ok' && handle.value.summary.derivations?.length ? (
+            <OpenAsMenu selection={selection} derivations={handle.value.summary.derivations} />
+          ) : null}
           <button className={ui.button} onClick={() => void copySelection(selection)}>
             <Icon path={mdiContentCopy} size={0.6} />
             Copy
@@ -195,6 +203,10 @@ function Preview({ handle }: { handle: ValueHandle }) {
       return <HtmlView handle={handle} />;
     case 'image':
       return <ImageView handle={handle} />;
+    case 'base64':
+      return <Base64Preview handle={handle} />;
+    case 'jwt':
+      return <JwtView handle={handle} />;
     default:
       return <HexView handle={handle} />;
   }

@@ -189,6 +189,11 @@ export const recordsInterpreter: Interpreter<RecordsValue> = {
     return unsupportedSlice('records', req);
   },
   export: v => ({ text: toTsv(v) }),
+  derivations: () => [{ id: 'json', label: 'As JSON' }],
+  derive: v => ({
+    mime: 'application/json',
+    bytes: new TextEncoder().encode(JSON.stringify(v.rows, null, 2)),
+  }),
 };
 
 function tsvCell(v: unknown): string {

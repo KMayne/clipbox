@@ -17,12 +17,15 @@ interface UiState {
   tab: InspectorTab;
   wrap: boolean;
   paletteOpen: boolean;
+  /** The Inspector's "Open as" menu. */
+  openAsOpen: boolean;
   /** Open Settings dialog, optionally highlighting a module. */
   settings: { open: boolean; focus?: string };
   notice: Notice | null;
   setTab(tab: InspectorTab): void;
   toggleWrap(): void;
   setPaletteOpen(open: boolean): void;
+  setOpenAsOpen(open: boolean): void;
   openSettings(focus?: string): void;
   closeSettings(): void;
   notify(message: string, tone?: Notice['tone'], action?: NoticeAction): void;
@@ -35,11 +38,13 @@ export const useUiStore = create<UiState>(set => ({
   tab: 'preview',
   wrap: false,
   paletteOpen: false,
+  openAsOpen: false,
   settings: { open: false },
   notice: null,
   setTab: tab => set({ tab }),
   toggleWrap: () => set(s => ({ wrap: !s.wrap })),
   setPaletteOpen: paletteOpen => set({ paletteOpen }),
+  setOpenAsOpen: openAsOpen => set({ openAsOpen }),
   openSettings: focus => set({ settings: { open: true, focus } }),
   closeSettings: () => set({ settings: { open: false } }),
   notify(message, tone = 'info', action) {

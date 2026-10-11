@@ -3,6 +3,7 @@ import type {
   Capture,
   CaptureId,
   CaptureSourceId,
+  Derivation,
   EntryId,
   Interpretation,
   Kind,
@@ -61,9 +62,11 @@ const emit = (e: CaptureEvent) => eventListeners.forEach(fn => fn(e));
 interface CaptureState {
   captures: CaptureView[];
   selection: Selection | null;
-  add(source: CaptureSourceId, entries: NewEntry[]): void;
+  add(source: CaptureSourceId, entries: NewEntry[], parent?: Capture['parent']): void;
   /** Append saved captures (newest first) behind any live ones and ingest them one by one. */
   restore(captures: Capture[]): void;
+  /** Runs a derivation on `from` and adds the result as a new, auto-selected capture. */
+  derive(from: Selection, derivation: Derivation): Promise<void>;
   /** Resolves with the content hash, or undefined if the entry is gone or ingest failed. */
   ingest(entryId: EntryId): Promise<string | undefined>;
   remove(captureId: CaptureId): void;
@@ -150,12 +153,13 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
     captures: [],
     selection: null,
 
-    add(source, newEntries) {
+    add(source, newEntries, parent) {
       if (newEntries.length === 0) return;
       const capture: CaptureView = {
         id: `c-${crypto.randomUUID()}`,
         at: Date.now(),
         source,
+        ...(parent && { parent }),
         collapsed: false,
         entries: newEntries.map(e => entryView({ ...e, id: `en-${crypto.randomUUID()}` })),
       };
@@ -214,6 +218,17 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
         updateEntry(entryId, { status: 'error', error: String(err) });
         return undefined;
       }
+    },
+
+    async derive(from, derivation) {
+      const { mime, name, bytes } = await engine.derive(from.entryId, from.kind, derivation.id);
+      const blob = new Blob([bytes], { type: mime });
+      // add() collapses older captures; autoSelect picks the new one's best interpretation
+      get().add('derived', [{ mime, name, size: blob.size, blob }], {
+        entryId: from.entryId,
+        kind: from.kind,
+        label: derivation.label,
+      });
     },
 
     remove(captureId) {

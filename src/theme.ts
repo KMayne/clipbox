@@ -24,6 +24,8 @@ export const kindColors: Record<string, string> = {
   xml: '#61afef',
   markdown: '#ff9e64',
   ndjson: '#e0af68',
+  base64: '#7aa2f7',
+  jwt: '#f7768e',
 };
 
 export const kindColor = (kind: string) => kindColors[kind] ?? theme.muted;

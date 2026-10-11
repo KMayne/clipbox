@@ -1,6 +1,7 @@
 import { css } from '@emotion/css';
 import { mdiChevronDown, mdiChevronRight, mdiClose } from '@mdi/js';
 import { Icon } from '@mdi/react';
+import { kindName } from '../core/kinds';
 import { useCaptureStore, type CaptureView } from '../state/captureStore';
 import { theme } from '../theme';
 import { moveSelection } from '../useGlobalShortcuts';
@@ -45,6 +46,24 @@ const styles = {
     }
     &:hover > .remove {
       visibility: visible;
+    }
+  `,
+  parent: css`
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0;
+    background: none;
+    border: none;
+    color: ${theme.muted};
+    text-align: left;
+    &:enabled {
+      cursor: pointer;
+    }
+    &:enabled:hover {
+      color: ${theme.text};
+      text-decoration: underline;
     }
   `,
   footer: css`
@@ -97,9 +116,14 @@ function CaptureItem({ capture }: { capture: CaptureView }) {
       <div className={styles.header} onClick={() => toggle(capture.id)}>
         <Icon path={capture.collapsed ? mdiChevronRight : mdiChevronDown} size={0.7} />
         <span>{time(capture.at)}</span>
-        <span className={ui.muted}>
-          · {capture.source} · {n} format{n === 1 ? '' : 's'}
-        </span>
+        <span className={ui.muted}>·</span>
+        {capture.parent ? (
+          <ParentLink parent={capture.parent} />
+        ) : (
+          <span className={ui.muted}>
+            {capture.source} · {n} format{n === 1 ? '' : 's'}
+          </span>
+        )}
         <button
           className={`${ui.iconButton} remove`}
           title="Remove"
@@ -113,5 +137,34 @@ function CaptureItem({ capture }: { capture: CaptureView }) {
       </div>
       {!capture.collapsed && capture.entries.map(e => <EntryRow key={e.id} entry={e} />)}
     </div>
+  );
+}
+
+/** "from ‹parent label› › ‹derivation›"; clicking selects the parent interpretation. */
+function ParentLink({ parent }: { parent: NonNullable<CaptureView['parent']> }) {
+  // Select the capture (a stable reference), not findEntry's fresh object
+  const capture = useCaptureStore(s =>
+    s.captures.find(c => c.entries.some(e => e.id === parent.entryId)),
+  );
+  const entry = capture?.entries.find(e => e.id === parent.entryId);
+  const interpretation = entry?.interpretations.find(i => i.kind === parent.kind);
+  const parentLabel = interpretation?.label ?? kindName(parent.kind);
+  const text = `from ${parentLabel} › ${parent.label}`;
+  return (
+    <button
+      className={styles.parent}
+      data-testid="derived-from"
+      disabled={!capture}
+      title={capture ? `Select ${parentLabel}` : 'The original capture was removed'}
+      onClick={e => {
+        e.stopPropagation();
+        if (!capture) return;
+        const { toggle, select } = useCaptureStore.getState();
+        if (capture.collapsed) toggle(capture.id);
+        select({ entryId: parent.entryId, kind: parent.kind });
+      }}
+    >
+      {text}
+    </button>
   );
 }

@@ -4,7 +4,7 @@ export type EntryId = `en-${string}`;
 /** Open set: interpreters register their own kinds. */
 export type Kind = 'text' | 'json' | 'records' | 'html' | 'image' | 'binary' | (string & {});
 
-export type CaptureSourceId = 'paste' | 'read' | 'drop' | 'file';
+export type CaptureSourceId = 'paste' | 'read' | 'drop' | 'file' | 'derived';
 
 /** One clipboard format / dropped file, before any interpretation. */
 export interface RawEntry {
@@ -20,6 +20,8 @@ export interface Capture {
   at: number;
   source: CaptureSourceId;
   entries: RawEntry[];
+  /** For derived captures: the interpretation it came from and the derivation's label. */
+  parent?: { entryId: EntryId; kind: Kind; label: string };
 }
 
 export interface StatRow {
@@ -53,6 +55,21 @@ export interface Summary {
   /** Number of sliceable units: lines, rows, top-level children or bytes. */
   extent: number;
   columns?: ColumnInfo[];
+  /** Ways to open this value as a new capture, e.g. "Decode" or "As CSV". */
+  derivations?: Derivation[];
+}
+
+/** A way to turn a value into new content, which becomes a derived capture. */
+export interface Derivation {
+  id: string;
+  label: string;
+}
+
+/** Content produced by a derivation; it goes through detection like any other entry. */
+export interface DerivedContent {
+  mime: string;
+  name?: string;
+  bytes: Uint8Array<ArrayBuffer>;
 }
 
 /**

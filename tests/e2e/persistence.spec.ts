@@ -46,7 +46,7 @@ test('pastes survive a reload', async ({ page }) => {
 test('removed pastes stay gone after a reload', async ({ page }) => {
   await pasteAndSave(page);
   const capture = page.getByTestId('capture');
-  await capture.getByText('· paste · 1 format').hover(); // Remove shows on header hover
+  await capture.getByText('paste · 1 format').hover(); // Remove shows on header hover
   await capture.getByTitle('Remove').click();
   await expect(capture).toHaveCount(0);
   await expect.poll(() => savedCount(page)).toBe(0);

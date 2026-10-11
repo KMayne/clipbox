@@ -118,6 +118,18 @@ describe('HistoryDb', () => {
     expect(await blob?.text()).toBe('world');
   });
 
+  it('round-trips derived captures with their parent link', async () => {
+    const db = new HistoryDb(freshNames());
+    const { capture, blobs } = await stored('c-d', 1000, ['{"a":1}']);
+    const derived: StoredCapture = {
+      ...capture,
+      source: 'derived',
+      parent: { entryId: 'en-c-p-0', kind: 'base64', label: 'Decode' },
+    };
+    await db.save(derived, blobs);
+    expect(await db.list()).toEqual([derived]);
+  });
+
   it('stores identical content once and garbage-collects unreferenced blobs', async () => {
     const db = new HistoryDb(freshNames());
     const a = await stored('c-a', 1000, ['same', 'only-a']);

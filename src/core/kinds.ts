@@ -11,6 +11,8 @@ const NAMES: Record<string, string> = {
   xml: 'XML',
   markdown: 'Markdown',
   ndjson: 'NDJSON',
+  base64: 'Base64',
+  jwt: 'JWT',
 };
 
 export const kindName = (kind: Kind) => NAMES[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);

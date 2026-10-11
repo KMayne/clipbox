@@ -1,18 +1,22 @@
 import type { EntryContent } from '../content';
 import { register, type AnyInterpreter } from '../interpreter';
 import type { Kind } from '../types';
+import { base64Interpreter } from './base64';
 import { binaryInterpreter } from './binary';
 import { htmlInterpreter } from './html';
 import { imageInterpreter } from './image';
 import { jsonInterpreter } from './json';
 import { markdownInterpreter } from './markdown';
 import { ndjsonInterpreter } from './ndjson';
+import { jwtInterpreter } from './jwt';
 import { recordsInterpreter } from './records';
 import { textInterpreter } from './text';
 import { xmlInterpreter } from './xml';
 import { yamlInterpreter } from './yaml';
 
 export const interpreters: AnyInterpreter[] = [
+  register(jwtInterpreter),
+  register(base64Interpreter),
   register(jsonInterpreter),
   register(ndjsonInterpreter),
   register(markdownInterpreter),

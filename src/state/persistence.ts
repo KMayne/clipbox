@@ -70,7 +70,13 @@ function saveSettings(settings: HistorySettings) {
 
 // ---- Stored records ------------------------------------------------------------------------
 
-const SOURCES = ['paste', 'read', 'drop', 'file'] as const satisfies readonly CaptureSourceId[];
+const SOURCES = [
+  'paste',
+  'read',
+  'drop',
+  'file',
+  'derived',
+] as const satisfies readonly CaptureSourceId[];
 
 const storedEntrySchema = z.object({
   id: z.templateLiteral(['en-', z.string()]),
@@ -85,6 +91,14 @@ const storedCaptureSchema = z.object({
   at: z.number().finite(),
   source: z.enum(SOURCES),
   entries: z.array(storedEntrySchema).min(1),
+  /** Set for derived captures; the parent may since have been removed. */
+  parent: z
+    .object({
+      entryId: z.templateLiteral(['en-', z.string()]),
+      kind: z.string(),
+      label: z.string(),
+    })
+    .optional(),
 });
 
 export type StoredEntry = z.infer<typeof storedEntrySchema>;
@@ -331,6 +345,7 @@ export class Persistence {
         id: view.id,
         at: view.at,
         source: view.source,
+        ...(view.parent && { parent: view.parent }),
         entries: view.entries.map(({ id, mime, size, name }) => ({
           id,
           mime,

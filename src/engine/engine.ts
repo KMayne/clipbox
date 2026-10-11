@@ -5,6 +5,7 @@ import { sha256 } from '../core/hash';
 import type { AnyInterpreter, ExportPayload, InterpretContext } from '../core/interpreter';
 import { interpreters as coreInterpreters } from '../core/interpreters';
 import type {
+  DerivedContent,
   EntryId,
   IngestResult,
   Interpretation,
@@ -114,7 +115,14 @@ export class Engine {
         const value = await this.value(entryId, kind);
         const interpreter = await this.interpreter(this.candidate(state, kind));
         const rest = await interpreter.summarise(value);
-        return { kind, label: interpreter.label(value), bytes: state.content.size, ...rest };
+        const derivations = interpreter.derivations(value);
+        return {
+          kind,
+          label: interpreter.label(value),
+          bytes: state.content.size,
+          ...rest,
+          ...(derivations.length > 0 && { derivations }),
+        };
       })();
       summary.catch(() => state.summaries.delete(kind));
       state.summaries.set(kind, summary);
@@ -134,6 +142,16 @@ export class Engine {
     const state = this.state(entryId);
     const interpreter = await this.interpreter(this.candidate(state, kind));
     return interpreter.export(await this.value(entryId, kind));
+  }
+
+  /** Runs a derivation; the caller adds the result as a new capture. */
+  async derive(entryId: EntryId, kind: Kind, derivationId: string): Promise<DerivedContent> {
+    const state = this.state(entryId);
+    const interpreter = await this.interpreter(this.candidate(state, kind));
+    const result = await interpreter.derive(await this.value(entryId, kind), derivationId);
+    // Copy: the bytes may share a buffer with the value, and transferring would detach it
+    const bytes = result.bytes.slice();
+    return Comlink.transfer({ ...result, bytes }, [bytes.buffer]);
   }
 
   raw(entryId: EntryId, limit = 100 * 1024): RawView {
@@ -266,6 +284,7 @@ export type EngineApi = Pick<
   | 'summary'
   | 'slice'
   | 'exportValue'
+  | 'derive'
   | 'raw'
   | 'forget'
   | 'clear'

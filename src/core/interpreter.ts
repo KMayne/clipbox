@@ -1,5 +1,5 @@
 import type { EntryContent } from './content';
-import type { Kind, SliceRequest, Summary } from './types';
+import type { Derivation, DerivedContent, Kind, SliceRequest, Summary } from './types';
 
 /** What "Copy" puts on the clipboard for a value. */
 export interface ExportPayload {
@@ -34,6 +34,10 @@ export interface Interpreter<V> {
   summarise(v: V): MaybePromise<SummaryParts>;
   slice(v: V, req: SliceRequest): MaybePromise<unknown>;
   export(v: V): MaybePromise<ExportPayload>;
+  /** Ways to open the value as a new capture; shown in the Inspector's "Open as" menu. */
+  derivations?(v: V): Derivation[];
+  /** Produces the content for one of `derivations(v)`. */
+  derive?(v: V, id: string): MaybePromise<DerivedContent>;
 }
 
 /**
@@ -49,6 +53,9 @@ export interface AnyInterpreter {
   summarise(v: unknown): Promise<SummaryParts>;
   slice(v: unknown, req: SliceRequest): Promise<unknown>;
   export(v: unknown): Promise<ExportPayload>;
+  /** Empty when the interpreter offers none. */
+  derivations(v: unknown): Derivation[];
+  derive(v: unknown, id: string): Promise<DerivedContent>;
 }
 
 export function register<V>(i: Interpreter<V>): AnyInterpreter {
@@ -65,6 +72,14 @@ export function register<V>(i: Interpreter<V>): AnyInterpreter {
     summarise: async v => i.summarise(check(v)),
     slice: async (v, req) => i.slice(check(v), req),
     export: async v => i.export(check(v)),
+    derivations: v => i.derivations?.(check(v)) ?? [],
+    derive: async (v, id) => {
+      const value = check(v);
+      if (!i.derive || !i.derivations?.(value).some(d => d.id === id)) {
+        throw new Error(`${i.kind} has no '${id}' derivation`);
+      }
+      return i.derive(value, id);
+    },
   };
 }
 
