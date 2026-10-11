@@ -47,6 +47,8 @@ interface Signals {
   /** Lines (outside fenced code) carrying at least one signal. */
   signalLines: number;
   headings: number;
+  /** Lines with inline syntax (links, `**bold**`). */
+  inlineLines: number;
   /** Non-blank lines outside fenced code. */
   lines: number;
   keyValueLines: number;
@@ -58,6 +60,7 @@ export function markdownSignals(text: string): Signals {
     types: new Set(),
     signalLines: 0,
     headings: 0,
+    inlineLines: 0,
     lines: 0,
     keyValueLines: 0,
     codeLines: 0,
@@ -85,11 +88,14 @@ export function markdownSignals(text: string): Signals {
       if (signal === 'heading') s.headings++;
       break; // a task item is also a list item; count it once
     }
+    let inline = false;
     for (const [signal, re] of INLINE_SIGNALS) {
       if (!re.test(line)) continue;
       s.types.add(signal);
-      signalled = true;
+      inline = true;
     }
+    if (inline) s.inlineLines++;
+    signalled ||= inline;
     if (signalled) s.signalLines++;
     if (KEY_VALUE.test(line)) s.keyValueLines++;
     if (CODE_LINE.test(line)) s.codeLines++;
@@ -105,13 +111,17 @@ export function markdownConfidence(c: EntryContent): number {
   if (tryParseJson(c).ok) return 0;
   const s = signalsOf(c);
   if (!s || s.lines === 0) return 0;
-  const enough = s.types.size >= 2 || (s.headings >= 1 && s.signalLines >= 2);
+  const density = s.signalLines / Math.max(s.lines, 1);
+  // One kind of signal is enough when it's inline syntax on most lines, e.g. a note made of
+  // `**Label:** value` lines. A bare `- item` list or one bold word isn't.
+  const repeatedInline = s.inlineLines >= 2 && s.inlineLines >= s.lines * 0.5;
+  const enough =
+    s.types.size >= 2 || (s.headings >= 1 && s.signalLines >= 2) || repeatedInline;
   if (!enough) return 0;
   // YAML with `# comments` and `- items`, or code with `# comments`, isn't Markdown
   const prose = s.lines - s.signalLines;
   if (s.keyValueLines > 0 && s.keyValueLines >= prose * 0.5) return 0;
   if (s.codeLines >= s.lines * 0.3) return 0;
-  const density = s.signalLines / Math.max(s.lines, 1);
   const score = Math.min(1, density * 1.5 + (s.types.size - 1) * 0.1);
   return 0.5 + 0.25 * score;
 }

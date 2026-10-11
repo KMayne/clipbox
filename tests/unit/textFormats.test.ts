@@ -75,6 +75,21 @@ describe('markdown detection', () => {
     expect(kinds(textContent('- one\n- two\n- three'))).not.toContain('markdown');
   });
 
+  it('detects a note of bold `Label:` lines', () => {
+    const note = '**Name:** Ada Lovelace\n**Role:** Engineer\n**Started:** 2024-01-02\n';
+    expect(kinds(textContent(note))[0]).toBe('markdown');
+  });
+
+  it('leaves plain `Label: value` lines to YAML or text', () => {
+    // No Markdown syntax at all: these lines are equally a YAML mapping, a header block or prose,
+    // and render the same either way, so Markdown would add nothing.
+    const yamlish = 'Name: Ada Lovelace\nRole: Engineer\nStarted: 2024-01-02\n';
+    expect(kinds(textContent(yamlish))).toEqual(['yaml', 'text']);
+    // A value with its own `: ` isn't valid YAML, so this is (correctly) just text
+    const note = 'Meeting: Monday standup\nWhere: Room 4: the big one\nNotes: bring snacks\n';
+    expect(kinds(textContent(note))).toEqual(['text']);
+  });
+
   it('does not claim JSON', () => {
     const json = JSON.stringify({ text: '# heading\n- [link](https://x.dev) **bold**' });
     expect(kinds(textContent(json))).not.toContain('markdown');
