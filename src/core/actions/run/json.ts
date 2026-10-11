@@ -1,6 +1,7 @@
 import { stringify } from 'yaml';
 import { isRecord } from '../../guards';
 import { jsonInterpreter } from '../../interpreters/json';
+import { recordsInterpreter, type RecordsValue } from '../../interpreters/records';
 import { inferSchema, schemaToTs } from '../../schema';
 import { JsonPathError, parseJsonPath, queryJsonPath } from '../../jsonPath';
 import {
@@ -85,7 +86,8 @@ export const jsonImpls = [
       ),
   }),
   implement(jsonPick, {
-    value,
+    value: (v): v is { kind: 'json'; json: unknown } | RecordsValue =>
+      jsonInterpreter.isValue(v) || recordsInterpreter.isValue(v),
     run({ value }, { path, wrap }) {
       let parsed;
       try {
@@ -95,7 +97,7 @@ export const jsonImpls = [
           throw new Error(`Invalid path: ${err.message}`, { cause: err });
         throw err;
       }
-      const matches = queryJsonPath(value.json, parsed);
+      const matches = queryJsonPath(value.kind === 'json' ? value.json : value.rows, parsed);
       if (matches.length === 0) throw new Error(`Nothing matches ${path}`);
       const out = parsed.definite && !wrap ? matches[0] : matches;
       // A picked string is shown as JSON (quoted), so it stays a JSON value
