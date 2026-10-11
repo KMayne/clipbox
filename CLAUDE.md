@@ -31,7 +31,7 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
   - Current modules:
     - `editor`: Monaco, UI only.
     - `langdetect`: VS Code's ML model.
-    - `x509`: PEM, using `@peculiar/x509`.
+    - `x509`: PEM, using `@peculiar/x509`; its service backs the PEM actions (details, public key).
     - `media`: audio and video, using music-metadata.
     - `sheets`: SheetJS, from the CDN tarball, Apache-2.0.
     - `sqlite`: sql.js WASM, read-only.
@@ -69,6 +69,8 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
 - **Derivations:** interpreters can offer `derivations`/`derive` ("Open as…", listed in the Actions sidebar's Open group). The engine returns the bytes, and `captureStore.derive` adds a `'derived'` capture with a `parent` link, which persistence also stores.
 - **New actions** (one entry per area file, so parallel work doesn't collide):
   1. Catalog: in `src/core/actions/catalog/<area>.ts`, `export const x = defineAction({ id: '<area>.<name>', title, group, kinds, params: z.object({ … }) })` and add it to that file's `<area>Actions` array. Every setting is a string, number, boolean or enum with `.default()`, and `.meta({ title, … })` goes last; the types reject anything else. Use `params: z.object({})` for none. Add `label: p => …` when the default "Title (settings)" label reads badly.
+     - Mark keys and passwords `.meta({ secret: true })`: `actionLabel` leaves them out (and drops a custom label that echoes one), and the form disables autocomplete. Never log them or put them in results.
+     - An action that doesn't make a capture (e.g. URL Open in new tab) sets `effect: 'open-url'` and is implemented with `implementEffect`; `state/effects.ts` validates (http(s) only) and performs it.
   2. Implementation: in `src/core/actions/run/<area>.ts`, add `implement(x, { value: <interpreter>.isValue, run: ({ value, content }, params, ctx) => DerivedContent })` to the `<area>Impls` array (`anyValue` when only `content` is used; `applies` for finer filtering). Return text with `textResult` from `run/util.ts`.
   3. Test: input → output in `tests/unit/actions.test.ts` (or a `tests/unit/actions-<area>.test.ts`). The catalog test already checks the form, defaults and that every entry has one implementation.
   - A new area adds one file in each folder and one line in each `index.ts`. Don't import lazy-module code in `run/`; use a light value guard and, for the module's library, `module` in the catalog plus `ctx.service`.
