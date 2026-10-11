@@ -28,6 +28,7 @@ export default defineConfig({
       'jsqr',
       'xlsx',
       'sql.js',
+      'jq-wasm',
       'pdfjs-dist',
       'pdfjs-dist/build/pdf.worker.mjs',
       'fzstd',
