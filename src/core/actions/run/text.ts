@@ -1,5 +1,20 @@
+import { decodeBase64, printableText } from '../../base64';
+import { toBase64 } from '../../format';
+import { decodeEntities, encodeEntities } from '../../htmlEntities';
 import { textInterpreter } from '../../interpreters/text';
-import { textChangeCase, textReplace, textSortLines } from '../catalog/text';
+import type { DerivedContent } from '../../types';
+import {
+  textChangeCase,
+  textDecode,
+  textDedupe,
+  textEncode,
+  textRemoveBlank,
+  textReplace,
+  textReverse,
+  textSortLines,
+  textSplitLines,
+  textTrim,
+} from '../catalog/text';
 import { implement } from '../types';
 import { joinLines, splitLines, textResult } from './util';
 
@@ -83,4 +98,141 @@ export const textImpls = [
       return textResult(out);
     },
   }),
+  implement(textTrim, {
+    value,
+    run({ value }, { side, scope }) {
+      const trim = (s: string) =>
+        side === 'both' ? s.trim() : side === 'start' ? s.trimStart() : s.trimEnd();
+      if (scope === 'whole') return textResult(trim(value.text));
+      const { lines, trailingNewline } = splitLines(value.text);
+      return textResult(joinLines(lines.map(trim), trailingNewline));
+    },
+  }),
+  implement(textRemoveBlank, {
+    value,
+    run({ value }, { whitespace }) {
+      const { lines, trailingNewline } = splitLines(value.text);
+      const kept = lines.filter(l => (whitespace ? l.trim() !== '' : l !== ''));
+      return textResult(joinLines(kept, trailingNewline && kept.length > 0));
+    },
+  }),
+  implement(textDedupe, {
+    value,
+    run({ value }, { ignoreCase }) {
+      const { lines, trailingNewline } = splitLines(value.text);
+      const seen = new Set<string>();
+      const kept = lines.filter(l => {
+        const key = ignoreCase ? l.toLowerCase() : l;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return textResult(joinLines(kept, trailingNewline));
+    },
+  }),
+  implement(textReverse, {
+    value,
+    run({ value }) {
+      const { lines, trailingNewline } = splitLines(value.text);
+      return textResult(joinLines(lines.reverse(), trailingNewline));
+    },
+  }),
+  implement(textEncode, {
+    value,
+    run: ({ value }, { format, nonAscii, quotes }) =>
+      textResult(encodeText(value.text, format, { nonAscii, quotes })),
+  }),
+  implement(textDecode, {
+    value,
+    run: ({ value }, { format }) => decodeText(value.text, format),
+  }),
+  implement(textSplitLines, {
+    value,
+    run({ value }, { trim, skipEmpty }) {
+      let { lines } = splitLines(value.text);
+      if (trim) lines = lines.map(l => l.trim());
+      if (skipEmpty) lines = lines.filter(l => l !== '');
+      return textResult(JSON.stringify(lines, null, 2), 'application/json', 'lines.json');
+    },
+  }),
 ];
+
+type Codec = 'base64' | 'base64url' | 'component' | 'uri' | 'html' | 'json';
+
+/** JSON string contents: `JSON.stringify` escapes, optionally with `\uXXXX` for non-ASCII. */
+function jsonEscape(text: string, nonAscii: boolean): string {
+  const quoted = JSON.stringify(text);
+  return nonAscii
+    ? quoted.replace(/[^\x00-\x7f]/g, ch => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`) // eslint-disable-line no-control-regex
+    : quoted;
+}
+
+export function encodeText(
+  text: string,
+  format: Codec,
+  { nonAscii = false, quotes = false } = {},
+): string {
+  switch (format) {
+    case 'base64':
+    case 'base64url': {
+      const b64 = toBase64(new TextEncoder().encode(text));
+      return format === 'base64'
+        ? b64
+        : b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    case 'component':
+      return encodeURIComponent(text);
+    case 'uri':
+      return encodeURI(text);
+    case 'html':
+      return encodeEntities(text, nonAscii);
+    case 'json': {
+      const quoted = jsonEscape(text, nonAscii);
+      return quotes ? quoted : quoted.slice(1, -1);
+    }
+  }
+}
+
+/** Decodes `text`; base64 may decode to bytes, which are returned as binary if not text. */
+export function decodeText(text: string, format: Codec): DerivedContent {
+  switch (format) {
+    case 'base64':
+    case 'base64url': {
+      const bytes = decodeBase64(text.replace(/\s+/g, ''));
+      if (!bytes) throw new Error('Not valid base64');
+      if (bytes.length === 0) return textResult('');
+      return printableText(bytes) === null
+        ? { mime: 'application/octet-stream', bytes }
+        : { mime: 'text/plain', bytes };
+    }
+    case 'component':
+    case 'uri':
+      try {
+        // A form-encoded `+` is a space only in component mode (query strings)
+        return textResult(
+          format === 'component' ? decodeURIComponent(text.replace(/\+/g, ' ')) : decodeURI(text),
+        );
+      } catch (err) {
+        throw new Error('Malformed percent-encoding', { cause: err });
+      }
+    case 'html':
+      return textResult(decodeEntities(text));
+    case 'json': {
+      const t = text.trim();
+      const quoted = t.length >= 2 && t.startsWith('"') && t.endsWith('"') ? t : `"${t}"`;
+      let out: unknown;
+      try {
+        out = JSON.parse(quoted);
+      } catch (err) {
+        throw new Error(
+          'Not a valid JSON string (raw line breaks and lone quotes must be escaped)',
+          {
+            cause: err,
+          },
+        );
+      }
+      if (typeof out !== 'string') throw new Error('Not a JSON string');
+      return textResult(out);
+    }
+  }
+}

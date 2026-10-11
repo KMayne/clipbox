@@ -56,4 +56,116 @@ export const textReplace = defineAction({
   },
 });
 
-export const textActions = [textChangeCase, textSortLines, textReplace];
+const SIDE_LABELS = { both: 'Both ends', start: 'Leading', end: 'Trailing' };
+
+export const textTrim = defineAction({
+  id: 'text.trim',
+  title: 'Trim',
+  group: 'Lines',
+  kinds: ['text'],
+  params: z.object({
+    side: z
+      .enum(['both', 'start', 'end'])
+      .default('both')
+      .meta({ title: 'Whitespace', optionLabels: SIDE_LABELS }),
+    scope: z
+      .enum(['lines', 'whole'])
+      .default('lines')
+      .meta({ title: 'Apply to', optionLabels: { lines: 'Each line', whole: 'Whole text' } }),
+  }),
+  label: p =>
+    `Trim (${SIDE_LABELS[p.side].toLowerCase()}${p.scope === 'lines' ? ', each line' : ''})`,
+});
+
+export const textRemoveBlank = defineAction({
+  id: 'text.removeBlank',
+  title: 'Remove blank lines',
+  group: 'Lines',
+  kinds: ['text'],
+  params: z.object({
+    whitespace: z.boolean().default(true).meta({ title: 'Whitespace-only lines count as blank' }),
+  }),
+  label: () => 'Remove blank lines',
+});
+
+export const textDedupe = defineAction({
+  id: 'text.dedupeLines',
+  title: 'Dedupe lines',
+  group: 'Lines',
+  kinds: ['text'],
+  params: z.object({
+    ignoreCase: z.boolean().default(false).meta({ title: 'Ignore case' }),
+  }),
+  label: p => `Dedupe lines${p.ignoreCase ? ' (ignoring case)' : ''}`,
+});
+
+export const textReverse = defineAction({
+  id: 'text.reverseLines',
+  title: 'Reverse lines',
+  group: 'Lines',
+  kinds: ['text'],
+  params: z.object({}),
+});
+
+export const CODEC_LABELS = {
+  base64: 'Base64',
+  base64url: 'Base64 (URL-safe)',
+  component: 'URL component',
+  uri: 'Full URL',
+  html: 'HTML entities',
+  json: 'JSON string',
+};
+const codec = z
+  .enum(['base64', 'base64url', 'component', 'uri', 'html', 'json'])
+  .default('base64')
+  .meta({ title: 'Format', optionLabels: CODEC_LABELS });
+
+export const textEncode = defineAction({
+  id: 'text.encode',
+  title: 'Encode',
+  group: 'Encode',
+  kinds: ['text'],
+  params: z.object({
+    format: codec,
+    nonAscii: z
+      .boolean()
+      .default(false)
+      .meta({ title: 'Escape non-ASCII', description: 'HTML entities and JSON strings only' }),
+    quotes: z.boolean().default(false).meta({ title: 'Wrap JSON string in quotes' }),
+  }),
+  label: p => `Encode ${CODEC_LABELS[p.format]}`,
+});
+
+export const textDecode = defineAction({
+  id: 'text.decode',
+  title: 'Decode',
+  group: 'Encode',
+  kinds: ['text'],
+  params: z.object({ format: codec }),
+  label: p => `Decode ${CODEC_LABELS[p.format]}`,
+});
+
+export const textSplitLines = defineAction({
+  id: 'text.splitLines',
+  title: 'Split lines → JSON array',
+  group: 'Convert',
+  kinds: ['text'],
+  params: z.object({
+    trim: z.boolean().default(true).meta({ title: 'Trim each line' }),
+    skipEmpty: z.boolean().default(true).meta({ title: 'Skip empty lines' }),
+  }),
+  label: () => 'Lines as JSON array',
+});
+
+export const textActions = [
+  textChangeCase,
+  textSortLines,
+  textReplace,
+  textTrim,
+  textRemoveBlank,
+  textDedupe,
+  textReverse,
+  textEncode,
+  textDecode,
+  textSplitLines,
+];
