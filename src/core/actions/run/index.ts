@@ -1,11 +1,19 @@
 import type { AnyActionImpl } from '../types';
 import { anyImpls } from './any';
+import { base64Impls } from './base64';
+import { binaryImpls } from './binary';
+import { colourImpls } from './colour';
 import { imageImpls } from './image';
 import { jsonImpls } from './json';
+import { jwtImpls } from './jwt';
 import { mediaImpls } from './media';
 import { pdfImpls } from './pdf';
+import { pemImpls } from './pem';
 import { presentationImpls } from './presentation';
 import { textImpls } from './text';
+import { timestampImpls } from './timestamp';
+import { urlImpls } from './url';
+import { uuidImpls } from './uuid';
 
 /**
  * Worker-side implementations, one file per area (mirroring `catalog/`). Only the engine imports
@@ -18,6 +26,14 @@ export const actionImpls: AnyActionImpl[] = [
   ...mediaImpls,
   ...presentationImpls,
   ...pdfImpls,
+  ...jwtImpls,
+  ...timestampImpls,
+  ...uuidImpls,
+  ...urlImpls,
+  ...colourImpls,
+  ...base64Impls,
+  ...binaryImpls,
+  ...pemImpls,
   ...anyImpls,
 ];
 
