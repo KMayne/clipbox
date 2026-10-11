@@ -77,7 +77,7 @@ export const modules: ModuleInfo[] = (
     {
       id: 'audiotools',
       title: 'Audio tools',
-      description: 'Loudness normalisation for audio and video (decode, re-encode and remux)',
+      description: 'Loudness normalisation and video frame grabs (decode, re-encode and remux)',
       approxBytes: 630_000,
       hasWorker: true,
       hasUi: false,

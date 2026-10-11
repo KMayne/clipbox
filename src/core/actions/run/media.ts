@@ -1,8 +1,15 @@
 import { isRecord } from '../../guards';
 import type { MediaContainer } from '../../../modules/media/detect';
-import { isAudioTools, type NormaliseResult } from '../../../modules/audiotools/service';
-import { mediaNormalise } from '../catalog/media';
+import {
+  isAudioTools,
+  isVideoFrameTool,
+  type FrameOptions,
+  type NormaliseResult,
+} from '../../../modules/audiotools/service';
+import { isMediaService } from '../../../modules/media/service';
+import { mediaMetadata, mediaNormalise, mediaVideoFrame } from '../catalog/media';
 import { implement } from '../types';
+import { textResult } from './util';
 
 /**
  * The fields of the media module's value these actions read. A light guard rather than the
@@ -85,4 +92,51 @@ export const mediaImpls = [
       };
     },
   }),
+  implement(mediaMetadata, {
+    value: isMediaInfo,
+    async run({ value, content }, _params, ctx) {
+      const media = await ctx.service('media', isMediaService);
+      if (!media) throw new Error("The audio/video module isn't available");
+      const meta = await media.metadata(value);
+      const stem = (content.name ?? '').replace(/\.[^./\\]*$/, '') || value.kind;
+      return textResult(
+        `${JSON.stringify(meta, null, 2)}\n`,
+        'application/json',
+        `${stem}-metadata.json`,
+      );
+    },
+  }),
+  implement(mediaVideoFrame, {
+    value: isMediaInfo,
+    // Mediabunny can't read AVI; Ogg video is Theora, which WebCodecs can't decode
+    applies: ({ value }) =>
+      value.hasVideo && NORMALISABLE.has(value.container) && value.container !== 'ogg',
+    async run({ content }, { time }, ctx) {
+      const at = parseFrameTime(time);
+      const tools = await ctx.service('audiotools', isVideoFrameTool);
+      if (!tools) throw new Error('The audio tools module is unavailable');
+      const frame = await tools.videoFrame(content.bytes, { at, signal: ctx.signal });
+      const stem = (content.name ?? '').replace(/\.[^./\\]*$/, '') || 'video';
+      return {
+        mime: 'image/png',
+        name: `${stem} (frame at ${Math.round(frame.timestamp * 100) / 100}s).png`,
+        bytes: frame.bytes,
+      };
+    },
+  }),
 ];
+
+/** "12.5" → 12.5 s, "1:02:03.5" → 3723.5 s, "10%" → a tenth of the way through. */
+export function parseFrameTime(text: string): FrameOptions['at'] {
+  const t = text.trim().replace(/\s*s$/, '');
+  if (t.endsWith('%')) {
+    const pct = Number(t.slice(0, -1).trim());
+    if (!Number.isFinite(pct) || pct > 100) throw new Error(`Invalid percentage '${text.trim()}'`);
+    return { fraction: pct / 100 };
+  }
+  const parts = t.split(':').map(Number);
+  if (!parts.length || parts.some(n => !Number.isFinite(n))) {
+    throw new Error(`Invalid time '${text.trim()}'`);
+  }
+  return { seconds: parts.reduce((acc, n) => acc * 60 + n, 0) };
+}
