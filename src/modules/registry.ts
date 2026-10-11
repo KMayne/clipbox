@@ -82,6 +82,14 @@ export const modules: ModuleInfo[] = (
       hasWorker: true,
       hasUi: false,
     },
+    {
+      id: 'qr',
+      title: 'QR codes',
+      description: 'Reads QR codes in images where the browser has no barcode reader',
+      approxBytes: 50_000,
+      hasWorker: true,
+      hasUi: false,
+    },
   ] satisfies Omit<ModuleInfo, 'library'>[]
 ).map(m => ({ ...m, library: moduleLibraries[m.id] }));
 

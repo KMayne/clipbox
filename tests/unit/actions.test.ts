@@ -331,6 +331,6 @@ describe('Image convert', () => {
     const engine = new Engine({ loaders: {} });
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>';
     await engine.ingest(entry(svg, 'image/svg+xml'));
-    expect(await engine.actions('en-1', 'image')).toEqual(['any.hash']);
+    expect(await engine.actions('en-1', 'image')).toEqual(['image.dataUrl', 'any.hash']);
   });
 });

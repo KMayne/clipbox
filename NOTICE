@@ -18,6 +18,10 @@ Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0):
   Copyright Google LLC
   https://www.tensorflow.org/js
 
+- jsQR, used by the QR codes module
+  Copyright Cosmo Wolfe and Jefff Nelson
+  https://github.com/cozmo/jsQR
+
 - Comlink
   Copyright Google LLC
   https://github.com/GoogleChromeLabs/comlink
