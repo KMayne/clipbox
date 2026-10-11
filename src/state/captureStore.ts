@@ -12,6 +12,7 @@ import type {
   Kind,
   RawEntry,
 } from '../core/types';
+import { raceAbort } from '../core/progress';
 import { engine } from '../engine/engineClient';
 import { dropHandles } from '../engine/valueHandle';
 import { performEffect } from './effects';
@@ -45,6 +46,12 @@ export interface Selection {
 
 export type NewEntry = Omit<RawEntry, 'id'>;
 
+/** A tracked run (`state/runs.ts` `startRun`): the engine's run id and the UI's cancel signal. */
+export interface RunHandle {
+  id: string;
+  signal: AbortSignal;
+}
+
 /**
  * Lifecycle events for persistence (state/persistence.ts). `settled` fires once per entry
  * ingested from add(), with the engine's content hash if ingest succeeded. `removed` covers
@@ -76,13 +83,22 @@ interface CaptureState {
   add(source: CaptureSourceId, entries: NewEntry[], parent?: Capture['parent']): void;
   /** Append saved captures (newest first) behind any live ones and ingest them one by one. */
   restore(captures: Capture[]): void;
-  /** Runs a derivation on `from` and adds the result as a new, auto-selected capture. */
-  derive(from: Selection, derivation: Derivation): Promise<void>;
+  /**
+   * Runs a derivation on `from` and adds the result as a new, auto-selected capture. With `run`
+   * (see `state/runs.ts`), the engine reports progress under its id, and aborting its signal
+   * rejects with an AbortError at once and adds nothing.
+   */
+  derive(from: Selection, derivation: Derivation, run?: RunHandle): Promise<void>;
   /**
    * Runs an action on `from` (settings are validated in the worker) and adds the result as a new,
    * auto-selected capture labelled with the action and a summary of its settings.
    */
-  runAction(from: Selection, actionId: string, params?: Record<string, unknown>): Promise<void>;
+  runAction(
+    from: Selection,
+    actionId: string,
+    params?: Record<string, unknown>,
+    run?: RunHandle,
+  ): Promise<void>;
   /** Resolves with the content hash, or undefined if the entry is gone or ingest failed. */
   ingest(entryId: EntryId): Promise<string | undefined>;
   remove(captureId: CaptureId): void;
@@ -247,23 +263,31 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
       }
     },
 
-    async derive(from, derivation) {
-      addDerived(
-        from,
-        [await engine.derive(from.entryId, from.kind, derivation.id)],
-        derivation.label,
+    async derive(from, derivation, run) {
+      const result = await raceAbort(
+        engine.derive(from.entryId, from.kind, derivation.id, run?.id),
+        run?.signal,
       );
+      addDerived(from, [result], derivation.label);
     },
 
-    async runAction(from, actionId, params = {}) {
+    async runAction(from, actionId, params = {}, run) {
       const info = actionById(actionId);
       if (!info) throw new Error(`Unknown action '${actionId}'`);
       if (info.effect) {
         // e.g. Open in new tab: nothing to add as a capture
-        performEffect(await engine.actionEffect(from.entryId, from.kind, actionId, params));
+        performEffect(
+          await raceAbort(
+            engine.actionEffect(from.entryId, from.kind, actionId, params, run?.id),
+            run?.signal,
+          ),
+        );
         return;
       }
-      const result = await engine.runAction(from.entryId, from.kind, actionId, params);
+      const result = await raceAbort(
+        engine.runAction(from.entryId, from.kind, actionId, params, run?.id),
+        run?.signal,
+      );
       const note = result.find(r => r.note)?.note;
       addDerived(from, result, actionLabel(info, params) + (note ? ` · ${note}` : ''));
     },

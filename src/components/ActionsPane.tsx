@@ -5,10 +5,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { defaultParams, formFields, type FormField } from '../core/actions/form';
 import { ACTION_GROUPS, hasSettings, type ActionInfo } from '../core/actions/types';
 import type { Derivation } from '../core/types';
-import { runAction, runDerivation, selectionActions } from '../state/actions';
+import { derivationKey, runAction, runDerivation, selectionActions } from '../state/actions';
 import { useCaptureStore, type Selection } from '../state/captureStore';
+import { useRunsFor } from '../state/runs';
 import { useUiStore } from '../state/uiStore';
 import { theme } from '../theme';
+import { InlineRun } from './RunProgress';
 import { ui } from './ui';
 import { useAsync } from './useAsync';
 
@@ -230,18 +232,24 @@ function DerivationItem({
   derivation: Derivation;
 }) {
   const [running, setRunning] = useState(false);
+  const runs = useRunsFor(selection, derivationKey(derivation.id));
   return (
-    <button
-      className={styles.item}
-      disabled={running}
-      onClick={() => {
-        setRunning(true);
-        void runDerivation(selection, derivation).finally(() => setRunning(false));
-      }}
-    >
-      {derivation.label}
-      <span className="trail">{running && <Spinner />}</span>
-    </button>
+    <>
+      <button
+        className={styles.item}
+        disabled={running}
+        onClick={() => {
+          setRunning(true);
+          void runDerivation(selection, derivation).finally(() => setRunning(false));
+        }}
+      >
+        {derivation.label}
+        <span className="trail">{running && <Spinner />}</span>
+      </button>
+      {runs.map(r => (
+        <InlineRun key={r.id} run={r} />
+      ))}
+    </>
   );
 }
 
@@ -259,6 +267,7 @@ function ActionItem({
   onToggle(): void;
 }) {
   const [running, setRunning] = useState(false);
+  const runs = useRunsFor(selection, info.id);
   const settings = hasSettings(info);
 
   const run = async (params?: Record<string, unknown>) => {
@@ -288,6 +297,9 @@ function ActionItem({
           ) : null}
         </span>
       </button>
+      {runs.map(r => (
+        <InlineRun key={r.id} run={r} />
+      ))}
       {settings && expanded && (
         <SettingsForm
           info={info}
