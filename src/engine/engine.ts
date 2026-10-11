@@ -1,4 +1,6 @@
 import * as Comlink from 'comlink';
+import { actionImpl, actionImpls } from '../core/actions/run';
+import { appliesToKind } from '../core/actions/types';
 import { makeContent, type EntryContent } from '../core/content';
 import { oneLine, toBase64 } from '../core/format';
 import { sha256 } from '../core/hash';
@@ -133,11 +135,7 @@ export class Engine {
     return result;
   }
 
-  async exportValue(
-    entryId: EntryId,
-    kind: Kind,
-    options?: ExportOptions,
-  ): Promise<ExportPayload> {
+  async exportValue(entryId: EntryId, kind: Kind, options?: ExportOptions): Promise<ExportPayload> {
     const state = this.state(entryId);
     const interpreter = await this.interpreter(this.candidate(state, kind));
     return interpreter.export(await this.value(entryId, kind), options);
@@ -148,6 +146,42 @@ export class Engine {
     const state = this.state(entryId);
     const interpreter = await this.interpreter(this.candidate(state, kind));
     const result = await interpreter.derive(await this.value(entryId, kind), derivationId);
+    // Copy: the bytes may share a buffer with the value, and transferring would detach it
+    const bytes = result.bytes.slice();
+    return Comlink.transfer({ ...result, bytes }, [bytes.buffer]);
+  }
+
+  /** Ids of the actions that apply to this interpretation, in catalog order. */
+  async actions(entryId: EntryId, kind: Kind): Promise<string[]> {
+    const state = this.state(entryId);
+    const value = await this.value(entryId, kind);
+    return actionImpls
+      .filter(a => appliesToKind(a.info, kind) && a.applies(value, state.content))
+      .map(a => a.info.id);
+  }
+
+  /**
+   * Runs an action; the caller adds the result as a new capture. `params` comes from the UI, so
+   * the action validates it against its schema before running.
+   */
+  async runAction(
+    entryId: EntryId,
+    kind: Kind,
+    actionId: string,
+    params: unknown,
+  ): Promise<DerivedContent> {
+    const state = this.state(entryId);
+    const impl = actionImpl(actionId);
+    if (!impl || !appliesToKind(impl.info, kind)) {
+      throw new Error(`No '${actionId}' action for ${kind}`);
+    }
+    const { module } = impl.info;
+    if (module) await this.loadModule(module); // fail clearly if it can't load
+    const value = await this.value(entryId, kind);
+    const result = await impl.run(value, state.content, params, {
+      signal: new AbortController().signal,
+      service: (id, guard) => this.service(id, guard),
+    });
     // Copy: the bytes may share a buffer with the value, and transferring would detach it
     const bytes = result.bytes.slice();
     return Comlink.transfer({ ...result, bytes }, [bytes.buffer]);
@@ -275,6 +309,8 @@ export type EngineApi = Pick<
   | 'slice'
   | 'exportValue'
   | 'derive'
+  | 'actions'
+  | 'runAction'
   | 'raw'
   | 'forget'
   | 'clear'
