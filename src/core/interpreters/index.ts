@@ -1,14 +1,18 @@
 import type { EntryContent } from '../content';
 import { register, type AnyInterpreter } from '../interpreter';
 import type { Kind } from '../types';
+import { base64Interpreter } from './base64';
 import { binaryInterpreter } from './binary';
 import { htmlInterpreter } from './html';
 import { imageInterpreter } from './image';
 import { jsonInterpreter } from './json';
+import { jwtInterpreter } from './jwt';
 import { recordsInterpreter } from './records';
 import { textInterpreter } from './text';
 
 export const interpreters: AnyInterpreter[] = [
+  register(jwtInterpreter),
+  register(base64Interpreter),
   register(jsonInterpreter),
   register(recordsInterpreter),
   register(htmlInterpreter),

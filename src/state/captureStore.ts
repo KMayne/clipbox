@@ -3,6 +3,7 @@ import type {
   Capture,
   CaptureId,
   CaptureSourceId,
+  Derivation,
   EntryId,
   Interpretation,
   Kind,
@@ -41,7 +42,9 @@ export type NewEntry = Omit<RawEntry, 'id'>;
 interface CaptureState {
   captures: CaptureView[];
   selection: Selection | null;
-  add(source: CaptureSourceId, entries: NewEntry[]): void;
+  add(source: CaptureSourceId, entries: NewEntry[], parent?: Capture['parent']): void;
+  /** Runs a derivation on `from` and adds the result as a new, auto-selected capture. */
+  derive(from: Selection, derivation: Derivation): Promise<void>;
   ingest(entryId: EntryId): Promise<void>;
   remove(captureId: CaptureId): void;
   clear(): void;
@@ -119,12 +122,13 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
     captures: [],
     selection: null,
 
-    add(source, newEntries) {
+    add(source, newEntries, parent) {
       if (newEntries.length === 0) return;
       const capture: CaptureView = {
         id: `c-${crypto.randomUUID()}`,
         at: Date.now(),
         source,
+        ...(parent && { parent }),
         collapsed: false,
         entries: newEntries.map(e => ({
           ...e,
@@ -160,6 +164,17 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
       } catch (err) {
         updateEntry(entryId, { status: 'error', error: String(err) });
       }
+    },
+
+    async derive(from, derivation) {
+      const { mime, name, bytes } = await engine.derive(from.entryId, from.kind, derivation.id);
+      const blob = new Blob([bytes], { type: mime });
+      // add() collapses older captures; autoSelect picks the new one's best interpretation
+      get().add('derived', [{ mime, name, size: blob.size, blob }], {
+        entryId: from.entryId,
+        kind: from.kind,
+        label: derivation.label,
+      });
     },
 
     remove(captureId) {

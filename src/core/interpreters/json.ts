@@ -1,6 +1,7 @@
 import { createMemo } from '../content';
+import { toCsv } from '../csv';
 import { formatBytes, formatCount, formatPercent, plural } from '../format';
-import { hasKind } from '../guards';
+import { hasKind, isRecord } from '../guards';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
 import { jsonChildCount, jsonChildren, jsonTypeOf } from '../jsonSlice';
 import { describeSchema, inferSchema } from '../schema';
@@ -79,7 +80,17 @@ export const jsonInterpreter: Interpreter<JsonValue> = {
     return unsupportedSlice('json', req);
   },
   export: ({ json }) => ({ text: JSON.stringify(json, null, 2) }),
+  derivations: ({ json }) => (objectArray(json) ? [{ id: 'csv', label: 'As CSV' }] : []),
+  derive({ json }) {
+    const rows = objectArray(json);
+    if (!rows) throw new Error('Not an array of objects');
+    return { mime: 'text/csv', bytes: new TextEncoder().encode(toCsv(rows)) };
+  },
 };
+
+function objectArray(json: unknown): Record<string, unknown>[] | null {
+  return Array.isArray(json) && json.length > 0 && json.every(isRecord) ? json : null;
+}
 
 function elementTypes(arr: unknown[]): string {
   const counts = new Map<string, number>();

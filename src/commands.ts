@@ -1,5 +1,6 @@
 import { copySelection } from './capture/copyToClipboard';
 import { openFile, readClipboard } from './capture/sources';
+import { getHandle } from './engine/valueHandle';
 import { findEntry, useCaptureStore } from './state/captureStore';
 import { useUiStore, type InspectorTab } from './state/uiStore';
 
@@ -23,6 +24,16 @@ export function removeSelectedCapture(): void {
   if (found) remove(found.capture.id);
 }
 
+/** Opens the Inspector's "Open as" menu for the selected value, if it has any derivations. */
+export async function openDerivationMenu(): Promise<void> {
+  const { selection } = useCaptureStore.getState();
+  const ui = useUiStore.getState();
+  if (!selection) return ui.notify('Nothing selected');
+  const handle = await getHandle(selection.entryId, selection.kind).catch(() => null);
+  if (!handle?.summary.derivations?.length) return ui.notify('Nothing to open this value as');
+  ui.setOpenAsOpen(true);
+}
+
 export const commands: Command[] = [
   { id: 'clipboard.read', title: 'Read clipboard', run: () => void readClipboard() },
   { id: 'file.open', title: 'Open file…', shortcut: 'Ctrl+O', run: openFile },
@@ -32,6 +43,7 @@ export const commands: Command[] = [
     shortcut: 'Ctrl+C',
     run: () => void copySelection(useCaptureStore.getState().selection),
   },
+  { id: 'value.openAs', title: 'Open as…', run: () => void openDerivationMenu() },
   tabCommand('preview', '1'),
   tabCommand('stats', '2'),
   tabCommand('schema', '3'),
