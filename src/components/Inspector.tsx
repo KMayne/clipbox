@@ -4,10 +4,12 @@ import { Icon } from '@mdi/react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { copySelection } from '../capture/copyToClipboard';
 import { downloadEntry } from '../capture/saveFiles';
-import type { Kind, ValueHandle } from '../core/types';
+import type { ValueHandle } from '../core/types';
 import { getHandle } from '../engine/valueHandle';
 import { findEntry, useCaptureStore, type Selection } from '../state/captureStore';
+import { showView } from '../commands';
 import { useUiStore, type InspectorView } from '../state/uiStore';
+import { canSplit, viewFor } from '../state/views';
 import { kindColor, theme } from '../theme';
 import { HexView } from './previews/HexView';
 import { HtmlView } from './previews/HtmlView';
@@ -40,22 +42,6 @@ const VIEWS: { view: InspectorView; label: string; key: string }[] = [
   { view: 'split', label: 'Split', key: '2' },
   { view: 'raw', label: 'Raw', key: '3' },
 ];
-
-/** Kinds whose raw content isn't text worth reading beside the preview. */
-const BINARY_KINDS = new Set([
-  'image',
-  'binary',
-  'audio',
-  'video',
-  'pdf',
-  'archive',
-  'spreadsheet',
-  'sqlite',
-  'presentation',
-]);
-
-/** Split needs readable source, and plain text's preview already is its source. */
-const canSplit = (kind: Kind) => kind !== 'text' && !BINARY_KINDS.has(kind);
 
 const styles = {
   inspector: css`
@@ -170,10 +156,8 @@ export function Inspector() {
 }
 
 function SelectionInspector({ selection }: { selection: Selection }) {
-  const chosen = useUiStore(s => s.view);
-  const setView = useUiStore(s => s.setView);
+  const view = useUiStore(s => viewFor(selection.kind, s.views));
   const splittable = canSplit(selection.kind);
-  const view = chosen === 'split' && !splittable ? 'preview' : chosen;
   const entry = useCaptureStore(s => findEntry(s.captures, selection.entryId)?.entry);
   const handle = useAsync(`${selection.entryId}:${selection.kind}`, () =>
     getHandle(selection.entryId, selection.kind),
@@ -201,10 +185,10 @@ function SelectionInspector({ selection }: { selection: Selection }) {
                   disabled={disabled}
                   title={
                     disabled
-                      ? 'Split shows raw text beside the preview; not for this kind'
+                      ? 'The preview already shows the source'
                       : `${v.label} (${v.key})`
                   }
-                  onClick={() => setView(v.view)}
+                  onClick={() => showView(v.view)}
                 >
                   {v.label}
                 </button>

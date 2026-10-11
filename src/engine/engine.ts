@@ -197,6 +197,14 @@ export class Engine {
     return { base64: toBase64(content.bytes.subarray(0, limit)), truncated };
   }
 
+  /** A window of the entry's original bytes, whatever its kind (for the hex dump). */
+  rawBytes(entryId: EntryId, from: number, to: number): Uint8Array<ArrayBuffer> {
+    const { bytes } = this.state(entryId).content;
+    const start = Math.max(0, Math.min(from, bytes.length));
+    const slice = bytes.slice(start, Math.max(start, Math.min(to, bytes.length)));
+    return Comlink.transfer(slice, [slice.buffer]);
+  }
+
   forget(entryId: EntryId): void {
     this.entries.delete(entryId);
   }
@@ -315,6 +323,7 @@ export type EngineApi = Pick<
   | 'actions'
   | 'runAction'
   | 'raw'
+  | 'rawBytes'
   | 'forget'
   | 'clear'
 >;

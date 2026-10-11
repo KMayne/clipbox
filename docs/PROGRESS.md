@@ -77,9 +77,9 @@ Claude Code context that lives outside the repo and won't come with it:
     validated in the worker, forms generated from the Zod settings schemas.
   - A right sidebar (toggle with `A` or the top bar's panel icon) with collapsible **Info** (the
     stats; `I` toggles it), **Actions** and **Schema** sections.
-  - The Inspector's tabs became a **Preview / Split / Raw** view switcher (1–3, remembered); Split
-    shows the raw text beside the preview for text-based kinds. Palette entries
-    "<Group>: <Title>", and derivations moved into the Actions Open group (the Open as menu is gone).
+  - The Inspector's tabs became a **Preview / Split / Raw** view switcher (1–3). Split shows the
+    source beside the preview: raw text, or a hex dump for binary kinds (Raw is hex for those too).
+    Remembered separately for text-based kinds (default Split) and binary ones (default Preview).
   - Actions can return several results, which arrive as one collection capture.
   - Ten proof actions: JSON format, minify, sort keys, to YAML and TypeScript types; text change case,
     sort lines and find & replace; hash (any kind); image convert.

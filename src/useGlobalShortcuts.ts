@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { isEditable, openFile } from './capture/sources';
 import { copySelection } from './capture/copyToClipboard';
-import { removeSelectedCapture } from './commands';
+import { removeSelectedCapture, showView } from './commands';
 import { navOrder, useCaptureStore } from './state/captureStore';
 import { useUiStore, type InspectorView } from './state/uiStore';
 
@@ -49,7 +49,7 @@ export function useGlobalShortcuts() {
       } else if (mod || e.altKey) {
         return;
       } else if (view) {
-        ui.setView(view);
+        showView(view);
       } else if (e.key === 'w') {
         ui.toggleWrap();
       } else if (e.key === 'a') {

@@ -1,7 +1,9 @@
 import { css } from '@emotion/css';
 import type { EntryId } from '../core/types';
+import { findEntry, useCaptureStore } from '../state/captureStore';
 import { engine } from '../engine/engineClient';
 import { theme } from '../theme';
+import { HexDump } from './previews/HexView';
 import { ui } from './ui';
 import { useAsync } from './useAsync';
 
@@ -20,16 +22,27 @@ const styles = {
   `,
 };
 
+/** The entry's original content: its text, or a hex dump when it isn't text. */
 export function RawView({ entryId }: { entryId: EntryId }) {
   const raw = useAsync(entryId, () => engine.raw(entryId));
+  const size = useCaptureStore(s => findEntry(s.captures, entryId)?.entry.size ?? 0);
   if (raw.status !== 'ok')
     return <div className={ui.empty}>{raw.status === 'error' ? raw.error : 'Loading…'}</div>;
-  const { text, base64, truncated } = raw.value;
+  const { text, truncated } = raw.value;
+  if (text === undefined) {
+    return <HexDump id={entryId} size={size} read={(from, to) => readBytes(entryId, from, to)} />;
+  }
   return (
     <div className={styles.wrap}>
-      {base64 !== undefined && <p className={ui.muted}>Binary content, shown as base64</p>}
-      <pre className={styles.pre}>{text ?? base64}</pre>
+      <pre className={styles.pre}>{text}</pre>
       {truncated && <p className={ui.muted}>Truncated at 100 KB</p>}
     </div>
   );
+}
+
+/** Bytes arriving from the worker are checked like any other worker value. */
+async function readBytes(entryId: EntryId, from: number, to: number): Promise<Uint8Array> {
+  const bytes: unknown = await engine.rawBytes(entryId, from, to);
+  if (!(bytes instanceof Uint8Array)) throw new Error('Unexpected bytes from the engine');
+  return bytes;
 }

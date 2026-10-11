@@ -25,3 +25,18 @@ const NAMES: Record<string, string> = {
 };
 
 export const kindName = (kind: Kind) => NAMES[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);
+
+/** Kinds whose original bytes aren't text: their Raw view is a hex dump. */
+const BINARY_KINDS = new Set([
+  'image',
+  'binary',
+  'audio',
+  'video',
+  'pdf',
+  'archive',
+  'spreadsheet',
+  'sqlite',
+  'presentation',
+]);
+
+export const isBinaryKind = (kind: Kind) => BINARY_KINDS.has(kind);

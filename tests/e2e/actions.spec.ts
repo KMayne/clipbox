@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { actionsPane, paste } from './helpers';
+import { solidPng } from '../fixtures/pptx';
+import { actionsPane, dropBytes, paste } from './helpers';
 
 /** The selected value's raw text (Raw tab). */
 async function expectRaw(page: Page, text: string) {
@@ -188,14 +189,8 @@ test('the view switcher shows raw text, the preview, or both side by side', asyn
   await paste(page, { 'text/plain': '{"name":"Ada","langs":["en","fr"]}' });
   const views = page.getByRole('group', { name: 'View' });
   const view = page.getByRole('region', { name: 'View' });
-  await expect(views.getByRole('button', { name: 'Preview' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  await expect(view.getByTestId('json-tree')).toBeVisible();
 
-  // Split (2): the raw text beside the tree
-  await page.keyboard.press('2');
+  // Split by default: the raw text beside the tree
   await expect(views.getByRole('button', { name: 'Split' })).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -203,15 +198,19 @@ test('the view switcher shows raw text, the preview, or both side by side', asyn
   await expect(view.locator('pre')).toHaveText('{"name":"Ada","langs":["en","fr"]}');
   await expect(view.getByTestId('json-tree')).toBeVisible();
 
-  // Remembered across reloads
+  // Preview (1) alone; remembered across reloads
+  await page.keyboard.press('1');
+  await expect(view.locator('pre')).toHaveCount(0);
+  await expect(view.getByTestId('json-tree')).toBeVisible();
   await page.reload();
   await paste(page, { 'text/plain': '[1,2,3]' });
-  await expect(views.getByRole('button', { name: 'Split' })).toHaveAttribute(
+  await expect(views.getByRole('button', { name: 'Preview' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
 
-  // Plain text's preview is already its source, so Split falls back to Preview
+  // Plain text's preview is already its source, so Split isn't offered there
+  await page.keyboard.press('2');
   await paste(page, { 'text/plain': 'just some words' });
   await expect(views.getByRole('button', { name: 'Split' })).toBeDisabled();
   await expect(views.getByRole('button', { name: 'Preview' })).toHaveAttribute(
@@ -221,4 +220,39 @@ test('the view switcher shows raw text, the preview, or both side by side', asyn
 
   await page.keyboard.press('3');
   await expect(view.locator('pre')).toHaveText('just some words');
+});
+
+test('binary kinds open in Preview, with a hex dump for Raw and Split', async ({ page }) => {
+  await dropBytes(page, 'dot.png', 'image/png', solidPng(4, 3, [200, 40, 40]));
+  await expect(page.locator('[data-kind=image]')).toHaveAttribute('aria-pressed', 'true');
+  const views = page.getByRole('group', { name: 'View' });
+  const view = page.getByRole('region', { name: 'View' });
+  await expect(views.getByRole('button', { name: 'Preview' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  // Split: the PNG's bytes in hex beside the image
+  await page.keyboard.press('2');
+  await expect(view.locator('pre')).toContainText('00000000  89 50 4e 47 0d 0a 1a 0a');
+  await expect(view.locator('img')).toBeVisible();
+
+  // Binary and text views are remembered separately: JSON still opens in Split
+  await paste(page, { 'text/plain': '{"a":1}' });
+  await expect(views.getByRole('button', { name: 'Split' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.keyboard.press('1');
+  await dropBytes(page, 'other.png', 'image/png', solidPng(2, 2, [0, 0, 255]));
+  await expect(page.locator('[data-kind=image]').first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(views.getByRole('button', { name: 'Split' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  // Raw: hex only
+  await page.keyboard.press('3');
+  await expect(view.locator('img')).toHaveCount(0);
+  await expect(view.locator('pre')).toContainText('89 50 4e 47');
 });

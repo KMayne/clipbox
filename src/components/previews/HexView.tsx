@@ -26,10 +26,33 @@ const styles = {
 
 const printable = (b: number) => (b >= 0x20 && b < 0x7f ? String.fromCharCode(b) : '.');
 
+/** The value's bytes, for kinds whose preview is a hex dump. */
 export function HexView({ handle }: { handle: ValueHandle }) {
+  return (
+    <HexDump
+      id={`${handle.summary.kind}:${handle.summary.bytes}`}
+      size={handle.summary.extent}
+      read={(from, to) => handle.bytes(from, to)}
+    />
+  );
+}
+
+/**
+ * A paged hex dump of `size` bytes, fetched a page at a time with `read`. `id` names the source,
+ * so switching sources refetches.
+ */
+export function HexDump({
+  id,
+  size,
+  read,
+}: {
+  id: string;
+  size: number;
+  read(from: number, to: number): Promise<Uint8Array>;
+}) {
   const [page, setPage] = useState(0);
-  const pages = Math.max(1, Math.ceil(handle.summary.extent / PAGE));
-  const bytes = useAsync(String(page), () => handle.bytes(page * PAGE, (page + 1) * PAGE));
+  const pages = Math.max(1, Math.ceil(size / PAGE));
+  const bytes = useAsync(`${id}:${page}`, () => read(page * PAGE, (page + 1) * PAGE));
 
   const lines: React.ReactNode[] = [];
   if (bytes.status === 'ok') {

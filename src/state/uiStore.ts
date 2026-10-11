@@ -5,6 +5,9 @@ import type { EntryId, Kind } from '../core/types';
 /** How the Inspector shows a value: rendered, raw text, or both side by side. */
 export type InspectorView = 'preview' | 'split' | 'raw';
 
+/** Views are remembered separately for text-based and binary kinds. */
+export type ViewClass = 'text' | 'binary';
+
 /** The sidebar's collapsible sections. */
 export type SidebarSection = 'info' | 'actions' | 'schema';
 
@@ -27,8 +30,11 @@ export interface ActiveTable {
 }
 
 interface UiState {
-  /** Remembered per browser. */
-  view: InspectorView;
+  /**
+   * The view for each class of kind, remembered per browser. Text-based kinds open in Split (raw
+   * text beside the preview), binary ones in Preview (Split puts a hex dump beside it).
+   */
+  views: Record<ViewClass, InspectorView>;
   wrap: boolean;
   paletteOpen: boolean;
   /** The right sidebar, Info and Actions (toggled with `A`); remembered per browser. */
@@ -41,7 +47,7 @@ interface UiState {
   notice: Notice | null;
   /** Only the inspected value's; other values show (and copy) their first table. */
   activeTable: ActiveTable | null;
-  setView(view: InspectorView): void;
+  setView(viewClass: ViewClass, view: InspectorView): void;
   toggleWrap(): void;
   setPaletteOpen(open: boolean): void;
   setSidebarOpen(open: boolean): void;
@@ -80,6 +86,11 @@ const DEFAULT_SECTIONS: Record<SidebarSection, boolean> = {
   schema: false,
 };
 const viewSchema = z.enum(['preview', 'split', 'raw']);
+const DEFAULT_VIEWS: Record<ViewClass, InspectorView> = { text: 'split', binary: 'preview' };
+const viewsSchema = z.object({
+  text: viewSchema.catch(DEFAULT_VIEWS.text),
+  binary: viewSchema.catch(DEFAULT_VIEWS.binary),
+});
 
 function load<T>(key: string, parse: (raw: string | null) => T | undefined): T | undefined {
   try {
@@ -111,9 +122,16 @@ const parseSections = (raw: string | null) => {
   }
 };
 
-const parseView = (raw: string | null) => {
-  const parsed = viewSchema.safeParse(raw);
-  return parsed.success ? parsed.data : undefined;
+export const parseViews = (raw: string | null): Record<ViewClass, InspectorView> | undefined => {
+  // Before views were split by class, a single view name was saved; it was a text-kind choice
+  const single = viewSchema.safeParse(raw);
+  if (single.success) return { ...DEFAULT_VIEWS, text: single.data };
+  try {
+    const parsed = viewsSchema.safeParse(JSON.parse(raw ?? ''));
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 /** Open by default. */
@@ -123,7 +141,7 @@ const loadSidebarOpen = () =>
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useUiStore = create<UiState>((set, get) => ({
-  view: load(VIEW_KEY, parseView) ?? 'preview',
+  views: load(VIEW_KEY, parseViews) ?? DEFAULT_VIEWS,
   wrap: false,
   paletteOpen: false,
   sidebarOpen: loadSidebarOpen(),
@@ -132,9 +150,10 @@ export const useUiStore = create<UiState>((set, get) => ({
   settings: { open: false },
   notice: null,
   activeTable: null,
-  setView(view) {
-    save(VIEW_KEY, view);
-    set({ view });
+  setView(viewClass, view) {
+    const views = { ...get().views, [viewClass]: view };
+    save(VIEW_KEY, JSON.stringify(views));
+    set({ views });
   },
   toggleWrap: () => set(s => ({ wrap: !s.wrap })),
   setPaletteOpen: paletteOpen => set({ paletteOpen }),

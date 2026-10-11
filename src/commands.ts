@@ -5,6 +5,7 @@ import { hasSettings } from './core/actions/types';
 import { runAction, runDerivation, selectionActions } from './state/actions';
 import { useCaptureStore, type Selection } from './state/captureStore';
 import { useUiStore, type InspectorView } from './state/uiStore';
+import { viewClassOf } from './state/views';
 
 export interface Command {
   id: string;
@@ -15,11 +16,17 @@ export interface Command {
   run(): void;
 }
 
+/** Shows `view` for the selected value, remembering it for that class of kind. */
+export function showView(view: InspectorView): void {
+  const { selection } = useCaptureStore.getState();
+  useUiStore.getState().setView(viewClassOf(selection?.kind), view);
+}
+
 const viewCommand = (view: InspectorView, title: string, key: string): Command => ({
   id: `view.${view}`,
   title,
   shortcut: key,
-  run: () => useUiStore.getState().setView(view),
+  run: () => showView(view),
 });
 
 export function removeSelectedCapture(): void {
