@@ -1,8 +1,10 @@
 /**
  * HTML → Markdown (GFM) and HTML → plain text over the tree from `dom.ts`. Both walk the same
  * structure: block elements become separate blocks (joined by blank lines), inline content is
- * collected into paragraphs with whitespace collapsed as a browser would.
+ * collected into paragraphs with whitespace collapsed as a browser would. The walk is trampolined
+ * (`core/trampoline.ts`), so deeply nested markup can't overflow the call stack.
  */
+import { call, trampoline, type Step } from '../trampoline';
 import { BLOCK_ELEMENTS, parseHtml, textContent, type HtmlElement, type HtmlNode } from './dom';
 
 export interface ConvertOptions {
@@ -60,12 +62,17 @@ const escapeLineStart = (line: string) =>
 /** Backticks enough to fence `code` (one more than its longest run, at least `min`). */
 function fence(code: string, min: number, char = '`'): string {
   const runs = code.match(new RegExp(`${char}+`, 'g')) ?? [];
-  const longest = Math.max(0, ...runs.map(r => r.length));
+  const longest = runs.reduce((n, r) => Math.max(n, r.length), 0);
   return char.repeat(Math.max(min, longest + 1));
 }
 
 const urlOf = (s: string) => (/[\s()<>]/.test(s) ? `<${s.replace(/>/g, '%3E')}>` : s);
 
+/**
+ * Each method is a trampoline step. Recursion into child elements goes through `call` (in
+ * `blocks` for block elements, `inlines` for inline ones), so every level of nesting is one frame
+ * on the trampoline's stack; the other steps are plain `yield*` helpers.
+ */
 class Converter {
   constructor(private readonly opts: ConvertOptions) {}
 
@@ -74,32 +81,43 @@ class Converter {
   }
 
   /** Blocks of a container's children: inline runs become paragraphs. */
-  blocks(nodes: HtmlNode[]): string[] {
+  *blocks(nodes: HtmlNode[]): Step<string[]> {
     const out: string[] = [];
     let run: HtmlNode[] = [];
-    const flush = () => {
-      const p = this.paragraph(run);
-      if (p) out.push(p);
-      run = [];
-    };
     for (const node of nodes) {
       if (node.type === 'element' && SKIP.has(node.name)) continue;
       if (isBlock(node) && node.type === 'element') {
-        flush();
-        out.push(...this.block(node));
+        if (run.length) {
+          const p = yield* this.paragraph(run);
+          if (p) out.push(p);
+          run = [];
+        }
+        // Not out.push(...blocks): a container's blocks can be too many to spread
+        for (const b of yield* call(this.block(node))) out.push(b);
       } else {
         run.push(node);
       }
     }
-    flush();
+    if (run.length) {
+      const p = yield* this.paragraph(run);
+      if (p) out.push(p);
+    }
     return out;
   }
 
+  /** Inline nodes' text, concatenated. */
+  private *inlines(nodes: HtmlNode[]): Step<string> {
+    let text = '';
+    for (const n of nodes) {
+      if (n.type === 'text') text += this.md ? escapeInline(n.text) : n.text;
+      else text += yield* call(this.inline(n));
+    }
+    return text;
+  }
+
   /** Inline nodes as one paragraph: whitespace collapsed, lines trimmed, breaks kept. */
-  private paragraph(nodes: HtmlNode[]): string {
-    const lines = nodes
-      .map(n => this.inline(n))
-      .join('')
+  private *paragraph(nodes: HtmlNode[]): Step<string> {
+    const lines = (yield* this.inlines(nodes))
       .replace(/[ \t\n\r\f]+/g, ' ')
       .split(BR)
       .map(line => line.trim());
@@ -115,7 +133,7 @@ class Converter {
       .join('\n\n');
   }
 
-  private block(e: HtmlElement): string[] {
+  private *block(e: HtmlElement): Step<string[]> {
     const md = this.md;
     switch (e.name) {
       case 'h1':
@@ -124,18 +142,18 @@ class Converter {
       case 'h4':
       case 'h5':
       case 'h6': {
-        const text = this.paragraph(e.children).replace(/\\?\n/g, ' ');
+        const text = (yield* this.paragraph(e.children)).replace(/\\?\n/g, ' ');
         if (!text) return [];
         return [md ? `${'#'.repeat(Number(e.name[1]))} ${text}` : text];
       }
       case 'p':
-        return this.blocks(e.children);
+        return yield* this.blocks(e.children);
       case 'hr':
         return [md ? '---' : ''];
       case 'pre':
         return [this.pre(e)];
       case 'blockquote': {
-        const inner = this.blocks(e.children).join('\n\n');
+        const inner = (yield* this.blocks(e.children)).join('\n\n');
         if (!inner) return [];
         if (!md) return [inner];
         return [
@@ -148,20 +166,20 @@ class Converter {
       case 'ul':
       case 'ol':
       case 'menu':
-        return this.list(e);
+        return yield* this.list(e);
       case 'li':
         // A stray item outside a list
-        return this.list({ ...e, name: 'ul', children: [e] });
+        return yield* this.list({ ...e, name: 'ul', children: [e] });
       case 'table':
-        return this.table(e);
-      case 'dl':
-        return this.blocks(e.children);
-      case 'dt':
-        return md ? this.blocks(e.children).map(b => `**${b}**`) : this.blocks(e.children);
+        return yield* this.table(e);
+      case 'dt': {
+        const blocks = yield* this.blocks(e.children);
+        return md ? blocks.map(b => `**${b}**`) : blocks;
+      }
       case 'dd':
-        return this.blocks(e.children).map(b => (md ? `: ${b}` : `  ${b}`));
+        return (yield* this.blocks(e.children)).map(b => (md ? `: ${b}` : `  ${b}`));
       default:
-        return this.blocks(e.children);
+        return yield* this.blocks(e.children);
     }
   }
 
@@ -177,7 +195,7 @@ class Converter {
     return `${f}${lang}\n${code}\n${f}`;
   }
 
-  private list(e: HtmlElement): string[] {
+  private *list(e: HtmlElement): Step<string[]> {
     const ordered = e.name === 'ol';
     let n = Number.parseInt(e.attrs.start ?? '1', 10);
     if (!Number.isFinite(n)) n = 1;
@@ -185,28 +203,35 @@ class Converter {
       (c): c is HtmlElement => c.type === 'element' && c.name === 'li',
     );
     const loose = items.some(li => has(li, 'p'));
-    const lines = items.map(li => {
+    const lines: string[] = [];
+    for (const li of items) {
       const marker = ordered ? `${n++}. ` : '- ';
-      const blocks = this.blocks(li.children);
+      const blocks = yield* this.blocks(li.children);
       const body = blocks.join(loose ? '\n\n' : '\n');
       const pad = ' '.repeat(marker.length);
-      return (
+      lines.push(
         marker +
-        body
-          .split('\n')
-          .map((l, i) => (i === 0 || l === '' ? l : pad + l))
-          .join('\n')
+          body
+            .split('\n')
+            .map((l, i) => (i === 0 || l === '' ? l : pad + l))
+            .join('\n'),
       );
-    });
+    }
     if (!lines.length) return [];
     return [lines.join(loose ? '\n\n' : '\n')];
   }
 
-  private table(e: HtmlElement): string[] {
-    const rows = tableRows(e).map(r => r.map(cell => this.cell(cell)));
+  private *table(e: HtmlElement): Step<string[]> {
+    const rows: string[][] = [];
+    for (const cells of tableRows(e)) {
+      const row: string[] = [];
+      for (const cell of cells) row.push(yield* this.cell(cell));
+      rows.push(row);
+    }
     if (!rows.length) return [];
     if (!this.md) return [rows.map(r => r.join('\t')).join('\n')];
-    const width = Math.max(...rows.map(r => r.length));
+    // Not Math.max(...rows): big tables overflow the call stack
+    const width = rows.reduce((w, r) => Math.max(w, r.length), 0);
     const pad = (r: string[]) => [...r, ...Array<string>(width - r.length).fill('')];
     const line = (r: string[]) => `| ${pad(r).join(' | ')} |`;
     const [head = [], ...body] = rows;
@@ -214,26 +239,25 @@ class Converter {
       (c): c is HtmlElement => c.type === 'element' && c.name === 'caption',
     );
     const out = [line(head), line(Array<string>(width).fill('---')), ...body.map(line)].join('\n');
-    const title = caption ? this.paragraph(caption.children) : '';
+    const title = caption ? yield* this.paragraph(caption.children) : '';
     return title ? [title, out] : [out];
   }
 
-  private cell(cell: HtmlElement | null): string {
+  private *cell(cell: HtmlElement | null): Step<string> {
     if (!cell) return '';
-    const text = this.blocks(cell.children).join(this.md ? '<br>' : ' ');
+    const text = (yield* this.blocks(cell.children)).join(this.md ? '<br>' : ' ');
     return this.md
       ? text.replace(/\\\n|\n/g, '<br>').replace(/\|/g, '\\|')
       : text.replace(/\s+/g, ' ');
   }
 
   /** One inline node; block elements nested in inline ones read as spaces around them. */
-  private inline(n: HtmlNode): string {
+  private *inline(n: HtmlNode): Step<string> {
     if (n.type === 'text') return this.md ? escapeInline(n.text) : n.text;
     if (SKIP.has(n.name)) return '';
     const md = this.md;
-    const inner = () => n.children.map(c => this.inline(c)).join('');
-    const wrap = (mark: string) => {
-      const text = inner();
+    const inner = () => this.inlines(n.children);
+    const wrap = (text: string, mark: string) => {
       if (!md || !text.trim()) return text;
       // Markers must hug the text: move surrounding spaces outside them
       const [, lead = '', body = '', trail = ''] = /^(\s*)([\s\S]*?)(\s*)$/.exec(text) ?? [];
@@ -246,14 +270,14 @@ class Converter {
       case 'i':
       case 'cite':
       case 'dfn':
-        return wrap('*');
+        return wrap(yield* inner(), '*');
       case 'strong':
       case 'b':
-        return wrap('**');
+        return wrap(yield* inner(), '**');
       case 's':
       case 'del':
       case 'strike':
-        return wrap('~~');
+        return wrap(yield* inner(), '~~');
       case 'code':
       case 'kbd':
       case 'samp':
@@ -265,7 +289,7 @@ class Converter {
         return `${f}${space}${code}${space}${f}`;
       }
       case 'a': {
-        const text = inner();
+        const text = yield* inner();
         const href = n.attrs.href?.trim() ?? '';
         if (!href) return text;
         if (!md) {
@@ -290,12 +314,12 @@ class Converter {
           return 'checked' in n.attrs ? '[x] ' : '[ ] ';
         return '';
       case 'sup':
-        return md ? `<sup>${inner()}</sup>` : inner();
+        return md ? `<sup>${yield* inner()}</sup>` : yield* inner();
       case 'sub':
-        return md ? `<sub>${inner()}</sub>` : inner();
+        return md ? `<sub>${yield* inner()}</sub>` : yield* inner();
       default:
-        if (isBlock(n)) return ` ${BR}${this.blocks(n.children).join(BR)}${BR} `;
-        return inner();
+        if (isBlock(n)) return ` ${BR}${(yield* this.blocks(n.children)).join(BR)}${BR} `;
+        return yield* inner();
     }
   }
 }
@@ -305,27 +329,26 @@ class Converter {
  * filled with null so columns stay aligned; a header row in `<thead>` comes first.
  */
 export function tableRows(table: HtmlElement): (HtmlElement | null)[][] {
-  const trs: HtmlElement[] = [];
-  const collect = (e: HtmlElement) => {
-    for (const c of e.children) {
-      if (c.type !== 'element') continue;
-      if (c.name === 'tr') trs.push(c);
-      else if (c.name === 'thead' || c.name === 'tbody' || c.name === 'tfoot') collect(c);
+  // thead rows first, tfoot rows last, whatever the source order. Rows are bucketed as they're
+  // found: looking each one up in its section's children would be quadratic on big tables.
+  const sections: HtmlElement[][] = [[], [], []];
+  const sectionOf = (name: string) => (name === 'thead' ? 0 : name === 'tfoot' ? 2 : 1);
+  // An explicit stack: sections nested in sections (stray markup) can't overflow it
+  const todo: { e: HtmlElement; section: number }[] = [];
+  const pushChildren = (e: HtmlElement, section: number) => {
+    for (let i = e.children.length - 1; i >= 0; i--) {
+      const c = e.children[i];
+      if (c?.type === 'element') todo.push({ e: c, section });
     }
   };
-  collect(table);
-  // thead rows first, tfoot rows last, whatever the source order
-  const section = (tr: HtmlElement) =>
-    table.children.some(s => s.type === 'element' && s.name === 'thead' && s.children.includes(tr))
-      ? 0
-      : table.children.some(
-            s => s.type === 'element' && s.name === 'tfoot' && s.children.includes(tr),
-          )
-        ? 2
-        : 1;
-  const ordered = trs
-    .map((tr, i) => ({ tr, i, s: section(tr) }))
-    .sort((a, b) => a.s - b.s || a.i - b.i);
+  pushChildren(table, 1);
+  for (let item = todo.pop(); item; item = todo.pop()) {
+    const { e, section } = item;
+    if (e.name === 'tr') sections[section]?.push(e);
+    else if (e.name === 'thead' || e.name === 'tbody' || e.name === 'tfoot')
+      pushChildren(e, table.children.includes(e) ? sectionOf(e.name) : 1);
+  }
+  const ordered = sections.flat().map(tr => ({ tr }));
 
   const rows: (HtmlElement | null)[][] = [];
   /** Columns still covered by a rowspan from above: column → rows left. */
@@ -373,8 +396,7 @@ const clampSpan = (s: string | undefined) => {
 
 /** Converts a parsed tree. */
 export function convertTree(root: HtmlElement, opts: ConvertOptions): string {
-  const out = new Converter(opts)
-    .blocks(root.children)
+  const out = trampoline(new Converter(opts).blocks(root.children))
     .filter(b => b.trim() !== '')
     .join('\n\n');
   return out ? `${out}\n` : '';
