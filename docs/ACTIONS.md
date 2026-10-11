@@ -96,6 +96,10 @@ Legend:
 ### PDF
 
 - **Extract text** ✓ · **Page as PNG** ✓ · **Metadata as JSON**
+- **Extract images** ✅: every distinct image (repeats like a logo on each page dropped by object id,
+  then by content) as PNG, one collection capture named `page-03-image1.png`; settings: page range
+  (`1-3,7`, empty for all) and minimum size (32 px). Runs in the `pdf` module's service; stops at
+  500 images with a `more-images.txt` note.
 
 ### PowerPoint (.pptx)
 
@@ -127,7 +131,7 @@ Legend:
   `run → DerivedContent` yet; they need a small extension (e.g. a result type that the UI handles
   instead of adding a capture).
 - Multi-output actions return `DerivedContent[]`, which becomes one collection capture (done; used
-  by PowerPoint Extract images). Extract palette and archive "extract all" can use it too.
+  by PDF and PowerPoint Extract images). Extract palette and archive "extract all" can use it too.
 - Actions on lazy-module kinds (PDF, spreadsheet, SQLite, PEM, media) get a value the module has
   already parsed. Their `run/` file must not import the module's code (that would bundle it into the
   core worker chunk): narrow the value with a light guard (e.g. from the module's `types.ts`), and

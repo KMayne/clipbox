@@ -14,6 +14,33 @@ export interface PdfOptions {
   size?: [number, number];
   /** Adds a Standard security handler with random keys, so a password is required. */
   encrypted?: boolean;
+  /** Image XObjects, stored as ASCII hex so the file stays ASCII. */
+  images?: PdfImage[];
+  /** Indexes into `images` drawn on each page (one list per page). */
+  pageImages?: number[][];
+}
+
+export interface PdfImage {
+  width: number;
+  height: number;
+  /** One value per component: [r, g, b], or [gray] for DeviceGray; the image is one flat colour. */
+  color: number[];
+  /** A 1-bit stencil mask (painted everywhere) instead of a colour image. */
+  mask?: boolean;
+}
+
+const hex = (bytes: number[]) => bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+
+function imageObject(img: PdfImage): string {
+  const { width: w, height: h } = img;
+  const [dict, data] = img.mask
+    ? ['/ImageMask true /BitsPerComponent 1', hex(new Array<number>(Math.ceil(w / 8) * h).fill(0))]
+    : [
+        `/ColorSpace /${img.color.length === 1 ? 'DeviceGray' : 'DeviceRGB'} /BitsPerComponent 8`,
+        hex(Array.from({ length: w * h }, () => img.color).flat()),
+      ];
+  const stream = `${data}>`;
+  return `<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} ${dict} /Filter /ASCIIHexDecode /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
 }
 
 const escape = (s: string) => s.replace(/[\\()]/g, c => `\\${c}`);
@@ -29,6 +56,8 @@ export function makePdf(opts: PdfOptions): string {
   const outlineRoot = 5 + n * 2;
   const outlineItem = (i: number) => outlineRoot + 1 + i;
   const outlineChild = outlineRoot + 1 + n;
+  // Images come after the outline (if any) and before the encryption dictionary
+  const imageObj = (k: number) => (opts.outline ? outlineChild + 1 : outlineRoot) + k;
 
   add(
     `<< /Type /Catalog /Pages 2 0 R${opts.outline ? ` /Outlines ${outlineRoot} 0 R /PageMode /UseOutlines` : ''} >>`,
@@ -42,13 +71,18 @@ export function makePdf(opts: PdfOptions): string {
       opts.author ? ` /Author (${escape(opts.author)})` : ''
     } /CreationDate (D:20240102030405Z) /ModDate (D:20240607080910+01'00') >>`,
   );
-  opts.pages.forEach(lines => {
+  opts.pages.forEach((lines, i) => {
     const ops = ['BT', '/F1 24 Tf', '28 TL', `72 ${h - 96} Td`];
     lines.forEach((line, j) => ops.push(`${j > 0 ? 'T* ' : ''}(${escape(line)}) Tj`));
     ops.push('ET');
+    const drawn = opts.pageImages?.[i] ?? [];
+    drawn.forEach((k, j) => ops.push(`q 100 0 0 100 ${72 + j * 110} 300 cm /Im${k} Do Q`));
     const stream = ops.join('\n');
+    const xobjects = drawn.length
+      ? ` /XObject << ${[...new Set(drawn)].map(k => `/Im${k} ${imageObj(k)} 0 R`).join(' ')} >>`
+      : '';
     add(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${w} ${h}] /Resources << /Font << /F1 3 0 R >> >> /Contents ${objects.length + 2} 0 R >>`,
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${w} ${h}] /Resources << /Font << /F1 3 0 R >>${xobjects} >> /Contents ${objects.length + 2} 0 R >>`,
     );
     add(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
   });
@@ -68,6 +102,7 @@ export function makePdf(opts: PdfOptions): string {
     });
     add(`<< /Title (Section 1.1) /Parent ${outlineItem(0)} 0 R /Dest [${pageObj(0)} 0 R /Fit] >>`);
   }
+  for (const img of opts.images ?? []) add(imageObject(img));
   let encryptRef = '';
   if (opts.encrypted) {
     const hex32 = (seed: number) =>
