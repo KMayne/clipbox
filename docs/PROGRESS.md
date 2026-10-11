@@ -13,7 +13,7 @@ does and how to run it, see `README.md`.
 5. If your shell exports `NODE_ENV=development`, `pnpm build` still produces a production build
    (the script pins it), but plain `vite build` won't.
 6. Check everything works: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e`. All should pass:
-   293 unit tests and 49 e2e tests.
+   314 unit tests and 54 e2e tests.
 
 Claude Code context that lives outside the repo and won't come with it:
 
@@ -72,11 +72,25 @@ Claude Code context that lives outside the repo and won't come with it:
     background toggle: Automatic (default), On demand (metered connections) or Everything now.
   - The footer shows the app version and build date, with **Check for updates** and **Repair offline
     cache**.
+- **Actions (framework):** done on `feat/actions`, not yet merged into `main`.
+  - Catalog and worker implementations in `src/core/actions/`, engine `actions`/`runAction`, settings
+    validated in the worker, forms generated from the Zod settings schemas.
+  - Actions sidebar (toggle with `A`), palette entries "<Group>: <Title>", and derivations moved into
+    the sidebar's Open group (the Inspector's Open as menu is gone).
+  - Ten proof actions: JSON format, minify, sort keys, to YAML and TypeScript types; text change case,
+    sort lines and find & replace; hash (any kind); image convert.
 - **Deployment:** to be served at `kianmayne.co.uk/clipbox/`, built with `BASE_PATH=/clipbox/`.
   A separate Claude session handled the site side and a local preview (port 8080), and it needs a
   rebuild to show recent changes.
 
 ## Remaining work
+
+### Actions batch 2
+
+Choose the next actions from the candidate list in [`docs/ACTIONS.md`](ACTIONS.md) (copied from the
+actions plan, `~/.claude/plans/ok-next-i-want-delegated-nest.md`, with the done ones marked). The plan
+is to split them across parallel agents by kind area (text/encode, structured data, documents/media,
+identifiers/web/crypto), on top of the merged framework, following "New actions" in `CLAUDE.md`.
 
 ### Original roadmap (from the plan)
 
@@ -142,6 +156,9 @@ Claude Code context that lives outside the repo and won't come with it:
   - Recordings made with `MediaRecorder` show no duration.
 - **Theme:** there are more kinds than distinct palette hues, so a few unrelated kinds share a chip
   colour.
+- **Actions:** a run can't be cancelled yet (`ctx.signal` is never aborted), and every action
+  produces exactly one new capture, so Copy/Download-style and multi-output actions need a small
+  extension (see `docs/ACTIONS.md`).
 - **Testing:** the SQLite lazy load through the engine is only covered by e2e tests, not unit tests.
 
 ## Process notes
@@ -150,6 +167,8 @@ Claude Code context that lives outside the repo and won't come with it:
   worktree. Each agent used its own e2e ports via `CLIPBOX_DEV_PORT`/`CLIPBOX_PREVIEW_PORT`, so test
   servers don't collide, and the branches were merged into `main` afterwards. Expect small conflicts in
   the shared registration files: `interpreters/index.ts`, `kinds.ts`, `theme.ts`, the Inspector
-  `Preview` switch, `modules/registry.ts`, `workerLoaders.ts` and `vite.config.ts`.
+  `Preview` switch, `modules/registry.ts`, `workerLoaders.ts` and `vite.config.ts`. For actions, each area has its own
+  catalog and `run/` file, so only the one-line spreads in `core/actions/catalog/index.ts` and
+  `core/actions/run/index.ts` are shared.
 - **Usage limits:** agents have hit usage limits mid-task; resuming each one with "continue from
   `git status`" worked.
