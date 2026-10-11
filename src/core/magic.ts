@@ -28,6 +28,38 @@ export function detectMagic(b: Uint8Array): MagicType | null {
 
 export const isImageMagic = (t: MagicType | null) => t !== null && IMAGE_TYPES.has(t);
 
+/** MIME type for each detected format. */
+export const MAGIC_MIME: Record<MagicType, string> = {
+  png: 'image/png',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  bmp: 'image/bmp',
+  ico: 'image/x-icon',
+  svg: 'image/svg+xml',
+  pdf: 'application/pdf',
+  zip: 'application/zip',
+  gzip: 'application/gzip',
+  wasm: 'application/wasm',
+  elf: 'application/x-elf',
+};
+
+/** File extension for each detected format. */
+export const MAGIC_EXTENSION: Record<MagicType, string> = {
+  png: 'png',
+  jpeg: 'jpg',
+  gif: 'gif',
+  webp: 'webp',
+  bmp: 'bmp',
+  ico: 'ico',
+  svg: 'svg',
+  pdf: 'pdf',
+  zip: 'zip',
+  gzip: 'gz',
+  wasm: 'wasm',
+  elf: 'elf',
+};
+
 export interface Dimensions {
   width: number;
   height: number;

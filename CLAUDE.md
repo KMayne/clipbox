@@ -2,7 +2,7 @@
 
 Paste anything (text/JSON/CSV/HTML/image/file), inspect it (interpretations, preview, stats, schema), and later transform it with a typed node graph. Web app, Chromium only, no backend.
 
-Progress and remaining work: `docs/PROGRESS.md`. Original plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md` (local to the original machine). Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Batches A–C are done. The kinds are: core (JSON, records, text, HTML, image, binary, YAML, XML, Markdown, NDJSON, base64, JWT, timestamp, UUID, URL, colour, archive for zip/gzip/tar) plus lazy modules. Actions framework done on `feat/actions` (batch 2 to pick from `docs/ACTIONS.md`). Next: Deliverable 1b (canvas and graph) / Deliverable 2 (ops).
+Progress and remaining work: `docs/PROGRESS.md`. Original plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md` (local to the original machine). Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Batches A–C are done. The kinds are: core (JSON, records, text, HTML, image, binary, YAML, XML, Markdown, NDJSON, base64, JWT, timestamp, UUID, URL, colour, archive for zip/gzip/tar, presentation for PowerPoint .pptx) plus lazy modules. Actions framework done on `feat/actions` (batch 2 to pick from `docs/ACTIONS.md`). Next: Deliverable 1b (canvas and graph) / Deliverable 2 (ops).
 
 ## Commands
 - `pnpm dev` — Vite dev server
@@ -60,7 +60,7 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
   - Exception: `src/sw.ts` isn't bundled, so it narrows by hand.
 - **New kinds:**
   - Write an `Interpreter<V>` whose value is tagged `{ kind: '<kind>', … }`, with `isValue: v => hasKind(v, '<kind>')`, and add it with `register()`. The registry stores type-erased `AnyInterpreter`s that check values on every call.
-  - Previews read data through the typed `ValueHandle` methods (`lines`, `rows`, `children`, `bytes`, `text`, `image`, `json`).
+  - Previews read data through the typed `ValueHandle` methods (`lines`, `rows`, `children`, `bytes`, `text`, `image`, `json`, `asset` for an embedded file by index).
 - **Derivations:** interpreters can offer `derivations`/`derive` ("Open as…", listed in the Actions sidebar's Open group). The engine returns the bytes, and `captureStore.derive` adds a `'derived'` capture with a `parent` link, which persistence also stores.
 - **New actions** (one entry per area file, so parallel work doesn't collide):
   1. Catalog: in `src/core/actions/catalog/<area>.ts`, `export const x = defineAction({ id: '<area>.<name>', title, group, kinds, params: z.object({ … }) })` and add it to that file's `<area>Actions` array. Every setting is a string, number, boolean or enum with `.default()`, and `.meta({ title, … })` goes last; the types reject anything else. Use `params: z.object({})` for none. Add `label: p => …` when the default "Title (settings)" label reads badly.

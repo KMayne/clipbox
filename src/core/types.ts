@@ -141,7 +141,9 @@ export type SliceRequest =
   /** One page (0-based) rendered to PNG at `scale` × its natural size (PDF). */
   | { type: 'page'; index: number; scale: number }
   /** Exact row count of one table of a multi-table value (may be slow; call on demand). */
-  | { type: 'count'; table: number };
+  | { type: 'count'; table: number }
+  /** One embedded file (e.g. a slide's picture) by index, as bytes and MIME type. */
+  | { type: 'asset'; index: number };
 
 export interface ImageData {
   bytes: Uint8Array<ArrayBuffer>;
@@ -170,6 +172,8 @@ export interface ValueHandle {
   page(index: number, scale: number): Promise<ImageData>;
   /** Exact row count of table `table` (see `TableInfo.exact`). */
   count(table: number): Promise<number>;
+  /** Embedded file `index` (e.g. a slide's picture), with its MIME type. */
+  asset(index: number): Promise<ImageData>;
 }
 
 export interface RawView {

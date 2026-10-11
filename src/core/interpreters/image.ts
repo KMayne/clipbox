@@ -1,7 +1,13 @@
 import { formatBytes } from '../format';
 import { hasKind } from '../guards';
 import { unsupportedSlice, type Interpreter } from '../interpreter';
-import { imageDimensions, isImageMagic, type Dimensions, type MagicType } from '../magic';
+import {
+  imageDimensions,
+  isImageMagic,
+  MAGIC_MIME,
+  type Dimensions,
+  type MagicType,
+} from '../magic';
 
 export interface ImageValue {
   kind: 'image';
@@ -10,16 +16,6 @@ export interface ImageValue {
   dims: Dimensions | null;
   bytes: Uint8Array<ArrayBuffer>;
 }
-
-const FORMAT_MIME: Partial<Record<MagicType, string>> = {
-  png: 'image/png',
-  jpeg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-  bmp: 'image/bmp',
-  ico: 'image/x-icon',
-  svg: 'image/svg+xml',
-};
 
 const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
 
@@ -39,7 +35,7 @@ export const imageInterpreter: Interpreter<ImageValue> = {
     return {
       kind: 'image',
       format,
-      mime: FORMAT_MIME[format] ?? c.mime,
+      mime: MAGIC_MIME[format],
       dims: imageDimensions(format, c.bytes),
       bytes: c.bytes,
     };

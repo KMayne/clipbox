@@ -9,7 +9,8 @@ const CONFIDENCE = 0.8;
 /** Office documents (docx/xlsx/pptx) are zips too; let format-specific kinds outrank them. */
 const OFFICE_CONFIDENCE = 0.5;
 
-const zipListing = createMemo((c): ZipListing | null => {
+/** The zip central directory, memoised per content; null for non-zips. */
+export const zipListing = createMemo((c): ZipListing | null => {
   if (!hasZipSignature(c.bytes)) return null;
   try {
     return listZip(c.bytes);
