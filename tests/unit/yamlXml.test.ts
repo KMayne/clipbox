@@ -159,6 +159,19 @@ describe('xml', () => {
     expect(top).toContainEqual(expect.objectContaining({ key: 'entry', type: 'array' }));
   });
 
+  it('leaves the declaration out of the tree and reports it in stats', async () => {
+    const s = await summarise('xml', textContent(FEED));
+    const tree = await s.i.slice(s.value, { type: 'json' });
+    expect(Object.keys(tree ?? {})).toEqual(['feed']);
+    const top = await s.i.slice(s.value, { type: 'children', path: [], from: 0, to: 10 });
+    expect(top).toEqual([expect.objectContaining({ key: 'feed' })]);
+    expect(stat(s.stats, 'XML version')).toBe('1.0');
+    expect(stat(s.stats, 'Encoding')).toBe('utf-8');
+    expect(s.stats.find(r => r.label === 'Standalone')).toBeUndefined();
+    const bare = await summarise('xml', textContent('<a><b/></a>'));
+    expect(bare.stats.find(r => r.label === 'XML version')).toBeUndefined();
+  });
+
   it('defers to the image kind for SVG', () => {
     const c = textContent('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"></svg>');
     expect(kinds(c)[0]).toBe('image');

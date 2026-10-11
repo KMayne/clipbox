@@ -24,7 +24,29 @@ function xmlStart(text: string): string | null {
   return /^(<\?xml[\s?]|<[A-Za-z_])/.test(t) ? t : null;
 }
 
-const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: ATTR });
+// `ignoreDeclaration`: the `<?xml …?>` prolog isn't content; its version and encoding go in stats
+const parser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: ATTR,
+  ignoreDeclaration: true,
+});
+
+/** `version`/`encoding`/`standalone` from a leading `<?xml …?>` declaration. */
+function xmlDeclaration(source: string): Map<string, string> {
+  const decl = /^\uFEFF?\s*<\?xml\s([^?]*)\?>/.exec(source)?.[1] ?? '';
+  return new Map(
+    [...decl.matchAll(/([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].map(m => [
+      m[1] ?? '',
+      m[2] ?? m[3] ?? '',
+    ]),
+  );
+}
+
+const DECLARATION_STATS: [string, string][] = [
+  ['version', 'XML version'],
+  ['encoding', 'Encoding'],
+  ['standalone', 'Standalone'],
+];
 
 const tryParseXml = createMemo((c): { tree: unknown; prolog: boolean } | null => {
   if (c.text === null || /^text\/html\b/.test(c.mime)) return null;
@@ -61,8 +83,13 @@ export const xmlInterpreter: Interpreter<XmlValue> = {
   summarise({ tree, source }) {
     const s = xmlStats(tree);
     const tags = [...s.tags].sort((a, b) => b[1] - a[1]);
+    const decl = xmlDeclaration(source);
     const stats: StatRow[] = [
       { label: 'Root element', value: `<${s.root}>` },
+      ...DECLARATION_STATS.flatMap(([key, label]) => {
+        const value = decl.get(key);
+        return value === undefined ? [] : [{ label, value }];
+      }),
       { label: 'Size', value: formatBytes(new TextEncoder().encode(source).byteLength) },
       { label: 'Elements', value: formatCount(s.elements) },
       { label: 'Max depth', value: String(s.depth) },
