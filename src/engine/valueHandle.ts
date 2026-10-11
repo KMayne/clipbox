@@ -56,6 +56,7 @@ function remoteHandle(entryId: EntryId, kind: Kind, summary: ValueHandle['summar
     json: () => slice({ type: 'json' }),
     html: async () => schemas.html.parse(await slice({ type: 'html' })),
     media: async () => schemas.media.parse(await slice({ type: 'media' })),
+    page: async (index, scale) => schemas.image.parse(await slice({ type: 'page', index, scale })),
   };
 }
 

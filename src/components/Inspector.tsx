@@ -18,6 +18,7 @@ import { OpenAsMenu } from './OpenAsMenu';
 import { Base64Preview } from './previews/Base64Preview';
 import { JwtView } from './previews/JwtView';
 import { RecordsTable } from './previews/RecordsTable';
+import { PdfView } from './previews/PdfView';
 import { PemView } from './previews/PemView';
 import { SpreadsheetView } from './previews/SpreadsheetView';
 import { SqliteView } from './previews/SqliteView';
@@ -226,6 +227,8 @@ function Preview({ handle }: { handle: ValueHandle }) {
       return <SpreadsheetView handle={handle} />;
     case 'sqlite':
       return <SqliteView handle={handle} />;
+    case 'pdf':
+      return <PdfView handle={handle} />;
     default:
       return <HexView handle={handle} />;
   }

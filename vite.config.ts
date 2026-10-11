@@ -18,6 +18,8 @@ export default defineConfig({
       'music-metadata',
       'xlsx',
       'sql.js',
+      'pdfjs-dist',
+      'pdfjs-dist/build/pdf.worker.mjs',
       'monaco-editor/editor/editor.api',
       'monaco-editor/languages/definitions/register.all',
       'monaco-editor/languages/features/json/register',

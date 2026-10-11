@@ -135,7 +135,9 @@ export type SliceRequest =
   /** Rendered HTML (Markdown). */
   | { type: 'html' }
   /** Playable audio/video bytes and MIME type. */
-  | { type: 'media' };
+  | { type: 'media' }
+  /** One page (0-based) rendered to PNG at `scale` × its natural size (PDF). */
+  | { type: 'page'; index: number; scale: number };
 
 export interface ImageData {
   bytes: Uint8Array<ArrayBuffer>;
@@ -160,6 +162,8 @@ export interface ValueHandle {
   json(): Promise<unknown>;
   html(): Promise<string>;
   media(): Promise<MediaData>;
+  /** PNG of page `index` (0-based) at `scale`. */
+  page(index: number, scale: number): Promise<ImageData>;
 }
 
 export interface RawView {

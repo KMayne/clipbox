@@ -35,6 +35,7 @@ export const kindColors: Record<string, string> = {
   video: '#bd93f9',
   spreadsheet: '#21a366',
   sqlite: '#7fb3d5',
+  pdf: '#ff5370',
 };
 
 export const kindColor = (kind: string) => kindColors[kind] ?? theme.muted;

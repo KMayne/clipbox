@@ -1,6 +1,7 @@
 import { audioDetector, videoDetector } from './media/detect';
 import { spreadsheetDetector } from './sheets/detect';
 import { sqliteDetector } from './sqlite/detect';
+import { pdfDetector } from './pdf/detect';
 import { pemDetector } from './x509/detect';
 import type { Detector, ModuleId, ModuleInfo, Policies, Policy } from './types';
 
@@ -60,11 +61,21 @@ export const modules: ModuleInfo[] = [
     hasWorker: true,
     hasUi: false,
   },
+  {
+    id: 'pdf',
+    title: 'PDF',
+    description: 'Page previews, metadata and text extraction for PDFs (pdf.js)',
+    approxBytes: 4_000_000,
+    defaultPolicy: 'auto',
+    hasWorker: true,
+    hasUi: false,
+  },
 ];
 
 /** Detectors for kinds owned by lazily-loaded modules. */
 export const detectors: Detector[] = [
   pemDetector,
+  pdfDetector,
   audioDetector,
   videoDetector,
   spreadsheetDetector,
