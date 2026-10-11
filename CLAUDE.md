@@ -2,7 +2,7 @@
 
 Paste anything (text/JSON/CSV/HTML/image/file), inspect it (interpretations, preview, stats, schema), and later transform it with a typed node graph. Web app, Chromium only, no backend.
 
-Plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md`. Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Batches A–C are done. The kinds are: core (JSON, records, text, HTML, image, binary, YAML, XML, Markdown, NDJSON, base64, JWT, timestamp, UUID, URL, colour, archive for zip/gzip/tar) plus lazy modules. Next: Deliverable 1b (canvas and graph) / Deliverable 2 (ops).
+Progress and remaining work: `docs/PROGRESS.md`. Original plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md` (local to the original machine). Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Batches A–C are done. The kinds are: core (JSON, records, text, HTML, image, binary, YAML, XML, Markdown, NDJSON, base64, JWT, timestamp, UUID, URL, colour, archive for zip/gzip/tar) plus lazy modules. Next: Deliverable 1b (canvas and graph) / Deliverable 2 (ops).
 
 ## Commands
 - `pnpm dev` — Vite dev server
