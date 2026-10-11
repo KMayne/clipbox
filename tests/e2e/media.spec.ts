@@ -45,7 +45,6 @@ test('dropped WAV plays and draws a waveform', async ({ page }) => {
     .poll(() => audio.evaluate((el: HTMLAudioElement) => el.currentTime))
     .toBeGreaterThan(0);
 
-  await page.keyboard.press('2');
   await expect(stat(page, 'Sample rate')).toHaveText('8,000 Hz');
   await expect(stat(page, 'Channels')).toHaveText('1 (mono)');
 });

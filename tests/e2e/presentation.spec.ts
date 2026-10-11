@@ -35,7 +35,6 @@ test('a dropped .pptx lists its slides, pictures and notes', async ({ page }) =>
   await slides.nth(0).getByText('Notes').click();
   await expect(notes).toBeVisible();
 
-  await page.getByRole('tab', { name: 'stats' }).click();
   await expect(stat(page, 'Author')).toHaveText('Ada Lovelace');
   await expect(stat(page, 'Slide size')).toHaveText('13.33 × 7.5 in (16:9)');
 });

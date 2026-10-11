@@ -7,9 +7,8 @@ import { useUiStore, type InspectorTab } from './state/uiStore';
 
 const TABS: Record<string, InspectorTab> = {
   '1': 'preview',
-  '2': 'stats',
-  '3': 'schema',
-  '4': 'raw',
+  '2': 'schema',
+  '3': 'raw',
 };
 
 /** Moves the selection by `delta` through the visible chips and collection headers. */
@@ -54,7 +53,9 @@ export function useGlobalShortcuts() {
       } else if (e.key === 'w') {
         ui.toggleWrap();
       } else if (e.key === 'a') {
-        ui.toggleActions();
+        ui.toggleSidebar();
+      } else if (e.key === 'i') {
+        ui.toggleSection('info');
       } else if (e.key === 'j' || e.key === 'k') {
         moveSelection(e.key === 'j' ? 1 : -1);
       } else if (e.key === 'Delete') {

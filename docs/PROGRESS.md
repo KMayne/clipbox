@@ -26,7 +26,7 @@ Claude Code context that lives outside the repo and won't come with it:
 
 - **Deliverable 1a: paste intake and the Inspector.**
   - Capture from paste, Read clipboard, drag and drop, and Open file.
-  - The Inspector shows every clipboard format's interpretations, with Preview, Stats, Schema and Raw
+  - The Inspector shows every clipboard format's interpretations, with Preview, Schema and Raw
     tabs.
   - Command palette (Ctrl+K) and keyboard navigation.
 - **Batch A:**
@@ -75,8 +75,10 @@ Claude Code context that lives outside the repo and won't come with it:
 - **Actions (framework):** done on `feat/actions`, not yet merged into `main`.
   - Catalog and worker implementations in `src/core/actions/`, engine `actions`/`runAction`, settings
     validated in the worker, forms generated from the Zod settings schemas.
-  - Actions sidebar (toggle with `A`), palette entries "<Group>: <Title>", and derivations moved into
-    the sidebar's Open group (the Inspector's Open as menu is gone).
+  - A right sidebar (toggle with `A` or the top bar's panel icon) with collapsible **Info** (the
+    stats, moved out of the Inspector's tabs; `I` toggles it) and **Actions** sections. Palette entries
+    "<Group>: <Title>", and derivations moved into the Actions Open group (the Open as menu is gone).
+  - Actions can return several results, which arrive as one collection capture.
   - Ten proof actions: JSON format, minify, sort keys, to YAML and TypeScript types; text change case,
     sort lines and find & replace; hash (any kind); image convert.
 - **Deployment:** to be served at `kianmayne.co.uk/clipbox/`, built with `BASE_PATH=/clipbox/`.

@@ -1,12 +1,12 @@
 import { css } from '@emotion/css';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { useDropCapture, usePasteCapture } from './capture/sources';
-import { ActionsPane } from './components/ActionsPane';
 import { CommandPalette } from './components/CommandPalette';
 import { DropOverlay } from './components/DropOverlay';
 import { Inspector } from './components/Inspector';
 import { Notice } from './components/Notice';
 import { PastesPane } from './components/PastesPane';
+import { Sidebar } from './components/Sidebar';
 import { SettingsDialog } from './components/SettingsDialog';
 import { TopBar } from './components/TopBar';
 import { useUiStore } from './state/uiStore';
@@ -37,7 +37,7 @@ export function App() {
   usePasteCapture();
   useGlobalShortcuts();
   const dragging = useDropCapture();
-  const actionsOpen = useUiStore(s => s.actionsOpen);
+  const sidebarOpen = useUiStore(s => s.sidebarOpen);
 
   return (
     <div className={styles.app}>
@@ -50,11 +50,11 @@ export function App() {
         <Panel id="inspector" minSize={320}>
           <Inspector />
         </Panel>
-        {actionsOpen && (
+        {sidebarOpen && (
           <>
             <Separator className={styles.separator} />
-            <Panel id="actions" defaultSize="22" minSize={200}>
-              <ActionsPane />
+            <Panel id="sidebar" defaultSize="22" minSize={200}>
+              <Sidebar />
             </Panel>
           </>
         )}

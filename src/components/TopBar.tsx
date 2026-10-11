@@ -1,9 +1,10 @@
-import { css } from '@emotion/css';
+import { css, cx } from '@emotion/css';
 import {
   mdiCogOutline,
   mdiClipboardArrowDownOutline,
   mdiFileUploadOutline,
   mdiPackageVariantClosed,
+  mdiPageLayoutSidebarRight,
 } from '@mdi/js';
 import { Icon } from '@mdi/react';
 import { openFile, readClipboard } from '../capture/sources';
@@ -58,6 +59,7 @@ export function TopBar() {
         <span>
           <kbd className={ui.kbd}>Ctrl+K</kbd> commands
         </span>
+        <SidebarToggle />
         <button
           className={ui.iconButton}
           title="Settings"
@@ -68,5 +70,31 @@ export function TopBar() {
         </button>
       </span>
     </header>
+  );
+}
+
+const toggleStyles = {
+  open: css`
+    color: ${theme.accent};
+    &:hover {
+      color: ${theme.accent};
+    }
+  `,
+};
+
+/** Shows or hides the right sidebar (Info and Actions), like an editor's panel toggle. */
+function SidebarToggle() {
+  const open = useUiStore(s => s.sidebarOpen);
+  const label = `${open ? 'Hide' : 'Show'} sidebar (A)`;
+  return (
+    <button
+      className={cx(ui.iconButton, open && toggleStyles.open)}
+      title={label}
+      aria-label="Sidebar"
+      aria-pressed={open}
+      onClick={() => useUiStore.getState().toggleSidebar()}
+    >
+      <Icon path={mdiPageLayoutSidebarRight} size={0.8} />
+    </button>
   );
 }

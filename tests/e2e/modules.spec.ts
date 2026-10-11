@@ -18,7 +18,6 @@ test('detects the language of pasted code and shows it in Monaco', async ({ page
   // Monaco tokenised it as TypeScript: keywords get a token class
   await expect(editor.locator('.view-line span[class*="mtk"]').first()).toBeVisible();
 
-  await page.keyboard.press('2');
   await expect(page.getByTestId('stats')).toContainText('TypeScript (');
 });
 

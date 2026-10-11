@@ -143,3 +143,39 @@ test('converts an image to WebP', async ({ page }) => {
     'image/webp',
   );
 });
+
+test('the sidebar shows Info and Actions, each collapsible and remembered', async ({ page }) => {
+  await paste(page, { 'text/plain': '{"b":1,"a":[1,2]}' });
+  const sidebar = page.getByRole('complementary', { name: 'Sidebar' });
+  const info = sidebar.getByRole('region', { name: 'Info' });
+  const infoToggle = info.getByRole('button', { name: 'INFO' });
+  const actionsToggle = actionsPane(page).getByRole('button', { name: 'ACTIONS' });
+
+  // Info holds the stats; the Inspector has no Stats tab any more
+  await expect(info.getByTestId('stats').first()).toContainText('Top-level type');
+  await expect(page.getByRole('tab')).toHaveText(['preview', 'schema', 'raw']);
+
+  await infoToggle.click();
+  await expect(infoToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(info.getByTestId('stats').first()).toBeHidden();
+  await actionsToggle.click();
+  await expect(actionsPane(page).getByRole('button', { name: 'Format' })).toBeHidden();
+
+  await page.reload();
+  await paste(page, { 'text/plain': '{"a":1}' });
+  await expect(infoToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(actionsToggle).toHaveAttribute('aria-expanded', 'false');
+
+  // I expands Info again; A hides the whole sidebar
+  await page.keyboard.press('i');
+  await expect(info.getByTestId('stats').first()).toBeVisible();
+  await page.keyboard.press('a');
+  await expect(sidebar).toBeHidden();
+
+  // The top bar's toggle brings it back
+  const toggle = page.getByRole('button', { name: 'Sidebar' });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await toggle.click();
+  await expect(sidebar).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+});

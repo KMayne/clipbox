@@ -2,7 +2,10 @@ import { z } from 'zod';
 import { create } from 'zustand';
 import type { EntryId, Kind } from '../core/types';
 
-export type InspectorTab = 'preview' | 'stats' | 'schema' | 'raw';
+export type InspectorTab = 'preview' | 'schema' | 'raw';
+
+/** The sidebar's collapsible sections. */
+export type SidebarSection = 'info' | 'actions';
 
 interface NoticeAction {
   label: string;
@@ -26,8 +29,10 @@ interface UiState {
   tab: InspectorTab;
   wrap: boolean;
   paletteOpen: boolean;
-  /** The Actions sidebar (toggled with `A`); remembered per browser. */
-  actionsOpen: boolean;
+  /** The right sidebar, Info and Actions (toggled with `A`); remembered per browser. */
+  sidebarOpen: boolean;
+  /** Which sidebar sections are expanded; remembered per browser. */
+  sections: Record<SidebarSection, boolean>;
   /** An action whose settings form the sidebar should expand and focus (from the palette). */
   focusedAction: { id: string; seq: number } | null;
   settings: { open: boolean };
@@ -37,8 +42,11 @@ interface UiState {
   setTab(tab: InspectorTab): void;
   toggleWrap(): void;
   setPaletteOpen(open: boolean): void;
-  setActionsOpen(open: boolean): void;
-  toggleActions(): void;
+  setSidebarOpen(open: boolean): void;
+  toggleSidebar(): void;
+  /** Expands or collapses one section, opening the sidebar if it's hidden. */
+  setSection(section: SidebarSection, expanded: boolean): void;
+  toggleSection(section: SidebarSection): void;
   /** Opens the sidebar with `actionId`'s settings form expanded and focused. */
   focusAction(actionId: string): void;
   openSettings(): void;
@@ -52,24 +60,47 @@ interface UiState {
 export const tableIndexFor = (active: ActiveTable | null, entryId: EntryId, kind: Kind) =>
   active && active.entryId === entryId && active.kind === kind ? active.index : 0;
 
-const ACTIONS_KEY = 'clipbox.actionsOpen';
+const SIDEBAR_KEY = 'clipbox.sidebarOpen';
+/** Before the sidebar held Info too, it was the Actions sidebar. */
+const OLD_SIDEBAR_KEY = 'clipbox.actionsOpen';
+const SECTIONS_KEY = 'clipbox.sidebarSections';
 
-function loadActionsOpen(): boolean {
+const sectionsSchema = z.object({ info: z.boolean(), actions: z.boolean() });
+const DEFAULT_SECTIONS: Record<SidebarSection, boolean> = { info: true, actions: true };
+
+function load<T>(key: string, parse: (raw: string | null) => T | undefined): T | undefined {
   try {
-    const parsed = z.enum(['true', 'false']).safeParse(localStorage.getItem(ACTIONS_KEY));
-    return parsed.success ? parsed.data === 'true' : true;
+    return parse(localStorage.getItem(key));
   } catch {
-    return true; // no storage (e.g. blocked): default to open
+    return undefined; // no storage (e.g. blocked)
   }
 }
 
-function saveActionsOpen(open: boolean): void {
+function save(key: string, value: string): void {
   try {
-    localStorage.setItem(ACTIONS_KEY, String(open));
+    localStorage.setItem(key, value);
   } catch {
     // not remembered; fine
   }
 }
+
+const parseBool = (raw: string | null) => {
+  const parsed = z.enum(['true', 'false']).safeParse(raw);
+  return parsed.success ? parsed.data === 'true' : undefined;
+};
+
+const parseSections = (raw: string | null) => {
+  try {
+    const parsed = sectionsSchema.safeParse(JSON.parse(raw ?? ''));
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** Open by default. */
+const loadSidebarOpen = () =>
+  load(SIDEBAR_KEY, parseBool) ?? load(OLD_SIDEBAR_KEY, parseBool) ?? true;
 
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -77,7 +108,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   tab: 'preview',
   wrap: false,
   paletteOpen: false,
-  actionsOpen: loadActionsOpen(),
+  sidebarOpen: loadSidebarOpen(),
+  sections: load(SECTIONS_KEY, parseSections) ?? DEFAULT_SECTIONS,
   focusedAction: null,
   settings: { open: false },
   notice: null,
@@ -85,13 +117,20 @@ export const useUiStore = create<UiState>((set, get) => ({
   setTab: tab => set({ tab }),
   toggleWrap: () => set(s => ({ wrap: !s.wrap })),
   setPaletteOpen: paletteOpen => set({ paletteOpen }),
-  setActionsOpen(actionsOpen) {
-    saveActionsOpen(actionsOpen);
-    set({ actionsOpen });
+  setSidebarOpen(sidebarOpen) {
+    save(SIDEBAR_KEY, String(sidebarOpen));
+    set({ sidebarOpen });
   },
-  toggleActions: () => get().setActionsOpen(!get().actionsOpen),
+  toggleSidebar: () => get().setSidebarOpen(!get().sidebarOpen),
+  setSection(section, expanded) {
+    const sections = { ...get().sections, [section]: expanded };
+    save(SECTIONS_KEY, JSON.stringify(sections));
+    set({ sections });
+    if (expanded) get().setSidebarOpen(true);
+  },
+  toggleSection: section => get().setSection(section, !get().sections[section]),
   focusAction(id) {
-    get().setActionsOpen(true);
+    get().setSection('actions', true);
     set(s => ({ focusedAction: { id, seq: (s.focusedAction?.seq ?? 0) + 1 } }));
   },
   openSettings: () => set({ settings: { open: true } }),

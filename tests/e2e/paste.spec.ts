@@ -31,11 +31,10 @@ test('paste shows every format with interpretations and stats', async ({ page })
   await expect(plain.locator('[data-kind=json]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('json-tree')).toContainText('{ id, name, team }');
 
-  await page.keyboard.press('2');
   await expect(stat(page, 'Top-level type')).toHaveText('array');
   await expect(stat(page, 'Length')).toHaveText('42');
 
-  await page.keyboard.press('3');
+  await page.keyboard.press('2');
   await expect(page.getByRole('tabpanel')).toContainText('id: number;');
 });
 
@@ -110,7 +109,6 @@ test('Markdown renders and toggles to source', async ({ page }) => {
   await page.getByRole('button', { name: 'Source' }).click();
   await expect(page.getByTestId('monaco-view')).toContainText('# Clipbox');
 
-  await page.keyboard.press('2');
   await expect(stat(page, 'Headings')).toHaveText('2');
 });
 
@@ -126,7 +124,6 @@ test('NDJSON shows a tree and records', async ({ page }) => {
 
   await page.locator('[data-kind=records]').click();
   await expect(page.getByTestId('records-table')).toContainText('user2');
-  await page.keyboard.press('2');
   await expect(stat(page, 'Source')).toHaveText('NDJSON');
 });
 
@@ -142,9 +139,10 @@ test('j/k move between chips and Delete removes the capture', async ({ page }) =
 test('command palette runs commands', async ({ page }) => {
   await paste(page, { 'text/plain': 'hello' });
   await page.keyboard.press('Control+k');
-  await page.keyboard.type('stats');
-  await page.keyboard.press('Enter');
   await expect(stat(page, 'Words')).toHaveText('1');
+  await page.keyboard.type('toggle info');
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('stats').first()).toBeHidden();
 
   await page.keyboard.press('Control+k');
   await page.keyboard.type('se');

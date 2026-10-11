@@ -1,5 +1,5 @@
 import { css, cx } from '@emotion/css';
-import { mdiContentCopy, mdiDownload, mdiLightningBoltOutline } from '@mdi/js';
+import { mdiContentCopy, mdiDownload } from '@mdi/js';
 import { Icon } from '@mdi/react';
 import { copySelection } from '../capture/copyToClipboard';
 import { downloadEntry } from '../capture/saveFiles';
@@ -29,14 +29,13 @@ import { TextView } from './previews/TextView';
 import { ValueCard } from './previews/ValueCard';
 import { RawView } from './RawView';
 import { SchemaView } from './SchemaView';
-import { StatsGrid } from './StatsGrid';
 import { ui } from './ui';
 import { useAsync } from './useAsync';
 
 /** Above this, Monaco gets sluggish; use the lightweight virtualised view. */
 const MONACO_MAX_BYTES = 20 * 1024 * 1024;
 
-const TABS: InspectorTab[] = ['preview', 'stats', 'schema', 'raw'];
+const TABS: InspectorTab[] = ['preview', 'schema', 'raw'];
 
 const styles = {
   inspector: css`
@@ -119,7 +118,6 @@ export function Inspector() {
 function SelectionInspector({ selection }: { selection: Selection }) {
   const tab = useUiStore(s => s.tab);
   const setTab = useUiStore(s => s.setTab);
-  const actionsOpen = useUiStore(s => s.actionsOpen);
   const entry = useCaptureStore(s => findEntry(s.captures, selection.entryId)?.entry);
   const handle = useAsync(`${selection.entryId}:${selection.kind}`, () =>
     getHandle(selection.entryId, selection.kind),
@@ -134,15 +132,6 @@ function SelectionInspector({ selection }: { selection: Selection }) {
         <span>{handle.status === 'ok' ? handle.value.summary.label : '…'}</span>
         <span className={styles.source}>{entry?.name ?? entry?.mime}</span>
         <span className={styles.actions}>
-          <button
-            className={ui.button}
-            aria-pressed={actionsOpen}
-            title={`${actionsOpen ? 'Hide' : 'Show'} actions (A)`}
-            onClick={() => useUiStore.getState().toggleActions()}
-          >
-            <Icon path={mdiLightningBoltOutline} size={0.6} />
-            Actions
-          </button>
           <button className={ui.button} onClick={() => void copySelection(selection)}>
             <Icon path={mdiContentCopy} size={0.6} />
             Copy
@@ -192,8 +181,6 @@ function TabBody({
   selection: Selection;
 }) {
   switch (tab) {
-    case 'stats':
-      return <StatsGrid rows={handle.summary.stats} />;
     case 'schema':
       return <SchemaView schema={handle.summary.schema} />;
     case 'raw':

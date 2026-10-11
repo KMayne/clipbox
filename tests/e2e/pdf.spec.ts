@@ -42,7 +42,6 @@ test('dropped PDF renders pages and extracts text as a derived capture', async (
   await page.getByLabel('Go to page').press('Enter');
   await expect(page.getByTestId('pdf-page-counter')).toHaveText('Page 2 / 2');
 
-  await page.getByRole('tab', { name: 'stats' }).click();
   await expect(stat(page, 'Title')).toHaveText('Clipbox sample');
   await expect(stat(page, 'Author')).toHaveText('Ada Lovelace');
   await expect(stat(page, 'Page size')).toHaveText('A4');

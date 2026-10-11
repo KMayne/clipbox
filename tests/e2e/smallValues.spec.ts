@@ -10,7 +10,6 @@ test('epoch seconds become a timestamp with conversions', async ({ page }) => {
   await paste(page, { 'text/plain': '1700000000' });
   await expect(page.getByTestId('chip').first()).toHaveText('Timestamp · 2023-11-14 22:13:20 UTC');
   await expect(page.getByTestId('value-card')).toContainText('2023-11-14T22:13:20.000Z');
-  await page.keyboard.press('2');
   await expect(stat(page, 'Detected as')).toHaveText('Unix seconds');
   await expect(stat(page, 'Unix milliseconds')).toHaveText('1700000000000');
   await expect(stat(page, 'Day of week (UTC)')).toHaveText('Tuesday');
@@ -20,7 +19,6 @@ test('UUID v7 shows its embedded time', async ({ page }) => {
   await paste(page, { 'text/plain': '017f22e2-79b0-7cc3-98c4-dc0c0c07398f' });
   await expect(page.getByTestId('chip').first()).toHaveText('UUID v7 · 2022-02-22 19:22:22 UTC');
   await expect(page.getByTestId('value-card')).toContainText('2022-02-22T19:22:22.000Z');
-  await page.keyboard.press('2');
   await expect(stat(page, 'Version')).toHaveText('7 (Unix time-ordered)');
 });
 
@@ -32,7 +30,6 @@ test('URL with a query shows a query table and a records interpretation', async 
   await expect(table).toContainText('clip box');
   await expect(table).toContainText('page');
 
-  await page.keyboard.press('2');
   await expect(stat(page, 'Query params')).toHaveText('2');
   await expect(stat(page, 'q')).toHaveText('clip box');
 
@@ -45,7 +42,6 @@ test('colour shows a swatch and contrast', async ({ page }) => {
   await paste(page, { 'text/plain': 'hsl(210, 50%, 40%)' });
   await expect(page.getByTestId('chip').first()).toHaveText('Colour · #336699');
   await expect(page.getByTestId('value-card')).toContainText('rgb(51, 102, 153)');
-  await page.keyboard.press('2');
   await expect(stat(page, 'Contrast vs white')).toHaveText('6.00:1 (AA)');
 });
 

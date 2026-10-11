@@ -83,7 +83,6 @@ test('JWT shows claims and expiry', async ({ page }) => {
   await expect(claims).toContainText('clipbox-test');
   await expect(claims).toContainText(/exp.*in (1|2) hours?/);
 
-  await page.keyboard.press('2');
   await expect(stat(page, 'Status')).toHaveText('valid');
   await expect(stat(page, 'Verification')).toHaveText('Signature not verified');
 

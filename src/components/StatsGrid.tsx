@@ -14,6 +14,15 @@ const styles = {
     gap: 4px 24px;
     align-items: baseline;
   `,
+  /** Narrow columns for the sidebar. */
+  compact: css`
+    padding: 4px 10px 10px;
+    & [data-testid='stats'] {
+      grid-template-columns: minmax(72px, 40%) 1fr;
+      gap: 3px 10px;
+      font-size: 12px;
+    }
+  `,
   label: css`
     color: ${theme.muted};
   `,
@@ -30,9 +39,9 @@ const styles = {
   `,
 };
 
-export function StatsGrid({ rows }: { rows: StatRow[] }) {
+export function StatsGrid({ rows, compact = false }: { rows: StatRow[]; compact?: boolean }) {
   return (
-    <div className={styles.wrap}>
+    <div className={compact ? styles.compact : styles.wrap}>
       <Grid rows={rows} />
     </div>
   );

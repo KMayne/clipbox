@@ -1,5 +1,5 @@
 import { css, cx } from '@emotion/css';
-import { mdiChevronDown, mdiChevronRight, mdiClose, mdiLoading, mdiPlay } from '@mdi/js';
+import { mdiChevronDown, mdiChevronRight, mdiLoading, mdiPlay } from '@mdi/js';
 import { Icon } from '@mdi/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { defaultParams, formFields, type FormField } from '../core/actions/form';
@@ -13,25 +13,6 @@ import { ui } from './ui';
 import { useAsync } from './useAsync';
 
 const styles = {
-  pane: css`
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    background: ${theme.panel};
-  `,
-  heading: css`
-    display: flex;
-    align-items: center;
-    padding: 4px 6px 4px 10px;
-    min-height: 32px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    color: ${theme.muted};
-    & > button {
-      margin-left: auto;
-    }
-  `,
   filter: css`
     margin: 0 8px 6px;
     padding: 4px 8px;
@@ -131,28 +112,13 @@ const styles = {
   `,
 };
 
-export function ActionsPane() {
+/** The sidebar's Actions section: the selected value's actions and "Open" derivations. */
+export function ActionsSection() {
   const selection = useCaptureStore(s => s.selection);
-  const close = () => useUiStore.getState().setActionsOpen(false);
-  return (
-    <section className={styles.pane} aria-label="Actions">
-      <div className={styles.heading}>
-        ACTIONS
-        <button
-          className={ui.iconButton}
-          title="Hide actions (A)"
-          aria-label="Hide actions"
-          onClick={close}
-        >
-          <Icon path={mdiClose} size={0.6} />
-        </button>
-      </div>
-      {selection ? (
-        <SelectionActions key={`${selection.entryId}:${selection.kind}`} selection={selection} />
-      ) : (
-        <div className={ui.empty}>Select a value to see its actions</div>
-      )}
-    </section>
+  return selection ? (
+    <SelectionActions key={`${selection.entryId}:${selection.kind}`} selection={selection} />
+  ) : (
+    <div className={ui.empty}>Select a value to see its actions</div>
   );
 }
 
