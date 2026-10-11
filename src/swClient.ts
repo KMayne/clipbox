@@ -14,7 +14,10 @@ export type { ModulesManifest } from './swProtocol';
 const manifestSchema = z.object({
   version: z.string(),
   core: z.array(z.string()),
-  modules: z.record(z.string(), z.object({ files: z.array(z.string()), bytes: z.number() })),
+  modules: z.record(
+    z.string(),
+    z.object({ files: z.array(z.string()), bytes: z.number(), version: z.string().optional() }),
+  ),
 }) satisfies z.ZodType<ModulesManifest>;
 
 const responseSchema = z.discriminatedUnion('type', [

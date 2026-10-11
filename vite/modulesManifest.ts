@@ -2,17 +2,21 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { transformWithOxc, type Plugin, type Rolldown } from 'vite';
+import { z } from 'zod';
+import { moduleLibraries } from '../src/modules/libraries.ts';
 import type { ModulesManifest } from '../src/swProtocol.ts';
 
 /** Lazily-loaded module entry points: src/modules/<id>/{worker,ui}.ts(x). */
 const MODULE_ENTRY = /[\\/]src[\\/]modules[\\/]([\w-]+)[\\/](worker|ui)\.tsx?$/;
-const SW_SOURCE = path.resolve(import.meta.dirname, '../src/sw.ts');
+const ROOT = path.resolve(import.meta.dirname, '..');
+const SW_SOURCE = path.join(ROOT, 'src/sw.ts');
 
 type Bundle = Rolldown.OutputBundle;
 
 /**
  * Works out which build files belong to each lazily-loaded module and emits:
- * - modules-manifest.json: { version, core: files, modules: { id: { files, bytes } } }
+ * - modules-manifest.json: { version, core: files, modules: { id: { files, bytes, version? } } }
+ *   (`version` is the module's main library version, from its installed package.json)
  * - sw.js: src/sw.ts with the manifest inlined (so every build changes sw.js and triggers an update)
  *
  * Returns the main-build plugin plus one for worker builds, which only records module entries.
@@ -42,7 +46,7 @@ export function modulesManifest(): { main: Plugin; worker: () => Plugin } {
     enforce: 'post',
     async generateBundle(_, bundle) {
       collectRoots(bundle);
-      const manifest = buildManifest(bundle, roots);
+      const manifest = buildManifest(bundle, roots, await libraryVersions(ROOT));
       this.emitFile({
         type: 'asset',
         fileName: 'modules-manifest.json',
@@ -61,7 +65,39 @@ export function modulesManifest(): { main: Plugin; worker: () => Plugin } {
   return { main, worker };
 }
 
-export function buildManifest(bundle: Bundle, roots: Map<string, string>): ModulesManifest {
+const packageJsonSchema = z.object({ version: z.string().min(1) });
+
+/** The `version` field of a package.json's text, or undefined if it has none. */
+export function packageVersion(json: string): string | undefined {
+  try {
+    const parsed = packageJsonSchema.safeParse(JSON.parse(json));
+    return parsed.success ? parsed.data.version : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The installed version of each module's main library (module id → version), read from
+ * node_modules/<package>/package.json. That works for registry and tarball installs alike
+ * (SheetJS), and pnpm links every direct dependency there. Unreadable ones are left out.
+ */
+export async function libraryVersions(root: string): Promise<Record<string, string>> {
+  const entries = await Promise.all(
+    Object.entries(moduleLibraries).map(async ([id, lib]) => {
+      const file = path.join(root, 'node_modules', lib.package, 'package.json');
+      const version = await readFile(file, 'utf8').then(packageVersion, () => undefined);
+      return version === undefined ? [] : [[id, version] as const];
+    }),
+  );
+  return Object.fromEntries(entries.flat());
+}
+
+export function buildManifest(
+  bundle: Bundle,
+  roots: Map<string, string>,
+  versions: Record<string, string> = {},
+): ModulesManifest {
   const outputs = Object.values(bundle);
   const names = outputs.map(o => o.fileName);
   const size = new Map(outputs.map(o => [o.fileName, sizeOf(o)]));
@@ -112,7 +148,9 @@ export function buildManifest(bundle: Bundle, roots: Map<string, string>): Modul
     const own = [...roots].filter(([, m]) => m === id).map(([f]) => f);
     const otherRoots = new Set([...rootFiles].filter(f => !own.includes(f)));
     const files = [...closure(own, new Set([...core, ...otherRoots]))].sort();
-    modules[id] = { files, bytes: files.reduce((n, f) => n + (size.get(f) ?? 0), 0) };
+    const bytes = files.reduce((n, f) => n + (size.get(f) ?? 0), 0);
+    const version = versions[id];
+    modules[id] = { files, bytes, ...(version !== undefined && { version }) };
   }
 
   const coreFiles = [...core].sort();

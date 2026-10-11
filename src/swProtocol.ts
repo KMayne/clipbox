@@ -3,7 +3,8 @@
 export interface ModulesManifest {
   version: string;
   core: string[];
-  modules: Record<string, { files: string[]; bytes: number }>;
+  /** `version` is the module's main library version, when the build could read it. */
+  modules: Record<string, { files: string[]; bytes: number; version?: string }>;
 }
 
 /** Page → service worker. */
