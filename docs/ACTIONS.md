@@ -50,16 +50,31 @@ Legend:
 
 ### HTML
 
-- **To Markdown** (roadmap extra) · **To plain text** · **Extract links** (→ records: text, href) · **Extract tables → CSV** · extract images · format/minify · sanitise
+- **To Markdown** ✅ (GFM: headings, emphasis, links, images, nested lists, code with language,
+  quotes, tables, breaks; scripts and styles dropped) · **To plain text** ✅ (block-aware; setting:
+  links as "text (url)") · **Extract links** ✅ (CSV of text, href, title; relative links resolved
+  against the Base URL setting, else the document's `<base>`) · **Extract tables → CSV** ✅ (one CSV
+  per table, spans filled; several make a collection) · extract images · format/minify · sanitise
+- All run on `core/html/`: a small tolerant HTML parser (the worker has no DOM), the converter and an
+  allowlist sanitiser.
 
 ### Markdown
 
-- **Render to HTML** · **To plain text** · **Extract links** · **Extract code blocks** · **Extract tables → CSV** · table of contents
+- **Render to HTML** ✅ (settings: sanitise, on by default; full document with a title, defaulting to
+  the first heading) · **To plain text** ✅ · **Extract links** ✅ · **Extract code blocks** ✅ (each
+  fenced or indented block, e.g. `code-2.py`, extension from its language tag; a collection) ·
+  **Extract tables → CSV** ✅ · table of contents
 
 ### Image
 
-- **Convert** ✅: PNG / JPEG / WebP (re-encoding also strips metadata; quality param; not offered for SVG) · **Resize** (presets 50%/25%, or a width param) · **Rotate/flip** · grayscale
-- **To data URL / base64** · **Read QR/barcode** (Chromium's `BarcodeDetector`) · **Extract palette** (dominant colours → colour captures)
+- **Convert** ✅: PNG / JPEG / WebP (re-encoding also strips metadata; quality param; not offered for SVG) · **Resize** ✅ (75/50/25%, or width/height px with keep-aspect; the browser's
+  high-quality resampler) · **Rotate/flip** ✅ (90/180/270, horizontal, vertical; both keep
+  PNG/JPEG/WebP, else PNG) · grayscale
+- **To data URL** ✅ (also for SVG) · **Read QR/barcode** ✅ (Chromium's `BarcodeDetector`, every
+  format and code, where the platform has one: macOS, ChromeOS, Android; elsewhere, e.g. Windows and
+  Linux, the `qr` module's jsQR reads one QR code; several codes make a collection) · **Extract
+  palette** ✅ (median cut seeding k-means on a 96 px downsample; setting: colours, default 6; each a
+  colour capture, as a collection)
 
 ### Binary
 
@@ -91,11 +106,13 @@ Legend:
 
 ### Archive
 
-- **Open entry** ✓ · **Listing as CSV** · download an entry · extract all (zip download)
+- **Open entry** ✓ · **Listing as CSV** ✅ (path, size, compressed size, modified, type; core and
+  libarchive formats) · download an entry · extract all (zip download)
 
 ### PDF
 
-- **Extract text** ✓ · **Page as PNG** ✓ · **Metadata as JSON**
+- **Extract text** ✓ · **Page as PNG** ✓ · **Metadata as JSON** ✅ (pdf module service: info
+  dictionary, XMP, page count, sizes and labels, outline, attachments)
 - **Extract images** ✅: every distinct image (repeats like a logo on each page dropped by object id,
   then by content) as PNG, one collection capture named `page-03-image1.png`; settings: page range
   (`1-3,7`, empty for all) and minimum size (32 px). Runs in the `pdf` module's service; stops at
@@ -111,7 +128,10 @@ Legend:
 
 ### Audio / video
 
-- **Cover art** ✓ · **Metadata as JSON** · **Video frame as PNG** (at a time param)
+- **Cover art** ✓ · **Metadata as JSON** ✅ (media module service: music-metadata's streams, common
+  and native tags; pictures described, not embedded) · **Video frame as PNG** ✅ (`audiotools`
+  module: Mediabunny and WebCodecs; time setting in seconds, m:ss or %, default 10%; not for AVI or
+  Ogg)
 - **Normalise audio** ✅ (`media.normalise`, `audiotools` module): two-pass EBU R128 loudness
   normalisation. Pass 1 decodes and measures integrated loudness (BS.1770-4 gating) and true peak
   (4× oversampled); pass 2 applies one constant gain and re-encodes the audio only, copying any
@@ -125,11 +145,13 @@ Legend:
 
 ### Spreadsheet
 
-- **Sheet as CSV** ✓ · **Sheet as JSON** · **All sheets as JSON** · sheet as Markdown table
+- **Sheet as CSV** ✓ · **Sheet as JSON** ✅ (sheet by name or number; first row as keys, or arrays)
+  · **All sheets as JSON** ✅ · sheet as Markdown table
 
 ### SQLite
 
-- **Table as CSV** ✓ · **Table as JSON** · **Schema (CREATE statements) as SQL** · run a read-only query (param; known gap)
+- **Table as CSV** ✓ · **Table as JSON** ✅ (sqlite module service; blobs as `x'…'`) · **Schema
+  (CREATE statements) as SQL** ✅ (tables, then indexes, views, triggers) · run a read-only query (param; known gap)
 
 ### PEM / X.509
 
