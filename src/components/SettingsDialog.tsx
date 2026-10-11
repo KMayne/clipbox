@@ -1,9 +1,10 @@
 import { css, cx } from '@emotion/css';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { formatBytes } from '../core/format';
 import { modules } from '../modules/registry';
 import type { ModuleInfo, Policy } from '../modules/types';
 import { useModuleStore } from '../state/moduleStore';
+import { storageUsed, useHistoryStore, type KeepFor } from '../state/persistence';
 import { useUiStore } from '../state/uiStore';
 import { sw, type CacheState } from '../swClient';
 import { theme } from '../theme';
@@ -95,6 +96,34 @@ const styles = {
     background: ${theme.accent} !important;
     color: #111;
   `,
+  section: css`
+    margin-bottom: 20px;
+  `,
+  row: css`
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid ${theme.subtle};
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+  `,
+  rowLabel: css`
+    width: 110px;
+  `,
+  end: css`
+    margin-left: auto;
+  `,
+  confirm: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: ${theme.error};
+  `,
   footer: css`
     display: flex;
     justify-content: space-between;
@@ -139,6 +168,7 @@ function Settings() {
             ✕
           </button>
         </div>
+        <HistorySection />
         <h3 className={styles.h3}>MODULES</h3>
         {!sw.supported && (
           <p className={styles.description}>
@@ -242,5 +272,90 @@ function ModuleRow({ info, size, focused }: { info: ModuleInfo; size: number; fo
           ))}
       </td>
     </tr>
+  );
+}
+
+const KEEP_FOR_OPTIONS: { value: KeepFor; label: string }[] = [
+  { value: '1d', label: '1 day' },
+  { value: '7d', label: '7 days' },
+  { value: '30d', label: '30 days' },
+  { value: 'forever', label: 'Forever' },
+];
+
+type Confirming = null | 'disable' | 'clear';
+
+function HistorySection() {
+  const { keepHistory, keepFor } = useHistoryStore(s => s.settings);
+  const { setKeepHistory, setKeepFor, clearAll } = useHistoryStore.getState();
+  const [confirming, setConfirming] = useState<Confirming>(null);
+  const [used, setUsed] = useState<number | null>(null);
+
+  const refreshUsage = useCallback(() => {
+    void storageUsed().then(setUsed);
+  }, []);
+  useEffect(refreshUsage, [refreshUsage]);
+
+  const confirm = async () => {
+    if (confirming === 'disable') await setKeepHistory(false);
+    if (confirming === 'clear') await clearAll();
+    setConfirming(null);
+    refreshUsage();
+  };
+
+  return (
+    <section className={styles.section} aria-label="History">
+      <h3 className={styles.h3}>HISTORY</h3>
+      <div className={styles.row}>
+        <label>
+          <input
+            type="checkbox"
+            checked={keepHistory}
+            onChange={e => {
+              if (e.target.checked) void setKeepHistory(true);
+              else setConfirming('disable');
+            }}
+          />
+          Keep history
+        </label>
+        <span className={styles.description}>Stored on this device only</span>
+      </div>
+      <div className={styles.row}>
+        <span className={styles.rowLabel}>Keep for</span>
+        <span className={styles.segmented} role="radiogroup" aria-label="Keep for">
+          {KEEP_FOR_OPTIONS.map(o => (
+            <button
+              key={o.value}
+              role="radio"
+              aria-checked={keepFor === o.value}
+              disabled={!keepHistory}
+              className={cx(keepFor === o.value && styles.activePolicy)}
+              onClick={() => setKeepFor(o.value)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </span>
+      </div>
+      <div className={styles.row}>
+        <span className={styles.rowLabel}>Storage used</span>
+        <span data-testid="storage-used">{used === null ? 'unknown' : formatBytes(used)}</span>
+        <button className={cx(ui.button, styles.end)} onClick={() => setConfirming('clear')}>
+          Clear all data
+        </button>
+      </div>
+      {confirming && (
+        <div className={cx(styles.row, styles.confirm)} role="alert">
+          {confirming === 'disable'
+            ? 'Turn off history and delete everything stored?'
+            : 'Delete all pastes and stored history?'}
+          <button className={ui.button} onClick={() => void confirm()}>
+            {confirming === 'disable' ? 'Turn off' : 'Delete'}
+          </button>
+          <button className={ui.button} onClick={() => setConfirming(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
+    </section>
   );
 }

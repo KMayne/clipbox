@@ -2,7 +2,9 @@ import { injectGlobal } from '@emotion/css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { onCaptureEvent, useCaptureStore } from './state/captureStore';
 import { useModuleStore } from './state/moduleStore';
+import { startPersistence } from './state/persistence';
 import { sw } from './swClient';
 import { theme } from './theme';
 
@@ -23,6 +25,15 @@ injectGlobal`
 
 sw.register();
 useModuleStore.getState().init();
+void startPersistence(
+  {
+    captures: () => useCaptureStore.getState().captures,
+    restore: captures => useCaptureStore.getState().restore(captures),
+    remove: id => useCaptureStore.getState().remove(id),
+    subscribe: onCaptureEvent,
+  },
+  () => useCaptureStore.getState().clear(),
+);
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');
