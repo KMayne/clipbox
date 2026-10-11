@@ -74,8 +74,15 @@ export const sw = {
         });
       });
     });
+    // Reload only when an update replaces the controlling worker. On a first visit the new
+    // worker claims the page (controller goes null → set), which must not reload it.
+    let hadController = navigator.serviceWorker.controller !== null;
     let reloading = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) {
+        hadController = true;
+        return;
+      }
       if (reloading) return;
       reloading = true;
       location.reload();
