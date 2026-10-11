@@ -1,7 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const DEV = 'http://localhost:5199';
-const PREVIEW = 'http://localhost:5198';
+// Override ports when several checkouts run e2e at once (e.g. parallel worktrees)
+const DEV_PORT = Number(process.env.CLIPBOX_DEV_PORT ?? 5199);
+const PREVIEW_PORT = Number(process.env.CLIPBOX_PREVIEW_PORT ?? 5198);
+const DEV = `http://localhost:${DEV_PORT}`;
+const PREVIEW = `http://localhost:${PREVIEW_PORT}`;
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -20,12 +23,12 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm exec vite --port 5199 --strictPort',
+      command: `pnpm exec vite --port ${DEV_PORT} --strictPort`,
       url: DEV,
       reuseExistingServer: !process.env.CI,
     },
     {
-      command: 'pnpm run build && pnpm exec vite preview --port 5198 --strictPort',
+      command: `pnpm run build && pnpm exec vite preview --port ${PREVIEW_PORT} --strictPort`,
       url: PREVIEW,
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
