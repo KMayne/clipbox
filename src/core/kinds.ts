@@ -9,6 +9,8 @@ const NAMES: Record<string, string> = {
   binary: 'Binary',
   yaml: 'YAML',
   xml: 'XML',
+  markdown: 'Markdown',
+  ndjson: 'NDJSON',
 };
 
 export const kindName = (kind: Kind) => NAMES[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);
