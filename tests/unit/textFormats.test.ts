@@ -256,6 +256,25 @@ describe('ndjson', () => {
     expect(records.label).toBe('Records 249×2');
   });
 
+  it('tolerates a few bad lines inside the detection window and reports them', async () => {
+    const lines = events(30);
+    lines[2] = '{"id": 2, broken';
+    lines[17] = 'oops';
+    const c = textContent(lines.join('\n'));
+    expect(kinds(c)[0]).toBe('ndjson');
+    const r = await interpret('ndjson', c);
+    expect(r.label).toBe('NDJSON · 28 lines');
+    expect(stat(r.stats, 'Invalid lines')).toBe('2 (lines 3, 18)');
+  });
+
+  it('rejects text where more than a tenth of lines are not JSON', () => {
+    const lines = events(20);
+    for (const i of [1, 5, 9]) lines[i] = 'not json';
+    expect(kinds(textContent(lines.join('\n')))).not.toContain('ndjson');
+    // Two lines, one bad: half of them
+    expect(kinds(textContent('{"a":1}\n{"a":2\n'))).not.toContain('ndjson');
+  });
+
   it('offers records with an NDJSON source', async () => {
     const r = await interpret('records', textContent(events(4).join('\n')));
     expect(r.label).toBe('Records 4×2');
