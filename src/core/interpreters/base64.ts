@@ -19,6 +19,8 @@ export interface Base64Value {
   dataUrl: boolean;
   magic: MagicType | null;
   json: boolean;
+  /** The pasted text, trimmed (base64 or a data URL). */
+  source: string;
 }
 
 const MAGIC_MIME: Record<MagicType, string> = {
@@ -71,7 +73,11 @@ function wordy(text: string): boolean {
   );
 }
 
-function build(encoded: string, declaredMime: string | null): Base64Value | null {
+function build(
+  encoded: string,
+  declaredMime: string | null,
+  source: string,
+): Base64Value | null {
   const shape = base64Shape(encoded);
   const bytes = decodeBase64(encoded);
   if (!shape || !bytes || bytes.length === 0) return null;
@@ -96,6 +102,7 @@ function build(encoded: string, declaredMime: string | null): Base64Value | null
     dataUrl: declaredMime !== null,
     magic,
     json,
+    source,
   };
 }
 
@@ -105,7 +112,8 @@ const parseBase64 = createMemo((c): { value: Base64Value; confidence: number } |
 
   const dataUrl = DATA_URL.exec(t);
   if (dataUrl) {
-    const value = build((dataUrl[3] ?? '').replace(/\s+/g, ''), (dataUrl[1] ?? '').toLowerCase());
+    const encoded = (dataUrl[3] ?? '').replace(/\s+/g, '');
+    const value = build(encoded, (dataUrl[1] ?? '').toLowerCase(), t);
     // data:;base64,… defaults to text/plain (RFC 2397)
     if (value && value.mime === '') value.mime = 'text/plain';
     return value ? { value, confidence: 0.95 } : null;
@@ -113,7 +121,7 @@ const parseBase64 = createMemo((c): { value: Base64Value; confidence: number } |
 
   const compact = t.replace(/\r?\n/g, '');
   if (compact.length < MIN_SHORT_LENGTH || HEX.test(compact)) return null;
-  const value = build(t, null);
+  const value = build(t, null, t);
   if (!value) return null;
   if (compact.length < MIN_LENGTH) {
     return value.text !== null && wordy(value.text) ? { value, confidence: 0.5 } : null;
@@ -166,7 +174,13 @@ export const base64Interpreter: Interpreter<Base64Value> = {
     if (req.type === 'image' && isImage(v)) return { bytes: v.bytes, mime: v.mime };
     return unsupportedSlice('base64', req);
   },
-  export: v => (v.text === null ? {} : { text: v.text }),
+  // Decoded text or image; other bytes can't go on the clipboard, so copy the base64 itself
+  // (Open as → Decode gives the bytes as a capture)
+  export(v) {
+    if (v.text !== null) return { text: v.text };
+    if (isImage(v)) return { image: { bytes: v.bytes, mime: v.mime } };
+    return { text: v.source };
+  },
   derivations: () => [{ id: 'decode', label: 'Decode' }],
   derive: v => ({ mime: v.mime, bytes: v.bytes }),
 };

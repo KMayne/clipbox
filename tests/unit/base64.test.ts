@@ -101,6 +101,21 @@ describe('base64 value', () => {
     expect(text.label).toBe('Base64 · text · 2 B');
   });
 
+  it('copies decoded images as images and other binary as the base64 text', async () => {
+    const png = toBase64(pngHeader(2, 3));
+    const image = await parse(png);
+    expect(await b64.export(image.value)).toEqual({
+      image: { bytes: pngHeader(2, 3), mime: 'image/png' },
+    });
+    const url = `data:image/png;base64,${png}`;
+    expect((await b64.export((await parse(url)).value)).image?.mime).toBe('image/png');
+
+    const random = toBase64(Uint8Array.from({ length: 48 }, (_, i) => (i * 97 + 13) % 256));
+    expect(await b64.export((await parse(`  ${random}\n`)).value)).toEqual({ text: random });
+    const octets = `data:application/octet-stream;base64,${random}`;
+    expect(await b64.export((await parse(octets)).value)).toEqual({ text: octets });
+  });
+
   it('is not offered for binary entries', () => {
     expect(b64.detect(bytesContent(pngHeader(1, 1)))).toBe(0);
   });
