@@ -1,0 +1,167 @@
+import { create } from 'zustand';
+import type {
+  Capture,
+  CaptureId,
+  CaptureSourceId,
+  EntryId,
+  Interpretation,
+  Kind,
+  RawEntry,
+} from '../core/types';
+import { engine } from '../engine/engineClient';
+import { dropHandles } from '../engine/valueHandle';
+
+export const MAX_CAPTURES = 50;
+export const CONFIRM_BYTES = 50 * 1024 * 1024;
+
+export type EntryStatus = 'pending' | 'ready' | 'error' | 'confirm';
+
+export interface EntryView extends RawEntry {
+  status: EntryStatus;
+  preview: string | null;
+  thumbUrl?: string;
+  interpretations: Interpretation[];
+  error?: string;
+}
+
+export interface CaptureView extends Omit<Capture, 'entries'> {
+  entries: EntryView[];
+  collapsed: boolean;
+}
+
+export interface Selection {
+  entryId: EntryId;
+  kind: Kind;
+}
+
+export type NewEntry = Omit<RawEntry, 'id'>;
+
+interface CaptureState {
+  captures: CaptureView[];
+  selection: Selection | null;
+  add(source: CaptureSourceId, entries: NewEntry[]): void;
+  ingest(entryId: EntryId): Promise<void>;
+  remove(captureId: CaptureId): void;
+  clear(): void;
+  toggle(captureId: CaptureId): void;
+  select(selection: Selection | null): void;
+}
+
+function release(capture: CaptureView) {
+  for (const e of capture.entries) {
+    if (e.thumbUrl) URL.revokeObjectURL(e.thumbUrl);
+    dropHandles(e.id);
+    void engine.forget(e.id);
+  }
+}
+
+export const useCaptureStore = create<CaptureState>((set, get) => {
+  const updateEntry = (entryId: EntryId, patch: Partial<EntryView>) =>
+    set(s => ({
+      captures: s.captures.map(c => ({
+        ...c,
+        entries: c.entries.map(e => (e.id === entryId ? { ...e, ...patch } : e)),
+      })),
+    }));
+
+  /** Select the best interpretation of the newest capture once it's ready, unless the user moved on. */
+  const autoSelect = (captureId: CaptureId) => {
+    const { captures, selection } = get();
+    const capture = captures[0];
+    if (!capture || capture.id !== captureId) return;
+    if (selection && capture.entries.some(e => e.id === selection.entryId)) return;
+    const best = capture.entries.find(e => e.interpretations.length > 0)?.interpretations[0];
+    if (best) set({ selection: { entryId: best.entryId, kind: best.kind } });
+  };
+
+  return {
+    captures: [],
+    selection: null,
+
+    add(source, newEntries) {
+      if (newEntries.length === 0) return;
+      const capture: CaptureView = {
+        id: `c-${crypto.randomUUID()}`,
+        at: Date.now(),
+        source,
+        collapsed: false,
+        entries: newEntries.map(e => ({
+          ...e,
+          id: `en-${crypto.randomUUID()}`,
+          status: e.size > CONFIRM_BYTES ? 'confirm' : 'pending',
+          preview: null,
+          interpretations: [],
+          thumbUrl: e.mime.startsWith('image/') ? URL.createObjectURL(e.blob) : undefined,
+        })),
+      };
+      const kept = get().captures.map(c => ({ ...c, collapsed: true }));
+      kept.splice(MAX_CAPTURES - 1).forEach(release);
+      set({ captures: [capture, ...kept] });
+      for (const e of capture.entries) if (e.status === 'pending') void get().ingest(e.id);
+    },
+
+    async ingest(entryId) {
+      const capture = get().captures.find(c => c.entries.some(e => e.id === entryId));
+      const entry = capture?.entries.find(e => e.id === entryId);
+      if (!capture || !entry) return;
+      updateEntry(entryId, { status: 'pending' });
+      try {
+        const { blob, id, mime, size, name } = entry;
+        const res = await engine.ingest({ id, mime, size, name, blob });
+        updateEntry(entryId, {
+          status: 'ready',
+          preview: res.preview,
+          interpretations: res.interpretations,
+        });
+        autoSelect(capture.id);
+      } catch (err) {
+        updateEntry(entryId, { status: 'error', error: String(err) });
+      }
+    },
+
+    remove(captureId) {
+      const { captures, selection } = get();
+      const capture = captures.find(c => c.id === captureId);
+      if (!capture) return;
+      release(capture);
+      const selected = capture.entries.some(e => e.id === selection?.entryId);
+      set({
+        captures: captures.filter(c => c.id !== captureId),
+        selection: selected ? null : selection,
+      });
+    },
+
+    clear() {
+      get().captures.forEach(release);
+      void engine.clear();
+      set({ captures: [], selection: null });
+    },
+
+    toggle(captureId) {
+      set(s => ({
+        captures: s.captures.map(c => (c.id === captureId ? { ...c, collapsed: !c.collapsed } : c)),
+      }));
+    },
+
+    select(selection) {
+      set({ selection });
+    },
+  };
+});
+
+/** Flat list of chips in display order, for keyboard navigation. */
+export function chipOrder(captures: CaptureView[]): Selection[] {
+  return captures.flatMap(c =>
+    c.collapsed
+      ? []
+      : c.entries.flatMap(e => e.interpretations.map(i => ({ entryId: e.id, kind: i.kind }))),
+  );
+}
+
+export function findEntry(captures: CaptureView[], entryId: EntryId) {
+  for (const c of captures) {
+    const entry = c.entries.find(e => e.id === entryId);
+    if (entry) return { capture: c, entry };
+  }
+  return null;
+}
