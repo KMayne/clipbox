@@ -59,6 +59,18 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   await expect(page.getByTestId('chip').first()).toHaveText('TypeScript · 4 lines');
   await expect(page.getByTestId('monaco-view').locator('.monaco-editor')).toBeVisible();
 
+  // jq runs in a runner worker nested in the engine worker: it and its wasm come from the cache
+  await paste(page, { 'text/plain': '[1, 2, 3]' });
+  const pane = page.getByRole('region', { name: 'Actions' });
+  await pane.getByRole('button', { name: 'jq', exact: true }).click();
+  const form = pane.getByRole('form', { name: 'jq settings' });
+  await form.getByLabel('Filter').fill('map(. * 2) | add');
+  await form.getByRole('button', { name: 'Run' }).click();
+  await expect(page.getByTestId('capture')).toHaveCount(3);
+  await expect(page.getByTestId('capture').first().getByTestId('derived-from')).toContainText(
+    'jq map(. * 2) | add',
+  );
+
   // Language detection evicted while offline: text still parses, just without a language
   await evictModule(page, 'langdetect');
   await page.reload();

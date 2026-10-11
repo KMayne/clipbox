@@ -93,10 +93,8 @@ function safeUrl(name: string, value: string, element: string): boolean {
   return SAFE_URL.test(v);
 }
 
-function sanitiseNode(node: HtmlNode): HtmlNode[] {
-  if (node.type === 'text') return [node];
-  if (DROPPED.has(node.name)) return [];
-  const children = node.children.flatMap(sanitiseNode);
+/** One element with its children already sanitised (an explicit stack does the walk). */
+function sanitiseElement(node: HtmlElement, children: HtmlNode[]): HtmlNode[] {
   if (!ALLOWED.has(node.name)) return children;
   if (node.name === 'input' && node.attrs.type?.toLowerCase() !== 'checkbox') return [];
   const attrs: Record<string, string> = {};
@@ -118,5 +116,23 @@ function sanitiseNode(node: HtmlNode): HtmlNode[] {
  * only http(s)/mailto/tel/relative URLs (plus `data:image/…` for images).
  */
 export function sanitiseTree(root: HtmlElement): HtmlElement {
-  return { ...root, children: root.children.flatMap(sanitiseNode) };
+  // Post-order without recursion: each frame collects its element's sanitised children
+  interface Frame {
+    node: HtmlElement;
+    next: number;
+    out: HtmlNode[];
+  }
+  const top: Frame = { node: root, next: 0, out: [] };
+  const stack: Frame[] = [top];
+  for (let f = stack.at(-1); f; f = stack.at(-1)) {
+    const child = f.node.children[f.next++];
+    if (child === undefined) {
+      stack.pop();
+      const parent = stack.at(-1);
+      // Not push(...): an unwrapped element can have too many children to spread
+      if (parent) for (const n of sanitiseElement(f.node, f.out)) parent.out.push(n);
+    } else if (child.type === 'text') f.out.push(child);
+    else if (!DROPPED.has(child.name)) stack.push({ node: child, next: 0, out: [] });
+  }
+  return { ...root, children: top.out };
 }

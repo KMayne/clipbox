@@ -352,11 +352,19 @@ export function parseHtml(html: string): HtmlElement {
 const BLOCK_SCOPE = ['td', 'th', 'li', 'blockquote', 'div', 'section', 'article', 'table'];
 
 // --- Queries ---
+// Iterative, with explicit stacks: markup can nest deeper than the call stack allows.
 
+/** Every element in document order (pre-order), `node` first. */
 export function* walk(node: HtmlNode): Generator<HtmlElement> {
-  if (node.type !== 'element') return;
-  yield node;
-  for (const child of node.children) yield* walk(child);
+  const stack: HtmlNode[] = [node];
+  for (let n = stack.pop(); n; n = stack.pop()) {
+    if (n.type !== 'element') continue;
+    yield n;
+    for (let i = n.children.length - 1; i >= 0; i--) {
+      const c = n.children[i];
+      if (c) stack.push(c);
+    }
+  }
 }
 
 export const findAll = (root: HtmlNode, name: string): HtmlElement[] =>
@@ -364,9 +372,18 @@ export const findAll = (root: HtmlNode, name: string): HtmlElement[] =>
 
 /** Concatenated text, scripts and styles left out. */
 export function textContent(node: HtmlNode): string {
-  if (node.type === 'text') return node.text;
-  if (node.name === 'script' || node.name === 'style' || node.name === 'template') return '';
-  return node.children.map(textContent).join('');
+  const parts: string[] = [];
+  const stack: HtmlNode[] = [node];
+  for (let n = stack.pop(); n; n = stack.pop()) {
+    if (n.type === 'text') parts.push(n.text);
+    else if (n.name !== 'script' && n.name !== 'style' && n.name !== 'template') {
+      for (let i = n.children.length - 1; i >= 0; i--) {
+        const c = n.children[i];
+        if (c) stack.push(c);
+      }
+    }
+  }
+  return parts.join('');
 }
 
 /** Text with runs of whitespace collapsed to single spaces and trimmed. */
@@ -383,18 +400,32 @@ const escapeText = (s: string) =>
 const escapeAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
 export function serialize(node: HtmlNode): string {
-  if (node.type === 'text') return escapeText(node.text);
-  const inner = node.children
-    .map(c =>
-      c.type === 'text' && RAW_TEXT.has(node.name) && node.name !== 'textarea'
-        ? c.text
-        : serialize(c),
-    )
-    .join('');
-  if (node.name === '#root') return inner;
-  const attrs = Object.entries(node.attrs)
-    .map(([k, v]) => (v === '' ? ` ${k}` : ` ${k}="${escapeAttr(v)}"`))
-    .join('');
-  if (VOID_ELEMENTS.has(node.name)) return `<${node.name}${attrs}>`;
-  return `<${node.name}${attrs}>${inner}</${node.name}>`;
+  const parts: string[] = [];
+  // Strings are output as they are; nodes are expanded into their tags and children
+  const stack: (HtmlNode | string)[] = [node];
+  for (let item = stack.pop(); item !== undefined; item = stack.pop()) {
+    if (typeof item === 'string') {
+      parts.push(item);
+      continue;
+    }
+    if (item.type === 'text') {
+      parts.push(escapeText(item.text));
+      continue;
+    }
+    const e = item;
+    const raw = RAW_TEXT.has(e.name) && e.name !== 'textarea';
+    const children = e.children.map(c => (raw && c.type === 'text' ? c.text : c));
+    if (e.name === '#root') {
+      for (let i = children.length - 1; i >= 0; i--) stack.push(children[i] ?? '');
+      continue;
+    }
+    const attrs = Object.entries(e.attrs)
+      .map(([k, v]) => (v === '' ? ` ${k}` : ` ${k}="${escapeAttr(v)}"`))
+      .join('');
+    parts.push(`<${e.name}${attrs}>`);
+    if (VOID_ELEMENTS.has(e.name)) continue;
+    stack.push(`</${e.name}>`);
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i] ?? '');
+  }
+  return parts.join('');
 }

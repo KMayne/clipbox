@@ -1,13 +1,13 @@
-import { loadJq } from 'jq-wasm';
 import { describe, expect, it } from 'vitest';
 import { splitJqValues } from '../../src/core/actions/run/query';
 import type { EntryId } from '../../src/core/types';
 import { Engine } from '../../src/engine/engine';
 import { createJqService, jqFlags } from '../../src/modules/jq/jq';
+import { inlineJqWorker } from './fakeJqWorker';
 
 const td = new TextDecoder();
 
-const jqLoader = async () => ({ service: createJqService(() => loadJq()) });
+const jqLoader = async () => ({ service: createJqService(inlineJqWorker) });
 
 async function engineWith(text: string, mime = 'text/plain', name?: string) {
   const engine = new Engine({ loaders: { jq: jqLoader } });
