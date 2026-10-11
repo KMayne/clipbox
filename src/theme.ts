@@ -26,6 +26,11 @@ export const kindColors: Record<string, string> = {
   ndjson: '#e0af68',
   base64: '#7aa2f7',
   jwt: '#f7768e',
+  timestamp: '#b4befe',
+  uuid: '#94e2d5',
+  url: '#4ec9b0',
+  colour: '#f78c6c',
+  pem: '#c3e88d',
 };
 
 export const kindColor = (kind: string) => kindColors[kind] ?? theme.muted;

@@ -11,6 +11,8 @@ export default defineConfig({
     // Pre-bundle lazily-imported deps at startup, otherwise first use triggers a dev-server reload
     include: [
       '@vscode/vscode-languagedetection',
+      '@peculiar/x509',
+      'reflect-metadata',
       'monaco-editor/editor/editor.api',
       'monaco-editor/languages/definitions/register.all',
       'monaco-editor/languages/features/json/register',

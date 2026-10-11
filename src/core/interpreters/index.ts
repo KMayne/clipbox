@@ -3,6 +3,7 @@ import { register, type AnyInterpreter } from '../interpreter';
 import type { Kind } from '../types';
 import { base64Interpreter } from './base64';
 import { binaryInterpreter } from './binary';
+import { colourInterpreter } from './colour';
 import { htmlInterpreter } from './html';
 import { imageInterpreter } from './image';
 import { jsonInterpreter } from './json';
@@ -13,6 +14,9 @@ import { recordsInterpreter } from './records';
 import { textInterpreter } from './text';
 import { xmlInterpreter } from './xml';
 import { yamlInterpreter } from './yaml';
+import { timestampInterpreter } from './timestamp';
+import { urlInterpreter } from './url';
+import { uuidInterpreter } from './uuid';
 
 export const interpreters: AnyInterpreter[] = [
   register(jwtInterpreter),
@@ -25,6 +29,10 @@ export const interpreters: AnyInterpreter[] = [
   register(xmlInterpreter),
   register(htmlInterpreter),
   register(imageInterpreter),
+  register(timestampInterpreter),
+  register(uuidInterpreter),
+  register(urlInterpreter),
+  register(colourInterpreter),
   register(textInterpreter),
   register(binaryInterpreter),
 ];

@@ -1,3 +1,4 @@
+import { pemDetector } from './x509/detect';
 import type { Detector, ModuleId, ModuleInfo, Policies, Policy } from './types';
 
 /** Metadata for every module. Shared by main thread and worker; must stay tiny. */
@@ -20,10 +21,19 @@ export const modules: ModuleInfo[] = [
     hasWorker: true,
     hasUi: false,
   },
+  {
+    id: 'x509',
+    title: 'Certificates',
+    description: 'Decodes PEM certificates, CSRs and keys (@peculiar/x509)',
+    approxBytes: 220_000,
+    defaultPolicy: 'auto',
+    hasWorker: true,
+    hasUi: false,
+  },
 ];
 
-/** Detectors for kinds owned by lazily-loaded modules (none yet; Batch B/C add them). */
-export const detectors: Detector[] = [];
+/** Detectors for kinds owned by lazily-loaded modules. */
+export const detectors: Detector[] = [pemDetector];
 
 export const moduleInfo = (id: ModuleId) => modules.find(m => m.id === id);
 

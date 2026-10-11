@@ -17,7 +17,9 @@ import { OpenAsMenu } from './OpenAsMenu';
 import { Base64Preview } from './previews/Base64Preview';
 import { JwtView } from './previews/JwtView';
 import { RecordsTable } from './previews/RecordsTable';
+import { PemView } from './previews/PemView';
 import { TextView } from './previews/TextView';
+import { ValueCard } from './previews/ValueCard';
 import { RawView } from './RawView';
 import { SchemaView } from './SchemaView';
 import { StatsGrid } from './StatsGrid';
@@ -207,6 +209,13 @@ function Preview({ handle }: { handle: ValueHandle }) {
       return <Base64Preview handle={handle} />;
     case 'jwt':
       return <JwtView handle={handle} />;
+    case 'timestamp':
+    case 'uuid':
+    case 'url':
+    case 'colour':
+      return <ValueCard handle={handle} />;
+    case 'pem':
+      return <PemView handle={handle} />;
     default:
       return <HexView handle={handle} />;
   }
