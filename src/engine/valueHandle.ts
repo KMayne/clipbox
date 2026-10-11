@@ -1,5 +1,13 @@
 import { z } from 'zod';
-import type { EntryId, ImageData, JsonChild, Kind, SliceRequest, ValueHandle } from '../core/types';
+import type {
+  EntryId,
+  ImageData,
+  MediaData,
+  JsonChild,
+  Kind,
+  SliceRequest,
+  ValueHandle,
+} from '../core/types';
 import { engine } from './engineClient';
 
 /*
@@ -27,6 +35,7 @@ const schemas = {
   text: z.string(),
   html: z.string(),
   image: z.object({ bytes: bytesSchema, mime: z.string() }) satisfies z.ZodType<ImageData>,
+  media: z.object({ bytes: bytesSchema, mime: z.string() }) satisfies z.ZodType<MediaData>,
 };
 
 function remoteHandle(entryId: EntryId, kind: Kind, summary: ValueHandle['summary']): ValueHandle {
@@ -43,6 +52,7 @@ function remoteHandle(entryId: EntryId, kind: Kind, summary: ValueHandle['summar
     image: async () => schemas.image.parse(await slice({ type: 'image' })),
     json: () => slice({ type: 'json' }),
     html: async () => schemas.html.parse(await slice({ type: 'html' })),
+    media: async () => schemas.media.parse(await slice({ type: 'media' })),
   };
 }
 

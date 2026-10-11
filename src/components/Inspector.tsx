@@ -12,6 +12,7 @@ import { HtmlView } from './previews/HtmlView';
 import { ImageView } from './previews/ImageView';
 import { JsonTree } from './previews/JsonTree';
 import { MarkdownView } from './previews/MarkdownView';
+import { MediaView } from './previews/MediaView';
 import { ModulePreview } from './ModulePreview';
 import { OpenAsMenu } from './OpenAsMenu';
 import { Base64Preview } from './previews/Base64Preview';
@@ -216,6 +217,9 @@ function Preview({ handle }: { handle: ValueHandle }) {
       return <ValueCard handle={handle} />;
     case 'pem':
       return <PemView handle={handle} />;
+    case 'audio':
+    case 'video':
+      return <MediaView handle={handle} />;
     default:
       return <HexView handle={handle} />;
   }

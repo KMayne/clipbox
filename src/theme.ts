@@ -31,6 +31,8 @@ export const kindColors: Record<string, string> = {
   url: '#4ec9b0',
   colour: '#f78c6c',
   pem: '#c3e88d',
+  audio: '#ff79c6',
+  video: '#bd93f9',
 };
 
 export const kindColor = (kind: string) => kindColors[kind] ?? theme.muted;
