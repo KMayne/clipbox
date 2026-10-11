@@ -1,6 +1,7 @@
 import { convertTree } from '../../html/convert';
 import { parseHtml } from '../../html/dom';
-import { extractLinks, extractTables, gridCsv, linksCsv } from '../../html/extract';
+import { gridCsv } from '../../csvGrid';
+import { extractLinks, extractTables, linksCsv } from '../../html/extract';
 import { htmlInterpreter } from '../../interpreters/html';
 import type { DerivedContent } from '../../types';
 import { htmlExtractLinks, htmlExtractTables, htmlToMarkdown, htmlToText } from '../catalog/html';

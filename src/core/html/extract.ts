@@ -1,21 +1,7 @@
 /** Links and tables out of parsed HTML, and an allowlist sanitiser. */
+import { gridCsv } from '../csvGrid';
 import { convertTree, tableRows } from './convert';
 import { baseHref, collapsedText, findAll, walk, type HtmlElement, type HtmlNode } from './dom';
-
-// --- CSV ---
-
-function csvCell(s: string): string {
-  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-/** RFC 4180 CSV of a grid of strings, rows padded to the widest. */
-export function gridCsv(rows: string[][]): string {
-  const width = Math.max(0, ...rows.map(r => r.length));
-  return rows
-    .map(r => Array.from({ length: width }, (_, i) => csvCell(r[i] ?? '')).join(','))
-    .map(line => `${line}\r\n`)
-    .join('');
-}
 
 // --- Links ---
 

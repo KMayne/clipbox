@@ -1,5 +1,6 @@
 import type { ActionInfo } from '../types';
 import { anyActions } from './any';
+import { archiveActions } from './archive';
 import { htmlActions } from './html';
 import { imageActions } from './image';
 import { jsonActions } from './json';
@@ -7,6 +8,8 @@ import { markdownActions } from './markdown';
 import { mediaActions } from './media';
 import { pdfActions } from './pdf';
 import { presentationActions } from './presentation';
+import { spreadsheetActions } from './spreadsheet';
+import { sqliteActions } from './sqlite';
 import { textActions } from './text';
 
 /**
@@ -23,6 +26,9 @@ export const catalog: ActionInfo[] = [
   ...pdfActions,
   ...htmlActions,
   ...markdownActions,
+  ...spreadsheetActions,
+  ...sqliteActions,
+  ...archiveActions,
   ...anyActions,
 ];
 
