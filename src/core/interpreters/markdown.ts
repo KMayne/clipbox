@@ -49,6 +49,8 @@ interface Signals {
   headings: number;
   /** Lines with inline syntax (links, `**bold**`). */
   inlineLines: number;
+  /** Pipe-table lines: header, delimiter row and body rows. */
+  tableLines: number;
   /** Non-blank lines outside fenced code. */
   lines: number;
   keyValueLines: number;
@@ -61,11 +63,15 @@ export function markdownSignals(text: string): Signals {
     signalLines: 0,
     headings: 0,
     inlineLines: 0,
+    tableLines: 0,
     lines: 0,
     keyValueLines: 0,
     codeLines: 0,
   };
   let fence: string | null = null;
+  let inTable = false;
+  /** The previous line had a pipe and no signal: a table header, if a delimiter row follows. */
+  let header = false;
   for (const line of text.slice(0, DETECT_CHARS).split('\n')) {
     const marker = FENCE.exec(line)?.[1];
     if (fence !== null) {
@@ -78,14 +84,28 @@ export function markdownSignals(text: string): Signals {
       s.signalLines++;
       continue;
     }
-    if (line.trim() === '') continue;
+    if (line.trim() === '') {
+      inTable = header = false;
+      continue;
+    }
     s.lines++;
-    let signalled = false;
+    // Body rows of a pipe table are Markdown structure too, so a long table keeps its density
+    inTable &&= line.includes('|');
+    let signalled = inTable;
+    if (inTable) s.tableLines++;
     for (const [signal, re] of LINE_SIGNALS) {
-      if (!re.test(line)) continue;
+      if (inTable || !re.test(line)) continue;
       s.types.add(signal);
       signalled = true;
       if (signal === 'heading') s.headings++;
+      if (signal === 'table') {
+        inTable = true;
+        s.tableLines++;
+        if (header) {
+          s.tableLines++;
+          s.signalLines++;
+        }
+      }
       break; // a task item is also a list item; count it once
     }
     let inline = false;
@@ -97,6 +117,7 @@ export function markdownSignals(text: string): Signals {
     if (inline) s.inlineLines++;
     signalled ||= inline;
     if (signalled) s.signalLines++;
+    header = !signalled && line.includes('|');
     if (KEY_VALUE.test(line)) s.keyValueLines++;
     if (CODE_LINE.test(line)) s.codeLines++;
   }
@@ -111,12 +132,17 @@ export function markdownConfidence(c: EntryContent): number {
   if (tryParseJson(c).ok) return 0;
   const s = signalsOf(c);
   if (!s || s.lines === 0) return 0;
+  // A bare pipe table is as much records as Markdown; records (when it detects) ranks first
+  if (s.tableLines === s.lines) return 0.5;
   const density = s.signalLines / Math.max(s.lines, 1);
   // One kind of signal is enough when it's inline syntax on most lines, e.g. a note made of
   // `**Label:** value` lines. A bare `- item` list or one bold word isn't.
   const repeatedInline = s.inlineLines >= 2 && s.inlineLines >= s.lines * 0.5;
   const enough =
-    s.types.size >= 2 || (s.headings >= 1 && s.signalLines >= 2) || repeatedInline;
+    s.types.size >= 2 ||
+    (s.headings >= 1 && s.signalLines >= 2) ||
+    repeatedInline ||
+    (s.tableLines > 0 && s.lines > s.tableLines);
   if (!enough) return 0;
   // YAML with `# comments` and `- items`, or code with `# comments`, isn't Markdown
   const prose = s.lines - s.signalLines;

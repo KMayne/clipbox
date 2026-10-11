@@ -90,6 +90,24 @@ describe('markdown detection', () => {
     expect(kinds(textContent(note))).toEqual(['text']);
   });
 
+  const TABLE =
+    '| id | name | score |\n|---|---|---|\n' +
+    Array.from({ length: 20 }, (_, i) => `| ${i} | name${i} | ${i * 3} |`).join('\n') +
+    '\n';
+
+  it.each([
+    ['a heading', `# Scores\n\n${TABLE}`],
+    ['a line of prose', `Scores from the last run, by person.\n\n${TABLE}`],
+  ])('ranks a long pipe table with %s above records', (_, text) => {
+    const c = textContent(text);
+    expect(kinds(c)[0]).toBe('markdown');
+    expect(kinds(c)).toContain('records');
+  });
+
+  it('leaves a bare pipe table to records, offering Markdown second', () => {
+    expect(kinds(textContent(TABLE)).slice(0, 2)).toEqual(['records', 'markdown']);
+  });
+
   it('does not claim JSON', () => {
     const json = JSON.stringify({ text: '# heading\n- [link](https://x.dev) **bold**' });
     expect(kinds(textContent(json))).not.toContain('markdown');
