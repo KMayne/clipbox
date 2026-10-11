@@ -57,6 +57,12 @@ function remoteHandle(entryId: EntryId, kind: Kind, summary: ValueHandle['summar
     html: async () => schemas.html.parse(await slice({ type: 'html' })),
     media: async () => schemas.media.parse(await slice({ type: 'media' })),
     page: async (index, scale) => schemas.image.parse(await slice({ type: 'page', index, scale })),
+    count: async table =>
+      z
+        .number()
+        .int()
+        .nonnegative()
+        .parse(await slice({ type: 'count', table })),
   };
 }
 

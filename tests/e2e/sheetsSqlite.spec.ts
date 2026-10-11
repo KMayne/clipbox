@@ -98,8 +98,12 @@ test('sqlite lists tables, shows rows and opens a table as CSV', async ({ page }
   const rows = page.getByTestId('records-table');
   await expect(rows).toContainText('Mars');
 
-  await tables.getByRole('button', { name: /tags/ }).click();
+  // Row counts aren't computed at open; the selected table is counted on demand
+  const tags = tables.getByRole('button', { name: /tags/ });
+  await expect(tags).toContainText('—');
+  await tags.click();
   await expect(rows).toContainText('rocky');
+  await expect(tags).not.toContainText('—');
 
   await page.getByText('Schema SQL').click();
   await expect(page.getByText(/CREATE TABLE planets/).first()).toBeVisible();

@@ -16,8 +16,15 @@ export interface SqliteColumn {
 
 export interface SqliteTable {
   name: string;
-  /** Null if counting failed (e.g. a virtual table whose module sql.js lacks). */
+  /**
+   * Row count. Not counted at open (a full scan per table is slow on big databases): it's an
+   * estimate from sqlite_stat1 if present, else null, until `countRows` runs.
+   */
   rows: number | null;
+  /** True once `rows` is an exact count. */
+  exact: boolean;
+  /** Set if counting failed (e.g. a virtual table whose module sql.js lacks). */
+  countError?: string;
   columns: SqliteColumn[];
 }
 
@@ -94,6 +101,7 @@ export function openDatabase(SQL: SqlJsStatic, bytes: Uint8Array): SqliteValue {
       sql: typeof sql === 'string' ? sql : null,
     }),
   );
+  const estimates = statEstimates(db);
   const tables = objects
     .filter(o => o.type === 'table' && !o.name.startsWith('sqlite_'))
     .map((o): SqliteTable => {
@@ -105,13 +113,7 @@ export function openDatabase(SQL: SqlJsStatic, bytes: Uint8Array): SqliteValue {
           pk: num(pk) > 0,
         }),
       );
-      let rows: number | null = null;
-      try {
-        rows = num(query(db, `SELECT count(*) FROM ${quoteIdent(o.name)}`)[0]?.[0]);
-      } catch {
-        // e.g. a virtual table using a module sql.js wasn't built with
-      }
-      return { name: o.name, rows, columns };
+      return { name: o.name, rows: estimates.get(o.name) ?? null, exact: false, columns };
     });
   return {
     kind: 'sqlite',
@@ -125,6 +127,35 @@ export function openDatabase(SQL: SqlJsStatic, bytes: Uint8Array): SqliteValue {
     userVersion: num(pragma(db, 'user_version')),
     encoding: str(pragma(db, 'encoding')),
   };
+}
+
+/** Row estimates recorded by ANALYZE, if the database has them; cheap to read. */
+function statEstimates(db: Database): Map<string, number> {
+  const out = new Map<string, number>();
+  try {
+    for (const [tbl, stat] of query(db, 'SELECT tbl, stat FROM sqlite_stat1')) {
+      const n = Number(str(stat).split(' ')[0]);
+      if (typeof tbl === 'string' && Number.isFinite(n))
+        out.set(tbl, Math.max(out.get(tbl) ?? 0, n));
+    }
+  } catch {
+    // no sqlite_stat1 table: ANALYZE was never run
+  }
+  return out;
+}
+
+/** Exact row count for one table, cached on the value. Runs only when asked (table selected). */
+export function countRows(v: SqliteValue, table: number): number {
+  const t = tableAt(v, table);
+  if (t.exact && t.rows !== null) return t.rows;
+  try {
+    t.rows = num(query(v.db, `SELECT count(*) FROM ${quoteIdent(t.name)}`)[0]?.[0]);
+    t.exact = true;
+    return t.rows;
+  } catch (err) {
+    t.countError = err instanceof Error ? err.message : String(err);
+    throw err;
+  }
 }
 
 const tableAt = (v: SqliteValue, i = 0): SqliteTable => {
@@ -169,10 +200,16 @@ const columnType = (c: SqliteColumn) =>
 const tableInfo = (t: SqliteTable): TableInfo => ({
   name: t.name,
   extent: t.rows ?? 0,
+  exact: t.exact,
   columns: t.columns.map((c): ColumnInfo => ({ name: c.name, type: columnType(c) })),
 });
 
-const rowCount = (t: SqliteTable) => (t.rows === null ? '? rows' : plural(t.rows, 'row'));
+const rowCount = (t: SqliteTable) =>
+  t.rows === null
+    ? 'rows not counted'
+    : t.exact
+      ? plural(t.rows, 'row')
+      : `~${plural(t.rows, 'row')} (estimate)`;
 
 export function schemaSql(v: SqliteValue): string {
   return v.objects.flatMap(o => (o.sql ? [`${o.sql};`] : [])).join('\n\n');
@@ -235,6 +272,7 @@ export function createSqliteInterpreter(
     slice(v, req) {
       if (req.type === 'rows') return tableRows(v, req.table ?? 0, req.from, req.to);
       if (req.type === 'text') return schemaSql(v);
+      if (req.type === 'count') return countRows(v, req.table);
       return unsupportedSlice('sqlite', req);
     },
     export: v => ({ text: schemaSql(v) }),

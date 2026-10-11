@@ -67,8 +67,10 @@ export interface Summary {
 /** One table of a multi-table value. */
 export interface TableInfo {
   name: string;
-  /** Row count. */
+  /** Row count; an estimate (or 0 if unknown) when `exact` is false. */
   extent: number;
+  /** False when `extent` hasn't been counted; call `ValueHandle.count(table)`. Default true. */
+  exact?: boolean;
   columns: ColumnInfo[];
 }
 
@@ -137,7 +139,9 @@ export type SliceRequest =
   /** Playable audio/video bytes and MIME type. */
   | { type: 'media' }
   /** One page (0-based) rendered to PNG at `scale` × its natural size (PDF). */
-  | { type: 'page'; index: number; scale: number };
+  | { type: 'page'; index: number; scale: number }
+  /** Exact row count of one table of a multi-table value (may be slow; call on demand). */
+  | { type: 'count'; table: number };
 
 export interface ImageData {
   bytes: Uint8Array<ArrayBuffer>;
@@ -164,6 +168,8 @@ export interface ValueHandle {
   media(): Promise<MediaData>;
   /** PNG of page `index` (0-based) at `scale`. */
   page(index: number, scale: number): Promise<ImageData>;
+  /** Exact row count of table `table` (see `TableInfo.exact`). */
+  count(table: number): Promise<number>;
 }
 
 export interface RawView {

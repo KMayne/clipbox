@@ -10,7 +10,7 @@ import { bytesContent, textContent } from './helpers';
 const sqlite = register(createSqliteInterpreter(() => initSqlJs()));
 const ctx = { service: async () => null };
 
-async function fixture(): Promise<Uint8Array<ArrayBuffer>> {
+async function fixture({ analyze = false } = {}): Promise<Uint8Array<ArrayBuffer>> {
   const SQL = await initSqlJs();
   const db = new SQL.Database();
   db.run(`
@@ -25,6 +25,7 @@ async function fixture(): Promise<Uint8Array<ArrayBuffer>> {
     insert.run([`person ${i}`, i % 90, i === 0 ? new Uint8Array([1, 2, 255]) : null]);
   insert.free();
   db.run(`INSERT INTO "odd ""name""" VALUES ('a', 1.5), ('b', 2.5), ('c', null)`);
+  if (analyze) db.run('ANALYZE');
   const bytes = db.export();
   db.close();
   return new Uint8Array(bytes);
@@ -43,9 +44,10 @@ describe('sqlite interpreter', () => {
     const v = await sqlite.parse(bytesContent(await fixture()), ctx);
     expect(sqlite.label(v)).toMatch(/^SQLite · 2 tables · \d+(\.\d)? KB$/);
     const s = await sqlite.summarise(v);
-    expect(s.tables?.map(t => [t.name, t.extent, t.columns.length])).toEqual([
-      ['people', 250, 4],
-      ['odd "name"', 3, 2],
+    // Not counted at open: a full scan per table would be slow on big databases
+    expect(s.tables?.map(t => [t.name, t.extent, t.exact, t.columns.length])).toEqual([
+      ['people', 0, false, 4],
+      ['odd "name"', 0, false, 2],
     ]);
     expect(s.tables?.[0]?.columns).toEqual([
       { name: 'id', type: 'INTEGER · pk' },
@@ -55,8 +57,8 @@ describe('sqlite interpreter', () => {
     ]);
     const stat = (label: string) => s.stats.find(r => r.label === label);
     expect(stat('Tables')?.children?.map(c => c.value)).toEqual([
-      '250 rows · 4 columns',
-      '3 rows · 2 columns',
+      'rows not counted · 4 columns',
+      'rows not counted · 2 columns',
     ]);
     expect(stat('Views')?.value).toBe('1');
     expect(stat('Indexes')?.children).toEqual([{ label: 'people_name', value: 'on people' }]);
@@ -65,6 +67,25 @@ describe('sqlite interpreter', () => {
     const schema = await sqlite.slice(v, { type: 'text' });
     expect(schema).toContain('CREATE TABLE people');
     expect(schema).toContain('CREATE VIEW adults');
+  });
+
+  it('counts a table only on request, then reports it as exact', async () => {
+    const v = await sqlite.parse(bytesContent(await fixture()), ctx);
+    expect(await sqlite.slice(v, { type: 'count', table: 0 })).toBe(250);
+    expect(await sqlite.slice(v, { type: 'count', table: 1 })).toBe(3);
+    const s = await sqlite.summarise(v);
+    expect(s.tables?.map(t => [t.extent, t.exact])).toEqual([
+      [250, true],
+      [3, true],
+    ]);
+  });
+
+  it('uses sqlite_stat1 estimates when the database was analyzed', async () => {
+    const v = await sqlite.parse(bytesContent(await fixture({ analyze: true })), ctx);
+    const s = await sqlite.summarise(v);
+    expect(s.tables?.[0]).toMatchObject({ extent: 250, exact: false });
+    const tables = s.stats.find(r => r.label === 'Tables');
+    expect(tables?.children?.[0]?.value).toBe('~250 rows (estimate) · 4 columns');
   });
 
   it('reads windows of rows with LIMIT/OFFSET', async () => {

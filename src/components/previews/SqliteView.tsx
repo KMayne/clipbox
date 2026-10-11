@@ -1,7 +1,7 @@
 import { css, cx } from '@emotion/css';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatCount } from '../../core/format';
-import type { ValueHandle } from '../../core/types';
+import type { TableInfo, ValueHandle } from '../../core/types';
 import { theme } from '../../theme';
 import { ModulePreview } from '../ModulePreview';
 import { ui } from '../ui';
@@ -103,16 +103,49 @@ function SchemaSql({ handle }: { handle: ValueHandle }) {
   );
 }
 
-/** Table list on the left; the selected table's rows (read with LIMIT/OFFSET) on the right. */
+type Count = number | { error: string };
+
+/** List label for a table: exact count, "~n" estimate, or "—" if not counted yet. */
+function countLabel(t: TableInfo, count: Count | undefined): string {
+  if (typeof count === 'number') return formatCount(count);
+  if (count) return '!';
+  if (t.exact !== false) return formatCount(t.extent);
+  return t.extent > 0 ? `~${formatCount(t.extent)}` : '—';
+}
+
+/**
+ * Table list on the left; the selected table's rows (read with LIMIT/OFFSET) on the right.
+ * Row counts aren't computed when the database opens (a full scan per table); the selected
+ * table is counted on demand, once.
+ */
 export function SqliteView({ handle }: { handle: ValueHandle }) {
   const tables = handle.summary.tables ?? [];
   const [active, setActive] = useState(0);
   const [schemaOpen, setSchemaOpen] = useState(false);
+  const [counts, setCounts] = useState<ReadonlyMap<number, Count>>(new Map());
   const table = tables[active];
-  const view = useMemo(
-    () => (table ? tableHandle(handle, active, table) : null),
-    [handle, active, table],
-  );
+  const count = counts.get(active);
+  const needsCount = table !== undefined && table.exact === false && count === undefined;
+
+  useEffect(() => {
+    if (!needsCount) return;
+    let live = true;
+    handle.count(active).then(
+      n => live && setCounts(prev => new Map(prev).set(active, n)),
+      (err: unknown) =>
+        live && setCounts(prev => new Map(prev).set(active, { error: String(err) })),
+    );
+    return () => {
+      live = false;
+    };
+  }, [handle, active, needsCount]);
+
+  const view = useMemo(() => {
+    if (!table) return null;
+    if (table.exact !== false) return tableHandle(handle, active, table);
+    if (typeof count !== 'number') return null;
+    return tableHandle(handle, active, { ...table, extent: count, exact: true });
+  }, [handle, active, table, count]);
 
   return (
     <div className={styles.layout}>
@@ -125,13 +158,21 @@ export function SqliteView({ handle }: { handle: ValueHandle }) {
             onClick={() => setActive(i)}
           >
             <span className={styles.name}>{t.name}</span>
-            <span className={styles.count}>{formatCount(t.extent)}</span>
+            <span className={styles.count}>{countLabel(t, counts.get(i))}</span>
           </button>
         ))}
         {tables.length === 0 && <div className={ui.empty}>No tables</div>}
       </nav>
       <div className={styles.main}>
-        <div className={preview.fill}>{view && <RecordsTable key={active} handle={view} />}</div>
+        <div className={preview.fill}>
+          {view ? (
+            <RecordsTable key={active} handle={view} />
+          ) : typeof count === 'object' ? (
+            <div className={ui.empty}>Couldn't read this table: {count.error}</div>
+          ) : (
+            table && <div className={ui.empty}>Counting rows…</div>
+          )}
+        </div>
         <details
           className={styles.schema}
           open={schemaOpen}
