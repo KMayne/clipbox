@@ -8,7 +8,7 @@ import { useModuleStore } from '../state/moduleStore';
 import { storageUsed, useHistoryStore, type KeepFor } from '../state/persistence';
 import { useUiStore } from '../state/uiStore';
 import { sw, type CacheState } from '../swClient';
-import { theme } from '../theme';
+import { type SchemeId, schemeId, schemes, setScheme, theme } from '../theme';
 import { ui } from './ui';
 import { useAsync } from './useAsync';
 
@@ -131,6 +131,41 @@ const styles = {
     gap: 6px;
     flex-wrap: wrap;
   `,
+  appearance: css`
+    display: grid;
+    gap: 8px;
+    margin-bottom: 16px;
+  `,
+  schemes: css`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  `,
+  scheme: css`
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 8px 10px;
+    min-width: 128px;
+    border: 1px solid;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+  `,
+  schemeActive: css`
+    outline: 2px solid ${theme.accent};
+    outline-offset: 1px;
+  `,
+  schemeDots: css`
+    display: flex;
+    gap: 4px;
+  `,
+  schemeDot: css`
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  `,
   footer: css`
     display: flex;
     justify-content: space-between;
@@ -175,6 +210,7 @@ function Settings() {
             ✕
           </button>
         </div>
+        <AppearanceSection />
         <HistorySection />
         <h3 className={styles.h3}>MODULES</h3>
         {!sw.supported && (
@@ -343,6 +379,41 @@ const KEEP_FOR_OPTIONS: { value: KeepFor; label: string }[] = [
 ];
 
 type Confirming = null | 'disable' | 'clear';
+
+const schemeIds: SchemeId[] = ['nord', 'tokyo-night', 'catppuccin-mocha', 'one-dark', 'gruvbox'];
+
+function AppearanceSection() {
+  return (
+    <section className={styles.appearance} aria-label="Appearance">
+      <h3 className={styles.h3}>APPEARANCE</h3>
+      <div className={styles.schemes} role="radiogroup" aria-label="Colour scheme">
+        {schemeIds.map(id => {
+          const s = schemes[id];
+          return (
+            <button
+              key={id}
+              role="radio"
+              aria-checked={id === schemeId}
+              className={cx(styles.scheme, id === schemeId && styles.schemeActive)}
+              style={{ background: s.bg, color: s.text, borderColor: s.border }}
+              onClick={() => id !== schemeId && setScheme(id)}
+            >
+              <span className={styles.schemeDots}>
+                {[s.hue.blue, s.hue.green, s.hue.orange, s.hue.purple, s.hue.red].map(c => (
+                  <span key={c} className={styles.schemeDot} style={{ background: c }} />
+                ))}
+              </span>
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
+      <p className={styles.description}>
+        Changing the scheme reloads the page; your pastes are kept.
+      </p>
+    </section>
+  );
+}
 
 function HistorySection() {
   const { keepHistory, keepFor } = useHistoryStore(s => s.settings);
