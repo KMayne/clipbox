@@ -7,6 +7,7 @@ import { isQrService } from '../../../modules/qr/service';
 import {
   imageConvert,
   imageDataUrl,
+  imagePagesAsPng,
   imagePalette,
   imageReadCodes,
   imageResize,
@@ -242,6 +243,26 @@ export const imageImpls = [
       const colours = palette(image.data, count);
       if (!colours.length) throw new Error('The image is fully transparent');
       return colours.map((hex, i) => textResult(hex, 'text/plain', `colour-${i + 1}.txt`));
+    },
+  }),
+  // Multi-page images (TIFF): every page, rendered by the imageformats module that decoded it
+  implement(imagePagesAsPng, {
+    value: imageInterpreter.isValue,
+    applies: ({ value }) => (value.decoded?.pages.length ?? 1) > 1,
+    async run({ value, content }) {
+      const { decoded } = value;
+      if (!decoded) throw new Error('This image has one page');
+      const stem = withExtension(content.name, '', 'page').slice(0, -1);
+      const pad = String(decoded.pages.length).length;
+      const pages = [];
+      for (let i = 0; i < decoded.pages.length; i++) {
+        pages.push({
+          mime: 'image/png',
+          name: `${stem}-page${String(i + 1).padStart(Math.max(2, pad), '0')}.png`,
+          bytes: i === 0 ? value.bytes : await decoded.renderPage(i),
+        });
+      }
+      return pages;
     },
   }),
 ];

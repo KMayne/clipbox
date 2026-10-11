@@ -33,13 +33,10 @@ export const pemPublicKey = defineAction({
   kinds: ['pem'],
   module: 'x509',
   params: z.object({
-    all: z
-      .boolean()
-      .default(false)
-      .meta({
-        title: 'Every block',
-        description: 'Otherwise only the first (the leaf certificate)',
-      }),
+    all: z.boolean().default(false).meta({
+      title: 'Every block',
+      description: 'Otherwise only the first (the leaf certificate)',
+    }),
   }),
   label: p => (p.all ? 'Extract public keys' : 'Extract public key'),
 });

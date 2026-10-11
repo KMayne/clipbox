@@ -113,8 +113,17 @@ export const imagePalette = defineAction({
   label: p => `Extract palette (${p.count})`,
 });
 
+export const imagePagesAsPng = defineAction({
+  id: 'image.pagesAsPng',
+  title: 'Pages as PNG',
+  group: 'Convert',
+  kinds: ['image'],
+  params: z.object({}),
+});
+
 export const imageActions = [
   imageConvert,
+  imagePagesAsPng,
   imageResize,
   imageRotate,
   imageDataUrl,

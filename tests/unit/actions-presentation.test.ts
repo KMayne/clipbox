@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseRange } from '../../src/core/actions/extract';
 import type { EntryId } from '../../src/core/types';
 import { Engine } from '../../src/engine/engine';
-import { makePptx, samplePptx, solidPng } from '../fixtures/pptx';
+import { emfStub, makePptx, samplePptx, solidPng } from '../fixtures/pptx';
 
 const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 const td = new TextDecoder();
@@ -25,20 +25,62 @@ describe('presentation actions', () => {
     expect(out.map(o => [o.name, o.mime])).toEqual([
       ['slide-01-image1.png', 'image/png'],
       ['slide-01-image2.png', 'image/png'],
+      // EMF, WMF and TIFF come out as the original files (the imageformats module previews them)
+      ['slide-02-image1.emf', 'image/emf'],
       ['unused-image1.png', 'image/png'],
     ]);
     // slide-01-image1 is image2.png (the blue 64×64 one)
     expect(out[0]?.bytes).toEqual(solidPng(64, 64, [40, 120, 220]));
+    expect(out[2]?.bytes).toEqual(emfStub());
+  });
+
+  it('converts vector/legacy images to PNG with the imageformats module when asked', async () => {
+    const png = solidPng(8, 8, [1, 2, 3]);
+    const seen: string[] = [];
+    const engine = new Engine({
+      loaders: {
+        imageformats: async () => ({
+          service: {
+            toPng: async (_bytes: Uint8Array, name: string) => {
+              seen.push(name);
+              return [png];
+            },
+          },
+        }),
+      },
+    });
+    await engine.ingest(entry(samplePptx()));
+    const out = await engine.runAction('en-1', 'presentation', 'presentation.extractImages', {
+      convert: true,
+    });
+    expect(out.map(o => [o.name, o.mime])).toEqual([
+      ['slide-01-image1.png', 'image/png'],
+      ['slide-01-image2.png', 'image/png'],
+      ['slide-02-image1.png', 'image/png'],
+      ['unused-image1.png', 'image/png'],
+    ]);
+    expect(out[2]?.bytes).toEqual(png);
+    expect(seen).toEqual(['ppt/media/image4.emf']);
+
+    // Without the module, converting fails clearly
+    const bare = await engineWith();
+    await expect(
+      bare.runAction('en-1', 'presentation', 'presentation.extractImages', { convert: true }),
+    ).rejects.toThrow('The image formats module is unavailable');
   });
 
   it('limits images to a slide range', async () => {
     const engine = await engineWith();
     const run = (slides: string) =>
       engine.runAction('en-1', 'presentation', 'presentation.extractImages', { slides });
-    expect((await run('2')).map(o => o.name)).toEqual(['slide-02-image1.png']);
+    expect((await run('2')).map(o => o.name)).toEqual([
+      'slide-02-image1.png',
+      'slide-02-image2.emf',
+    ]);
     expect((await run('1-2')).map(o => o.name)).toEqual([
       'slide-01-image1.png',
       'slide-01-image2.png',
+      'slide-02-image1.emf',
     ]);
     await expect(run('3')).rejects.toThrow('Extract images found nothing');
     await expect(run('9')).rejects.toThrow("No slides in '9' (there are 3)");

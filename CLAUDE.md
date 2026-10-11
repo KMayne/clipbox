@@ -38,6 +38,7 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
     - `sqlite`: sql.js WASM, read-only.
     - `pdf`: pdf.js in fake-worker mode inside the engine worker, rendering pages to PNG with `OffscreenCanvas`.
     - `libarchive`: 7z, RAR, tar.xz, tar.bz2 and zstd, owning the same `archive` kind as core.
+    - `imageformats`: TIFF (UTIF.js via `utif2`: multi-page, LZW/PackBits/Deflate/JPEG/CCITT G3/G4), EMF with EMF+ and WMF (our own GDI/GDI+ players drawing on `OffscreenCanvas`), PSD composite, TGA and PCX. Owns the same `image` kind as core: the value's `bytes` are a PNG of page 1 and `ImageValue.decoded` holds the source format, stats and `renderPage`. HEIC is skipped (libheif is LGPL).
     - `audiotools`: Mediabunny (MPL-2.0) for decode, re-encode (WebCodecs) and remux; owns no kinds, only serves the Normalise audio and Video frame as PNG actions. Its BS.1770 loudness, true-peak and limiter DSP is pure TS beside it (`loudness.ts`, `truePeak.ts`, `limiter.ts`).
     - `qr`: jsQR (Apache-2.0); owns no kinds. Read QR / barcode uses Chromium's `BarcodeDetector` where the platform has one (macOS, ChromeOS, Android) and falls back to this elsewhere (Windows, Linux, the e2e browser).
     - Services for actions: `pdf` (images, metadata), `media` (metadata), `sqlite` (table rows); each module's light `types.ts`/`service.ts` holds the interface and guard that `run/` imports.

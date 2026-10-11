@@ -11,4 +11,5 @@ export const workerLoaders: Partial<Record<ModuleId, () => Promise<WorkerModule>
   libarchive: () => import('./libarchive/worker'),
   audiotools: () => import('./audiotools/worker'),
   qr: () => import('./qr/worker'),
+  imageformats: () => import('./imageformats/worker'),
 };

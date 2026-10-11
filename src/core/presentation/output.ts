@@ -2,6 +2,7 @@
 
 import { sha256 } from '../hash';
 import { MAGIC_EXTENSION, MAGIC_MIME, detectMagic, isImageMagic } from '../magic';
+import { LEGACY_IMAGE_INFO, sniffLegacyImage } from '../../modules/imageformats/detect';
 import { readMedia } from './parse';
 import type { PresentationValue, Slide } from './types';
 
@@ -49,15 +50,23 @@ export interface DeckImage {
   bytes: Uint8Array<ArrayBuffer>;
 }
 
+/** Renders an EMF, WMF or TIFF (etc.) to one PNG per page; null if it can't. */
+export type LegacyConverter = (
+  bytes: Uint8Array<ArrayBuffer>,
+  name: string,
+) => Promise<Uint8Array<ArrayBuffer>[] | null>;
+
 /**
  * Every distinct image in `ppt/media`, in order of first use by the slides in `slides` (1-based
- * numbers; all when omitted), then the unused ones (only when extracting every slide). Formats
- * a browser can't show (EMF, WMF, TIFF) are skipped; duplicates are dropped by content.
+ * numbers; all when omitted), then the unused ones (only when extracting every slide).
+ * Duplicates are dropped by content. Formats a browser can't show (EMF, WMF, TIFF) come out as
+ * the original files, or as PNG renders when `convert` is given.
  */
 export async function deckImages(
   v: PresentationValue,
   slides?: Set<number>,
   limit = Infinity,
+  convert?: LegacyConverter,
 ): Promise<{ images: DeckImage[]; truncated: boolean }> {
   const order: { media: number; prefix: string }[] = [];
   const seen = new Set<number>();
@@ -83,18 +92,32 @@ export async function deckImages(
     } catch {
       continue; // damaged or guarded entries are skipped
     }
+    const path = v.media[media]?.path ?? '';
     const magic = detectMagic(bytes);
-    if (!magic || !isImageMagic(magic)) continue;
+    const web = magic && isImageMagic(magic) ? magic : null;
+    const legacy = web ? null : sniffLegacyImage(bytes, path);
+    if (!web && !legacy) continue;
     const hash = await sha256(bytes);
     if (hashes.has(hash)) continue;
     if (images.length >= limit) return { images, truncated: true };
     hashes.add(hash);
     const n = (counts.get(prefix) ?? 0) + 1;
     counts.set(prefix, n);
-    images.push({
-      name: `${prefix}-image${n}.${MAGIC_EXTENSION[magic]}`,
-      mime: MAGIC_MIME[magic],
-      bytes,
+    const stem = `${prefix}-image${n}`;
+    if (web) {
+      images.push({ name: `${stem}.${MAGIC_EXTENSION[web]}`, mime: MAGIC_MIME[web], bytes });
+      continue;
+    }
+    const info = legacy ? LEGACY_IMAGE_INFO[legacy] : null;
+    if (!info) continue;
+    const pngs = convert ? await convert(bytes, path).catch(() => null) : null;
+    if (!pngs?.length) {
+      images.push({ name: `${stem}.${info.extension}`, mime: info.mime, bytes });
+      continue;
+    }
+    pngs.forEach((png, i) => {
+      const page = pngs.length > 1 ? `-page${i + 1}` : '';
+      images.push({ name: `${stem}${page}.png`, mime: 'image/png', bytes: png });
     });
   }
   return { images, truncated: false };

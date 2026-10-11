@@ -31,6 +31,7 @@ export default defineConfig({
       'pdfjs-dist',
       'pdfjs-dist/build/pdf.worker.mjs',
       'fzstd',
+      'utif2',
       'libarchive.js/src/webworker/wasm-module.js',
       'libarchive.js/src/webworker/archive-reader.js',
       'libarchive.js/src/webworker/wasm-gen/libarchive.js',

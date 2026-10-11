@@ -1,7 +1,19 @@
 export type MagicType =
-  'png' | 'jpeg' | 'gif' | 'webp' | 'bmp' | 'ico' | 'svg' | 'pdf' | 'zip' | 'gzip' | 'wasm' | 'elf';
+  | 'png'
+  | 'jpeg'
+  | 'gif'
+  | 'webp'
+  | 'bmp'
+  | 'ico'
+  | 'cur'
+  | 'svg'
+  | 'pdf'
+  | 'zip'
+  | 'gzip'
+  | 'wasm'
+  | 'elf';
 
-const IMAGE_TYPES = new Set<MagicType>(['png', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'svg']);
+const IMAGE_TYPES = new Set<MagicType>(['png', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'cur', 'svg']);
 
 const startsWith = (b: Uint8Array, sig: number[], offset = 0) =>
   b.length >= offset + sig.length && sig.every((v, i) => b[offset + i] === v);
@@ -16,6 +28,8 @@ export function detectMagic(b: Uint8Array): MagicType | null {
   if (ascii(b, 0, 4) === 'RIFF' && ascii(b, 8, 12) === 'WEBP') return 'webp';
   if (ascii(b, 0, 2) === 'BM' && b.length > 26) return 'bmp';
   if (startsWith(b, [0, 0, 1, 0])) return 'ico';
+  // Cursors: an icon directory of type 2 (Chromium decodes them like icons)
+  if (startsWith(b, [0, 0, 2, 0]) && b.length > 22 && (b[4] ?? 0) + (b[5] ?? 0) > 0) return 'cur';
   if (ascii(b, 0, 5) === '%PDF-') return 'pdf';
   if (startsWith(b, [0x50, 0x4b, 0x03, 0x04])) return 'zip';
   if (startsWith(b, [0x1f, 0x8b])) return 'gzip';
@@ -36,6 +50,7 @@ export const MAGIC_MIME: Record<MagicType, string> = {
   webp: 'image/webp',
   bmp: 'image/bmp',
   ico: 'image/x-icon',
+  cur: 'image/x-icon',
   svg: 'image/svg+xml',
   pdf: 'application/pdf',
   zip: 'application/zip',
@@ -52,6 +67,7 @@ export const MAGIC_EXTENSION: Record<MagicType, string> = {
   webp: 'webp',
   bmp: 'bmp',
   ico: 'ico',
+  cur: 'cur',
   svg: 'svg',
   pdf: 'pdf',
   zip: 'zip',
@@ -77,6 +93,7 @@ export function imageDimensions(type: MagicType, b: Uint8Array): Dimensions | nu
       case 'bmp':
         return { width: dv.getInt32(18, true), height: Math.abs(dv.getInt32(22, true)) };
       case 'ico':
+      case 'cur':
         return { width: b[6] || 256, height: b[7] || 256 };
       case 'webp':
         return webpDimensions(b, dv);

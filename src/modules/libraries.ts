@@ -21,4 +21,5 @@ export const moduleLibraries: Record<string, ModuleLibrary> = {
   libarchive: { name: 'libarchive.js', package: 'libarchive.js' },
   audiotools: { name: 'Mediabunny', package: 'mediabunny' },
   qr: { name: 'jsQR', package: 'jsqr' },
+  imageformats: { name: 'UTIF.js', package: 'utif2' },
 };
