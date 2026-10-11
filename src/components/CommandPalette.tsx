@@ -1,12 +1,20 @@
 import { css, cx } from '@emotion/css';
 import Fuse from 'fuse.js';
 import { useMemo, useState } from 'react';
-import { commands, type Command } from '../commands';
+import { commands, selectionCommands, type Command } from '../commands';
+import { useCaptureStore } from '../state/captureStore';
 import { useUiStore } from '../state/uiStore';
 import { theme } from '../theme';
 import { ui } from './ui';
+import { useAsync } from './useAsync';
 
-const fuse = new Fuse(commands, { keys: ['title'], threshold: 0.4 });
+/** An action's own title ranks above its group, so "Format" finds Format before Minify. */
+const searchKeys = [
+  { name: 'name', weight: 2 },
+  { name: 'title', weight: 1 },
+];
+
+const NO_COMMANDS: Command[] = [];
 
 const styles = {
   backdrop: css`
@@ -57,7 +65,27 @@ function Palette() {
   const close = () => useUiStore.getState().setPaletteOpen(false);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
-  const results = useMemo(() => (query ? fuse.search(query).map(r => r.item) : commands), [query]);
+  const selection = useCaptureStore(s => s.selection);
+  const key = selection ? `${selection.entryId}:${selection.kind}` : '';
+  const dynamic = useAsync(key, () =>
+    selection ? selectionCommands(selection) : Promise.resolve(NO_COMMANDS),
+  );
+  const all = useMemo(
+    () => (dynamic.status === 'ok' ? [...commands, ...dynamic.value] : commands),
+    [dynamic],
+  );
+  const fuse = useMemo(
+    () =>
+      new Fuse(
+        all.map(c => ({ ...c, name: c.name ?? c.title })),
+        { keys: searchKeys, threshold: 0.4 },
+      ),
+    [all],
+  );
+  const results = useMemo(
+    () => (query ? fuse.search(query).map(r => r.item) : all),
+    [query, fuse, all],
+  );
 
   const run = (cmd: Command | undefined) => {
     if (!cmd) return;

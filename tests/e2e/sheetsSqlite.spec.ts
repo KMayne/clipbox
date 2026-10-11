@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import initSqlJs from 'sql.js';
 import * as XLSX from 'xlsx';
-import { lastCopy, recordClipboard } from './helpers';
+import { actionsPane, lastCopy, recordClipboard } from './helpers';
 
 /** Drops a binary file; the bytes travel as base64 because page.evaluate takes JSON. */
 async function dropBytes(page: Page, name: string, type: string, bytes: Uint8Array) {
@@ -119,8 +119,7 @@ test('sqlite lists tables, shows rows and opens a table as CSV', async ({ page }
   await page.getByText('Schema SQL').click();
   await expect(page.getByText(/CREATE TABLE planets/).first()).toBeVisible();
 
-  await page.getByRole('button', { name: 'Open as' }).click();
-  await page.getByRole('menuitem', { name: 'Table planets as CSV' }).click();
+  await actionsPane(page).getByRole('button', { name: 'Table planets as CSV' }).click();
   await expect(page.getByTestId('capture')).toHaveCount(2);
   const derived = page.getByTestId('capture').first();
   await expect(derived.getByTestId('derived-from')).toContainText('Table planets as CSV');

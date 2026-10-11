@@ -1,5 +1,5 @@
 import { css, cx } from '@emotion/css';
-import { mdiContentCopy } from '@mdi/js';
+import { mdiContentCopy, mdiLightningBoltOutline } from '@mdi/js';
 import { Icon } from '@mdi/react';
 import { copySelection } from '../capture/copyToClipboard';
 import type { ValueHandle } from '../core/types';
@@ -14,7 +14,6 @@ import { JsonTree } from './previews/JsonTree';
 import { MarkdownView } from './previews/MarkdownView';
 import { MediaView } from './previews/MediaView';
 import { ModulePreview } from './ModulePreview';
-import { OpenAsMenu } from './OpenAsMenu';
 import { ArchiveView } from './previews/ArchiveView';
 import { Base64Preview } from './previews/Base64Preview';
 import { JwtView } from './previews/JwtView';
@@ -115,6 +114,7 @@ export function Inspector() {
 function SelectionInspector({ selection }: { selection: Selection }) {
   const tab = useUiStore(s => s.tab);
   const setTab = useUiStore(s => s.setTab);
+  const actionsOpen = useUiStore(s => s.actionsOpen);
   const entry = useCaptureStore(s => findEntry(s.captures, selection.entryId)?.entry);
   const handle = useAsync(`${selection.entryId}:${selection.kind}`, () =>
     getHandle(selection.entryId, selection.kind),
@@ -129,9 +129,15 @@ function SelectionInspector({ selection }: { selection: Selection }) {
         <span>{handle.status === 'ok' ? handle.value.summary.label : '…'}</span>
         <span className={styles.source}>{entry?.name ?? entry?.mime}</span>
         <span className={styles.actions}>
-          {handle.status === 'ok' && handle.value.summary.derivations?.length ? (
-            <OpenAsMenu selection={selection} derivations={handle.value.summary.derivations} />
-          ) : null}
+          <button
+            className={ui.button}
+            aria-pressed={actionsOpen}
+            title={`${actionsOpen ? 'Hide' : 'Show'} actions (A)`}
+            onClick={() => useUiStore.getState().toggleActions()}
+          >
+            <Icon path={mdiLightningBoltOutline} size={0.6} />
+            Actions
+          </button>
           <button className={ui.button} onClick={() => void copySelection(selection)}>
             <Icon path={mdiContentCopy} size={0.6} />
             Copy

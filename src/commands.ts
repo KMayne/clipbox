@@ -1,12 +1,15 @@
 import { copySelection } from './capture/copyToClipboard';
 import { openFile, readClipboard } from './capture/sources';
-import { getHandle } from './engine/valueHandle';
-import { findEntry, useCaptureStore } from './state/captureStore';
+import { hasSettings } from './core/actions/types';
+import { runAction, runDerivation, selectionActions } from './state/actions';
+import { findEntry, useCaptureStore, type Selection } from './state/captureStore';
 import { useUiStore, type InspectorTab } from './state/uiStore';
 
 export interface Command {
   id: string;
   title: string;
+  /** What the palette matches first, e.g. an action's title without its group. */
+  name?: string;
   shortcut?: string;
   run(): void;
 }
@@ -24,14 +27,27 @@ export function removeSelectedCapture(): void {
   if (found) remove(found.capture.id);
 }
 
-/** Opens the Inspector's "Open as" menu for the selected value, if it has any derivations. */
-export async function openDerivationMenu(): Promise<void> {
-  const { selection } = useCaptureStore.getState();
-  const ui = useUiStore.getState();
-  if (!selection) return ui.notify('Nothing selected');
-  const handle = await getHandle(selection.entryId, selection.kind).catch(() => null);
-  if (!handle?.summary.derivations?.length) return ui.notify('Nothing to open this value as');
-  ui.setOpenAsOpen(true);
+/**
+ * Palette entries for the selection's actions ("<Group>: <Title>") and derivations
+ * ("Open: <Label>"). Actions with settings open the sidebar with their form focused.
+ */
+export async function selectionCommands(selection: Selection): Promise<Command[]> {
+  const { actions, derivations } = await selectionActions(selection);
+  return [
+    ...derivations.map(d => ({
+      id: `open.${d.id}`,
+      title: `Open: ${d.label}`,
+      name: d.label,
+      run: () => void runDerivation(selection, d),
+    })),
+    ...actions.map(a => ({
+      id: `action.${a.id}`,
+      title: `${a.group}: ${a.title}${hasSettings(a) ? '…' : ''}`,
+      name: a.title,
+      run: () =>
+        hasSettings(a) ? useUiStore.getState().focusAction(a.id) : void runAction(selection, a),
+    })),
+  ];
 }
 
 export const commands: Command[] = [
@@ -43,7 +59,12 @@ export const commands: Command[] = [
     shortcut: 'Ctrl+C',
     run: () => void copySelection(useCaptureStore.getState().selection),
   },
-  { id: 'value.openAs', title: 'Open as…', run: () => void openDerivationMenu() },
+  {
+    id: 'view.actions',
+    title: 'Toggle actions sidebar',
+    shortcut: 'A',
+    run: () => useUiStore.getState().toggleActions(),
+  },
   { id: 'settings.open', title: 'Settings', run: () => useUiStore.getState().openSettings() },
   tabCommand('preview', '1'),
   tabCommand('stats', '2'),
