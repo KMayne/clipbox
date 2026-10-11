@@ -38,11 +38,34 @@ export interface Selection {
 
 export type NewEntry = Omit<RawEntry, 'id'>;
 
+/**
+ * Lifecycle events for persistence (state/persistence.ts). `settled` fires once per entry
+ * ingested from add(), with the engine's content hash if ingest succeeded. `removed` covers
+ * remove() and eviction past MAX_CAPTURES; clear() fires `cleared` instead.
+ */
+export type CaptureEvent =
+  | { type: 'added'; capture: CaptureView }
+  | { type: 'settled'; captureId: CaptureId; entryId: EntryId; hash?: string }
+  | { type: 'removed'; captureIds: CaptureId[] }
+  | { type: 'cleared' };
+
+const eventListeners = new Set<(e: CaptureEvent) => void>();
+
+export const onCaptureEvent = (fn: (e: CaptureEvent) => void) => {
+  eventListeners.add(fn);
+  return () => eventListeners.delete(fn);
+};
+
+const emit = (e: CaptureEvent) => eventListeners.forEach(fn => fn(e));
+
 interface CaptureState {
   captures: CaptureView[];
   selection: Selection | null;
   add(source: CaptureSourceId, entries: NewEntry[]): void;
-  ingest(entryId: EntryId): Promise<void>;
+  /** Append saved captures (newest first) behind any live ones and ingest them one by one. */
+  restore(captures: Capture[]): void;
+  /** Resolves with the content hash, or undefined if the entry is gone or ingest failed. */
+  ingest(entryId: EntryId): Promise<string | undefined>;
   remove(captureId: CaptureId): void;
   clear(): void;
   toggle(captureId: CaptureId): void;
@@ -56,6 +79,14 @@ function release(capture: CaptureView) {
     void engine.forget(e.id);
   }
 }
+
+const entryView = (e: RawEntry): EntryView => ({
+  ...e,
+  status: e.size > CONFIRM_BYTES ? 'confirm' : 'pending',
+  preview: null,
+  interpretations: [],
+  thumbUrl: e.mime.startsWith('image/') ? URL.createObjectURL(e.blob) : undefined,
+});
 
 export const useCaptureStore = create<CaptureState>((set, get) => {
   const updateEntry = (entryId: EntryId, patch: Partial<EntryView>) =>
@@ -126,25 +157,46 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
         at: Date.now(),
         source,
         collapsed: false,
-        entries: newEntries.map(e => ({
-          ...e,
-          id: `en-${crypto.randomUUID()}`,
-          status: e.size > CONFIRM_BYTES ? 'confirm' : 'pending',
-          preview: null,
-          interpretations: [],
-          thumbUrl: e.mime.startsWith('image/') ? URL.createObjectURL(e.blob) : undefined,
-        })),
+        entries: newEntries.map(e => entryView({ ...e, id: `en-${crypto.randomUUID()}` })),
       };
       const kept = get().captures.map(c => ({ ...c, collapsed: true }));
-      kept.splice(MAX_CAPTURES - 1).forEach(release);
+      const evicted = kept.splice(MAX_CAPTURES - 1);
+      evicted.forEach(release);
       set({ captures: [capture, ...kept] });
-      for (const e of capture.entries) if (e.status === 'pending') void get().ingest(e.id);
+      emit({ type: 'added', capture });
+      if (evicted.length > 0) emit({ type: 'removed', captureIds: evicted.map(c => c.id) });
+      for (const e of capture.entries) {
+        if (e.status !== 'pending') continue;
+        void get()
+          .ingest(e.id)
+          .then(hash => emit({ type: 'settled', captureId: capture.id, entryId: e.id, hash }));
+      }
+    },
+
+    restore(all) {
+      const live = get().captures;
+      const saved = all.filter(c => !live.some(l => l.id === c.id));
+      const room = Math.max(0, MAX_CAPTURES - live.length);
+      const restored: CaptureView[] = saved.slice(0, room).map((c, i) => ({
+        ...c,
+        collapsed: live.length > 0 || i > 0,
+        entries: c.entries.map(entryView),
+      }));
+      if (saved.length > room)
+        emit({ type: 'removed', captureIds: saved.slice(room).map(c => c.id) });
+      if (restored.length === 0) return;
+      set({ captures: [...live, ...restored] });
+      // Sequentially, newest first, so a long history doesn't flood the engine
+      void (async () => {
+        for (const c of restored)
+          for (const e of c.entries) if (e.status === 'pending') await get().ingest(e.id);
+      })();
     },
 
     async ingest(entryId) {
       const capture = get().captures.find(c => c.entries.some(e => e.id === entryId));
       const entry = capture?.entries.find(e => e.id === entryId);
-      if (!capture || !entry) return;
+      if (!capture || !entry) return undefined;
       updateEntry(entryId, { status: 'pending' });
       try {
         const { blob, id, mime, size, name } = entry;
@@ -157,8 +209,10 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
         autoSelect(capture.id);
         for (const i of res.interpretations)
           if (i.status === 'loading') void resolve(entryId, i.kind);
+        return res.hash;
       } catch (err) {
         updateEntry(entryId, { status: 'error', error: String(err) });
+        return undefined;
       }
     },
 
@@ -172,12 +226,14 @@ export const useCaptureStore = create<CaptureState>((set, get) => {
         captures: captures.filter(c => c.id !== captureId),
         selection: selected ? null : selection,
       });
+      emit({ type: 'removed', captureIds: [captureId] });
     },
 
     clear() {
       get().captures.forEach(release);
       void engine.clear();
       set({ captures: [], selection: null });
+      emit({ type: 'cleared' });
     },
 
     toggle(captureId) {
