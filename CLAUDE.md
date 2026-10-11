@@ -2,7 +2,7 @@
 
 Paste anything (text/JSON/CSV/HTML/image/file), inspect it (interpretations, preview, stats, schema), and later transform it with a typed node graph. Web app, Chromium only, no backend.
 
-Plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md`. Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Next: saving pastes to IndexedDB, and Batch B (text formats).
+Plan: `~/.claude/plans/hi-claude-i-d-like-linked-hare.md`. Done: Deliverable 1a and Batch A (modules, values in the worker, Monaco, language detection, offline cache). Type assertions are banned (see Conventions). Batch B is merging in from parallel agents: persistence, YAML/XML and Markdown/NDJSON are done; derived captures + base64/JWT and value decoders + PEM are still running.
 
 ## Commands
 - `pnpm dev` — Vite dev server
@@ -31,6 +31,7 @@ Node lives under nvm: `export PATH=~/.nvm/versions/node/v26.11.1/bin:$PATH`.
 - `src/sw.ts` + `vite/modulesManifest.ts` — the plugin maps each module's entry to its files (chunks, workers, assets), emits `modules-manifest.json`, and emits `sw.js` with the manifest inlined. The SW precaches the core files and handles per-module download, remove and update. It only runs in production builds. `src/swClient.ts` is the page side.
 - `src/capture/` — capture sources (paste, read, drop, file) → `captureStore.add()`.
 - `src/state/` — Zustand stores (`captureStore`, `moduleStore`, `uiStore`).
+- `src/state/persistence.ts` — saves captures to IndexedDB (idb-keyval). Metadata and blobs live in separate databases, and blobs are keyed by SHA-256 and garbage-collected. It's on by default with a 7-day expiry (Settings → History). Records are validated with Zod on read. It talks to the store through the `CaptureHost` interface, so it doesn't import the store (that would start the worker in Node tests).
 - `src/components/` — Emotion CSS, with dark theme tokens in `src/theme.ts`. Previews live in `components/previews/`. `ModulePreview` lazy-loads a module's preview and falls back to the core one.
 
 ## Conventions
