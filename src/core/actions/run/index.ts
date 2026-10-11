@@ -5,6 +5,7 @@ import { jsonImpls } from './json';
 import { mediaImpls } from './media';
 import { pdfImpls } from './pdf';
 import { presentationImpls } from './presentation';
+import { executableImpls } from './executable';
 import { textImpls } from './text';
 
 /**
@@ -17,6 +18,7 @@ export const actionImpls: AnyActionImpl[] = [
   ...imageImpls,
   ...mediaImpls,
   ...presentationImpls,
+  ...executableImpls,
   ...pdfImpls,
   ...anyImpls,
 ];

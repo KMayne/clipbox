@@ -5,6 +5,7 @@ import { jsonActions } from './json';
 import { mediaActions } from './media';
 import { pdfActions } from './pdf';
 import { presentationActions } from './presentation';
+import { executableActions } from './executable';
 import { textActions } from './text';
 
 /**
@@ -18,6 +19,7 @@ export const catalog: ActionInfo[] = [
   ...imageActions,
   ...mediaActions,
   ...presentationActions,
+  ...executableActions,
   ...pdfActions,
   ...anyActions,
 ];
