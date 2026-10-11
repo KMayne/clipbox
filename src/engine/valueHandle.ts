@@ -35,7 +35,10 @@ function remoteHandle(entryId: EntryId, kind: Kind, summary: ValueHandle['summar
   return {
     summary,
     lines: async (from, to) => schemas.lines.parse(await slice({ type: 'lines', from, to })),
-    rows: async (from, to) => schemas.rows.parse(await slice({ type: 'rows', from, to })),
+    rows: async (from, to, table) =>
+      schemas.rows.parse(
+        await slice({ type: 'rows', from, to, ...(table !== undefined && { table }) }),
+      ),
     children: async (path, from, to) =>
       schemas.children.parse(await slice({ type: 'children', path, from, to })),
     bytes: async (from, to) => schemas.bytes.parse(await slice({ type: 'bytes', from, to })),

@@ -18,6 +18,8 @@ import { Base64Preview } from './previews/Base64Preview';
 import { JwtView } from './previews/JwtView';
 import { RecordsTable } from './previews/RecordsTable';
 import { PemView } from './previews/PemView';
+import { SpreadsheetView } from './previews/SpreadsheetView';
+import { SqliteView } from './previews/SqliteView';
 import { TextView } from './previews/TextView';
 import { ValueCard } from './previews/ValueCard';
 import { RawView } from './RawView';
@@ -216,6 +218,10 @@ function Preview({ handle }: { handle: ValueHandle }) {
       return <ValueCard handle={handle} />;
     case 'pem':
       return <PemView handle={handle} />;
+    case 'spreadsheet':
+      return <SpreadsheetView handle={handle} />;
+    case 'sqlite':
+      return <SqliteView handle={handle} />;
     default:
       return <HexView handle={handle} />;
   }

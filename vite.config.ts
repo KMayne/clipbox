@@ -13,6 +13,8 @@ export default defineConfig({
       '@vscode/vscode-languagedetection',
       '@peculiar/x509',
       'reflect-metadata',
+      'xlsx',
+      'sql.js',
       'monaco-editor/editor/editor.api',
       'monaco-editor/languages/definitions/register.all',
       'monaco-editor/languages/features/json/register',

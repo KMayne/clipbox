@@ -102,13 +102,19 @@ export function typeCell(raw: string): unknown {
 
 const looksNumeric = (s: string) => typeCell(s) !== null && typeof typeCell(s) === 'number';
 
+/** A header row is non-empty, non-numeric text in every cell, with no repeats. */
+export function looksLikeHeader(first: readonly unknown[]): boolean {
+  return (
+    first.length > 0 &&
+    first.every(h => typeof h === 'string' && h.trim() !== '' && !looksNumeric(h)) &&
+    new Set(first).size === first.length
+  );
+}
+
 export function parseDelimited(text: string, delimiter: string): RecordsValue {
   const { data } = Papa.parse<string[]>(text, { delimiter, skipEmptyLines: true });
   const first = data[0] ?? [];
-  const hasHeader =
-    first.length > 0 &&
-    first.every(h => h.trim() !== '' && !looksNumeric(h)) &&
-    new Set(first).size === first.length;
+  const hasHeader = looksLikeHeader(first);
   const width = Math.max(...data.map(r => r.length));
   const columns = hasHeader
     ? first.map(h => h.trim())
