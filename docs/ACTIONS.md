@@ -58,7 +58,8 @@ Legend:
 
 ### Image
 
-- **Convert** ✅: PNG / JPEG / WebP (re-encoding also strips metadata; quality param; not offered for SVG) · **Resize** (presets 50%/25%, or a width param) · **Rotate/flip** · grayscale
+- **Convert** ✅: PNG / JPEG / WebP (re-encoding also strips metadata; quality param; not offered for SVG; works on TIFF/EMF/WMF/PSD/TGA/PCX via their first-page render)
+- **Pages as PNG** ✅: every page of a multi-page image (TIFF) as PNG, one collection capture (`scan-page01.png`…) · **Resize** (presets 50%/25%, or a width param) · **Rotate/flip** · grayscale
 - **To data URL / base64** · **Read QR/barcode** (Chromium's `BarcodeDetector`) · **Extract palette** (dominant colours → colour captures)
 
 ### Binary
@@ -105,7 +106,9 @@ Legend:
 
 - **Extract images** ✅: every image in `ppt/media`, deduplicated by content, in order of first slide
   use, then unused ones (`slide-03-image2.png`, `unused-image1.png`), one collection capture;
-  formats a browser can't show (EMF, WMF, TIFF) are skipped; setting: slide range
+  EMF, WMF and TIFF come out as the original files (previewable through the `imageformats`
+  module); settings: slide range, "Convert vector/legacy images to PNG" (off: originals; on: PNG
+  renders, one per TIFF page)
 - **Extract text** ✅: Markdown, `## Slide N: Title` with the text and `### Notes` beneath (setting:
   include notes) · **Slides as JSON** ✅ (metadata, and each slide's title, text, notes and media)
 
