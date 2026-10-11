@@ -1,13 +1,15 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 import { modulesManifest } from './vite/modulesManifest.ts';
+import { pwa } from './vite/pwa.ts';
 
 const manifest = modulesManifest();
 
 export default defineConfig({
   // Served from a subpath in production (e.g. /clipbox/); the deploy sets BASE_PATH.
   base: process.env.BASE_PATH ?? '/',
-  plugins: [react(), manifest.main],
+  // pwa() emits the web app manifest and icons before modulesManifest() lists the core files
+  plugins: [react(), pwa(), manifest.main],
   // Shown in Settings → Modules next to the build's version
   define: { __BUILD_DATE__: JSON.stringify(new Date().toISOString()) },
   worker: { format: 'es', plugins: () => [manifest.worker()] },

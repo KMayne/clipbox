@@ -1,8 +1,9 @@
 import { css, cx } from '@emotion/css';
 import Fuse from 'fuse.js';
 import { useMemo, useState } from 'react';
-import { commands, selectionCommands, type Command } from '../commands';
+import { commands, installCommand, selectionCommands, type Command } from '../commands';
 import { useCaptureStore } from '../state/captureStore';
+import { canInstall, useInstallStore } from '../state/install';
 import { useUiStore } from '../state/uiStore';
 import { theme } from '../theme';
 import { media, TOUCH_TARGET, ui } from './ui';
@@ -83,9 +84,14 @@ function Palette() {
   const dynamic = useAsync(key, () =>
     selection ? selectionCommands(selection) : Promise.resolve(NO_COMMANDS),
   );
+  const installable = useInstallStore(canInstall);
   const all = useMemo(
-    () => (dynamic.status === 'ok' ? [...commands, ...dynamic.value] : commands),
-    [dynamic],
+    () => [
+      ...(installable ? [installCommand] : []),
+      ...commands,
+      ...(dynamic.status === 'ok' ? dynamic.value : []),
+    ],
+    [dynamic, installable],
   );
   const fuse = useMemo(
     () =>

@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { onCaptureEvent, useCaptureStore } from './state/captureStore';
 import { startBackgroundDownloads } from './state/backgroundDownloads';
+import { startInstallPrompt } from './state/install';
 import { startMobileNavigation } from './state/mobileNav';
 import { useModuleStore } from './state/moduleStore';
 import { startPersistence } from './state/persistence';
@@ -34,6 +35,9 @@ injectGlobal`
 `;
 
 sw.register();
+// The browser UI (title bar, Android status bar) follows the chosen scheme, not just Nord
+document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.panel);
+startInstallPrompt();
 startMobileNavigation();
 useModuleStore.getState().init();
 startBackgroundDownloads();

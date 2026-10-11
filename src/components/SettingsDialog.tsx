@@ -15,6 +15,7 @@ import { storageUsed, useHistoryStore, type KeepFor } from '../state/persistence
 import { useUiStore } from '../state/uiStore';
 import { sw, type CacheState, type ModulesManifest } from '../swClient';
 import { type SchemeId, schemeId, schemes, setScheme, theme } from '../theme';
+import { InstallSection } from './InstallSection';
 import { media, ui } from './ui';
 import { useAsync } from './useAsync';
 
@@ -256,6 +257,7 @@ function Settings() {
             ✕
           </button>
         </div>
+        <InstallSection />
         <AppearanceSection />
         <HistorySection />
         <section aria-label="Modules">
