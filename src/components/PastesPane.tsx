@@ -69,13 +69,16 @@ const styles = {
   links: css`
     margin-left: auto;
     display: flex;
-    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px 10px;
   `,
   credit: css`
     display: inline-flex;
     align-items: center;
     gap: 2px;
     font-size: 11px;
+    white-space: nowrap;
     /* Subtle but at least 4.5:1 against the panel in every scheme. */
     color: color-mix(in srgb, ${theme.muted}, ${theme.text} 30%);
     text-decoration: none;
@@ -87,6 +90,8 @@ const styles = {
   footer: css`
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 10px;
     min-height: 44px;
     padding: 8px 10px;
     border-top: 1px solid ${theme.subtle};

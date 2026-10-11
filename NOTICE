@@ -26,6 +26,18 @@ Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0):
   Copyright Jake Archibald
   https://github.com/jakearchibald/idb-keyval
 
+- Material Design Icons (@mdi/js)
+  Copyright Pictogrammers
+  https://pictogrammers.com/library/mdi/
+
+- Fuse.js, used by the command palette
+  Copyright Kiro Risk
+  https://www.fusejs.io
+
+- reflect-metadata, used by the X.509 module (via @peculiar/x509)
+  Copyright Microsoft Corporation
+  https://github.com/rbuckton/reflect-metadata
+
 The colour schemes are based on these palettes, all under the MIT License:
 - Nord (default), Arctic Ice Studio, https://www.nordtheme.com
 - Tokyo Night, enkia, https://github.com/enkia/tokyo-night-vscode-theme
