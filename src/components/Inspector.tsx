@@ -13,7 +13,9 @@ import { ImageView } from './previews/ImageView';
 import { JsonTree } from './previews/JsonTree';
 import { ModulePreview } from './ModulePreview';
 import { RecordsTable } from './previews/RecordsTable';
+import { PemView } from './previews/PemView';
 import { TextView } from './previews/TextView';
+import { ValueCard } from './previews/ValueCard';
 import { RawView } from './RawView';
 import { SchemaView } from './SchemaView';
 import { StatsGrid } from './StatsGrid';
@@ -189,6 +191,13 @@ function Preview({ handle }: { handle: ValueHandle }) {
       return <HtmlView handle={handle} />;
     case 'image':
       return <ImageView handle={handle} />;
+    case 'timestamp':
+    case 'uuid':
+    case 'url':
+    case 'colour':
+      return <ValueCard handle={handle} />;
+    case 'pem':
+      return <PemView handle={handle} />;
     default:
       return <HexView handle={handle} />;
   }

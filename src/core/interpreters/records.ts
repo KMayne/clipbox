@@ -14,7 +14,18 @@ export interface RecordsValue {
   /** Null when the records came from a JSON array. */
   delimiter: string | null;
   hasHeader: boolean;
+  /** Describes where non-delimited, non-JSON records came from (see `addRecordsSource`). */
+  source?: string;
 }
+
+/** Extra ways to read records from text, contributed by other kinds (e.g. URL query params). */
+export interface RecordsSource {
+  detect(c: EntryContent): number;
+  parse(c: EntryContent): RecordsValue;
+}
+const sources: RecordsSource[] = [];
+export const addRecordsSource = (s: RecordsSource) => void sources.push(s);
+const sourceFor = (c: EntryContent) => sources.find(s => s.detect(c) > 0);
 
 const DELIMITERS = [',', '\t', ';', '|'] as const;
 const DELIMITER_NAMES: Record<string, string> = {
@@ -120,10 +131,14 @@ export const recordsInterpreter: Interpreter<RecordsValue> = {
   isValue: (v): v is RecordsValue => hasKind(v, 'records'),
   detect(c) {
     if (c.text === null) return 0;
+    const extra = sourceFor(c);
+    if (extra) return extra.detect(c);
     if (tryParseJson(c).ok) return jsonRecords(c) ? 0.6 : 0;
     return delimiterOf(c)?.confidence ?? 0;
   },
   parse(c) {
+    const extra = sourceFor(c);
+    if (extra) return extra.parse(c);
     const fromJson = jsonRecords(c);
     if (fromJson) {
       const columns = [...new Set(fromJson.flatMap(r => Object.keys(r)))];
@@ -142,9 +157,11 @@ export const recordsInterpreter: Interpreter<RecordsValue> = {
         { label: 'Columns', value: String(v.columns.length) },
         {
           label: 'Source',
-          value: v.delimiter === null ? 'JSON array' : `${DELIMITER_NAMES[v.delimiter]}-delimited`,
+          value:
+            v.source ??
+            (v.delimiter === null ? 'JSON array' : `${DELIMITER_NAMES[v.delimiter]}-delimited`),
         },
-        ...(v.delimiter === null
+        ...(v.delimiter === null || v.source
           ? []
           : [{ label: 'Header row', value: v.hasHeader ? 'yes' : 'no' }]),
         {
