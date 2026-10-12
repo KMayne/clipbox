@@ -126,9 +126,7 @@ identifiers/web/crypto), on top of the merged framework, following "New actions"
    - Saved pipelines as templates.
 5. **Extras:**
    - Diffing two inputs.
-   - Image ops.
-   - HTML→Markdown.
-   - JSONPath.
+   - Image ops (HTML→Markdown and JSONPath are done as actions).
    - An Electron capture source, for native clipboard formats the browser can't see.
 
 ### Smaller improvements and known gaps
@@ -163,9 +161,8 @@ identifiers/web/crypto), on top of the merged framework, following "New actions"
   - Recordings made with `MediaRecorder` show no duration.
 - **Theme:** there are more kinds than distinct palette hues, so a few unrelated kinds share a chip
   colour.
-- **Actions:** a run can't be cancelled yet (`ctx.signal` is never aborted), and every action
-  produces exactly one new capture, so Copy/Download-style and multi-output actions need a small
-  extension (see `docs/ACTIONS.md`).
+- **Actions:** a few candidates in `docs/ACTIONS.md` are still open (e.g. JSON to XML, JSON Schema,
+  unflatten, slugify).
 - **Testing:** the SQLite lazy load through the engine is only covered by e2e tests, not unit tests.
 
 ## Process notes
