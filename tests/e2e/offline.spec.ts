@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { gunzipSync } from 'fflate';
 import { readFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -77,6 +78,16 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   await dropBytes(page, 'photo.heic', 'image/heic', heic);
   await expect(page.getByTestId('capture')).toHaveCount(4);
   await expect(page.locator('[data-kind=image]').first()).toHaveText(/HEIC 64×48/);
+
+  // Disc images: 7-Zip's wasm too
+  const iso = gunzipSync(
+    new Uint8Array(readFileSync(new URL('../fixtures/iso/iso9660.iso.gz', import.meta.url))),
+  );
+  await dropBytes(page, 'disc.iso', 'application/x-iso9660-image', iso);
+  await expect(page.getByTestId('capture')).toHaveCount(5);
+  await expect(page.locator('[data-kind=archive]').first()).toHaveText(
+    'ISO 9660 · CLIPBOX_DISC · 2 files · 61 B',
+  );
 
   // Language detection evicted while offline: text still parses, just without a language
   await evictModule(page, 'langdetect');
