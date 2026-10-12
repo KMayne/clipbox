@@ -73,36 +73,11 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
     'jq map(. * 2) | add',
   );
 
-  // HEIC: libheif's wasm (fetched by the engine worker) comes from the cache too
-  const heic = readFileSync(new URL('../fixtures/heic/halves.heic', import.meta.url));
-  await dropBytes(page, 'photo.heic', 'image/heic', heic);
-  await expect(page.getByTestId('capture')).toHaveCount(4);
-  await expect(page.locator('[data-kind=image]').first()).toHaveText(/HEIC 64×48/);
-
-  // MP3 needs the mp3encoder module to register LAME into the Mediabunny chunk audiotools
-  // shares, and LAME runs in a blob worker nested in the engine worker
-  await dropBytes(page, 'tone.wav', 'audio/wav', wav({ seconds: 1, rate: 44100 }));
-  const newest = () => page.getByTestId('capture').first().locator('[data-kind=audio]');
-  await expect(newest()).toHaveAttribute('aria-pressed', 'true');
-  await pane.getByRole('button', { name: 'Convert audio' }).click();
-  await pane
-    .getByRole('form', { name: 'Convert audio settings' })
-    .getByRole('button', { name: 'Run' })
-    .click();
-  await expect(page.getByTestId('capture')).toHaveCount(6);
-  await expect(newest()).toHaveText(/^MP3 · 0:01/);
-
   // Language detection evicted while offline: text still parses, just without a language
   await evictModule(page, 'langdetect');
   await page.reload();
   await paste(page, { 'text/plain': TS });
   await expect(page.getByTestId('chip').first()).toHaveText('Text · 4 lines');
-  // Restored captures are ingested one by one after the reload (HEIC and audio take a while);
-  // let the earlier TypeScript paste settle offline too, or it would load langdetect once online
-  await expect(page.getByTestId('chip').filter({ hasText: '4 lines' })).toHaveText([
-    'Text · 4 lines',
-    'Text · 4 lines',
-  ]);
 
   // Back online, Repair downloads it again
   await context.setOffline(false);
@@ -120,6 +95,36 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   await expect(settings.getByTestId('module-pdf').getByTestId('module-status')).toHaveText(
     'available offline',
   );
+
+  // Offline again: modules the Repair downloaded work from the cache
+  await expect(settings.getByTestId('module-heic').getByTestId('module-status')).toHaveText(
+    /available offline$/,
+  );
+  await expect(settings.getByTestId('module-mp3encoder').getByTestId('module-status')).toHaveText(
+    /available offline$/,
+  );
+  await page.keyboard.press('Escape');
+  await context.setOffline(true);
+  const count = await page.getByTestId('capture').count();
+
+  // HEIC: libheif's wasm (fetched by the engine worker) comes from the cache too
+  const heic = readFileSync(new URL('../fixtures/heic/halves.heic', import.meta.url));
+  await dropBytes(page, 'photo.heic', 'image/heic', heic);
+  await expect(page.getByTestId('capture')).toHaveCount(count + 1);
+  await expect(page.locator('[data-kind=image]').first()).toHaveText(/HEIC 64×48/);
+
+  // MP3 needs the mp3encoder module to register LAME into the Mediabunny chunk audiotools
+  // shares, and LAME runs in a blob worker nested in the engine worker
+  await dropBytes(page, 'tone.wav', 'audio/wav', wav({ seconds: 1, rate: 44100 }));
+  const newest = () => page.getByTestId('capture').first().locator('[data-kind=audio]');
+  await expect(newest()).toHaveAttribute('aria-pressed', 'true');
+  await pane.getByRole('button', { name: 'Convert audio' }).click();
+  await pane
+    .getByRole('form', { name: 'Convert audio settings' })
+    .getByRole('button', { name: 'Run' })
+    .click();
+  await expect(page.getByTestId('capture')).toHaveCount(count + 3);
+  await expect(newest()).toHaveText(/^MP3 · 0:01/);
 });
 
 test('Repair can be cancelled', async ({ page }) => {
