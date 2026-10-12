@@ -1,4 +1,7 @@
-/** Archive values shared by the core `archive` interpreter (zip/gzip/tar) and the `libarchive` module. */
+/**
+ * Archive values shared by the core `archive` interpreter (zip/gzip/tar) and the `libarchive` and
+ * `sevenzip` (disc images) modules.
+ */
 
 import type { PackageInfo } from './packages/types';
 
@@ -17,7 +20,9 @@ export type ArchiveFormat =
   | 'tar.zst'
   /** A zip behind a Chrome extension header. */
   | 'crx'
-  | 'rpm';
+  | 'rpm'
+  /** A disc image (ISO 9660 or UDF), through the sevenzip module. */
+  | 'iso';
 
 export interface ArchiveEntry {
   /** Directories end with '/'. */
@@ -59,7 +64,7 @@ export type ArchiveSource =
       compressor: string;
       names: string[];
     }
-  /** Extracted by the owning module (libarchive) from the original bytes, by the entry's raw name. */
+  /** Extracted by the owning module (libarchive, sevenzip) from the original bytes, by the entry's raw name. */
   | { type: 'external'; bytes: Uint8Array<ArrayBuffer>; names: string[] };
 
 export interface ArchiveValue {
@@ -75,6 +80,17 @@ export interface ArchiveValue {
   note?: string;
   /** A package manifest recognised inside (jar, browser extension, APK, wheel, npm, RPM, …). */
   package?: PackageInfo;
+  /** Disc images only. */
+  disc?: DiscInfo;
+}
+
+export interface DiscInfo {
+  /** The file system read, for the label: "ISO 9660" or "UDF". */
+  filesystem: string;
+  /** More about it, for Info: "ISO 9660 with Joliet", "UDF 2.01". */
+  detail?: string;
+  /** The volume label. */
+  volume?: string;
 }
 
 /** Refuse to extract (without confirmation) entries bigger than this… */

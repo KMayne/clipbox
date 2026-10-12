@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { gunzipSync } from 'fflate';
 import { readFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -97,12 +98,11 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   );
 
   // Offline again: modules the Repair downloaded work from the cache
-  await expect(settings.getByTestId('module-heic').getByTestId('module-status')).toHaveText(
-    /available offline$/,
-  );
-  await expect(settings.getByTestId('module-mp3encoder').getByTestId('module-status')).toHaveText(
-    /available offline$/,
-  );
+  for (const id of ['heic', 'mp3encoder', 'sevenzip']) {
+    await expect(settings.getByTestId(`module-${id}`).getByTestId('module-status')).toHaveText(
+      /available offline$/,
+    );
+  }
   await page.keyboard.press('Escape');
   await context.setOffline(true);
   const count = await page.getByTestId('capture').count();
@@ -112,6 +112,16 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   await dropBytes(page, 'photo.heic', 'image/heic', heic);
   await expect(page.getByTestId('capture')).toHaveCount(count + 1);
   await expect(page.locator('[data-kind=image]').first()).toHaveText(/HEIC 64×48/);
+
+  // Disc images: 7-Zip's wasm too
+  const iso = gunzipSync(
+    new Uint8Array(readFileSync(new URL('../fixtures/iso/iso9660.iso.gz', import.meta.url))),
+  );
+  await dropBytes(page, 'disc.iso', 'application/x-iso9660-image', iso);
+  await expect(page.getByTestId('capture')).toHaveCount(count + 2);
+  await expect(page.locator('[data-kind=archive]').first()).toHaveText(
+    'ISO 9660 · CLIPBOX_DISC · 2 files · 61 B',
+  );
 
   // MP3 needs the mp3encoder module to register LAME into the Mediabunny chunk audiotools
   // shares, and LAME runs in a blob worker nested in the engine worker
@@ -123,7 +133,7 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
     .getByRole('form', { name: 'Convert audio settings' })
     .getByRole('button', { name: 'Run' })
     .click();
-  await expect(page.getByTestId('capture')).toHaveCount(count + 3);
+  await expect(page.getByTestId('capture')).toHaveCount(count + 4);
   await expect(newest()).toHaveText(/^MP3 · 0:01/);
 });
 

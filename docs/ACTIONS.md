@@ -117,8 +117,8 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
 
 ### Archive
 
-- **Open entry** ✓ · **Listing as CSV** ✅ (path, size, compressed size, modified, type; core and
-  libarchive formats) · download an entry · extract all (zip download)
+- **Open entry** ✓ · **Listing as CSV** ✅ (path, size, compressed size, modified, type; core,
+  libarchive and disc image formats) · download an entry · extract all (zip download)
 - **Manifest as JSON** ✅ (`archive.manifest`: the recognised `PackageInfo` of a jar/war/ear,
   browser extension (CRX/XPI/zip), APK/AAB, wheel, nupkg, vsix, npm tarball, EPUB or RPM;
   applies only when one was recognised) · **Class versions** ✅ (jar: every `.class` with its
@@ -127,6 +127,9 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
   `%pretrans`/`%posttrans` and triggers, each headed `# %post (/bin/sh)`)
 - Later: `.deb` (an `ar` of `control.tar.*` + `data.tar.*`) in the same shape as RPM; verify
   CRX/APK signatures (only the scheme and key ID are read today)
+- Disc images (ISO 9660/Joliet and UDF, `sevenzip` module) are `archive` values with format
+  `iso`: Open entry and Listing as CSV work on them as on any archive. Later, without more code:
+  7-Zip's DMG, VHD(X), WIM, CAB, MSI and CHM handlers, one at a time.
 
 ### PDF
 
