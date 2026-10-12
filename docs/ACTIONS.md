@@ -185,6 +185,21 @@ Parsed in core (`src/core/executable/`), no dependency. Actions in the `executab
   x509 module then decodes as usual (so no `ctx.service` call is needed; the signer's subject and
   issuer are read by a small DER walker in core, never verified)
 
+### Playlist (M3U, HLS)
+
+Parsed in core (`src/core/playlist/m3u.ts`), no dependency; nothing a playlist names is ever
+fetched (no backend, and CORS usually blocks it). Actions in the `playlist` area files:
+
+- **Resolve URLs** ✅: URI lines and `URI="…"` attributes in tags (keys, maps, renditions, I-frame
+  streams, parts, unknown tags) made absolute against a Base URL setting (http(s) only; empty
+  leaves the playlist unchanged). Absolute URIs, comments, other tags and line endings stay as they are
+- **Segments as CSV** ✅ · **Segments as JSON** ✅ (media playlists: sequence, duration, start,
+  byte range, discontinuity, program date-time, key method and URI, init section)
+- **Variants as JSON** ✅ (master playlists, source order, with every attribute)
+- **URL list** ✅: variant, I-frame, rendition, init-section, segment and track URIs (not key
+  URIs), de-duplicated
+- Later: Open a variant in a new tab (an `open-url` effect)
+
 ### PEM / X.509
 
 - **Certificate details as JSON** ✅ (x509 module service: names, validity, SANs, key usage, EKU, basic constraints, key ids, extensions, fingerprints; leaf first) · **SHA-256 fingerprint** ✅ (Fingerprint: SHA-256, SHA-1 or both, colon-separated uppercase hex, computed in core) · **Extract public key (PEM)** ✅ (SPKI; the leaf, or every block) · PEM ↔ DER
