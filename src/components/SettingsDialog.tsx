@@ -14,7 +14,16 @@ import { useModuleStore } from '../state/moduleStore';
 import { storageUsed, useHistoryStore, type KeepFor } from '../state/persistence';
 import { useUiStore } from '../state/uiStore';
 import { sw, type CacheState, type ModulesManifest } from '../swClient';
-import { type SchemeId, schemeId, schemes, setScheme, theme } from '../theme';
+import {
+  FONT_SCALE,
+  type SchemeId,
+  schemeId,
+  schemes,
+  setScheme,
+  setTextScale,
+  TEXT_SCALES,
+  theme,
+} from '../theme';
 import { InstallSection } from './InstallSection';
 import { media, ui } from './ui';
 import { SiteLinks } from './SiteLinks';
@@ -561,8 +570,24 @@ function AppearanceSection() {
           );
         })}
       </div>
+      <div className={styles.row}>
+        <span className={styles.rowLabel}>Text size</span>
+        <span className={styles.segmented} role="radiogroup" aria-label="Text size">
+          {TEXT_SCALES.map(scale => (
+            <button
+              key={scale}
+              role="radio"
+              aria-checked={scale === FONT_SCALE}
+              className={cx(scale === FONT_SCALE && styles.activeOption)}
+              onClick={() => scale !== FONT_SCALE && setTextScale(scale)}
+            >
+              {Math.round(scale * 100)}%
+            </button>
+          ))}
+        </span>
+      </div>
       <p className={styles.description}>
-        Changing the scheme reloads the page; your pastes are kept.
+        Changing the scheme or text size reloads the page; your pastes are kept.
       </p>
     </section>
   );

@@ -286,8 +286,46 @@ export const theme = {
   sans: "system-ui, -apple-system, 'Segoe UI', sans-serif",
 };
 
+/** Text size choices (Settings → Appearance), as multiples of the unscaled sizes below. */
+export const TEXT_SCALES = [1, 1.125, 1.25, 1.5] as const;
+export type TextScale = (typeof TEXT_SCALES)[number];
+export const DEFAULT_TEXT_SCALE: TextScale = 1.25;
+const TEXT_SCALE_KEY = 'clipbox.textScale';
+
+const textScaleSchema = z.coerce.number().pipe(z.union(TEXT_SCALES.map(s => z.literal(s))));
+
+export function parseTextScale(raw: string | null): TextScale | null {
+  if (raw === null) return null;
+  const parsed = textScaleSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
+
+/** Like the scheme, chosen once at load: `?textScale=` (for previews), then the saved choice. */
+function activeTextScale(): TextScale {
+  if (typeof location === 'undefined') return DEFAULT_TEXT_SCALE;
+  const requested = parseTextScale(new URLSearchParams(location.search).get('textScale'));
+  if (requested !== null) return requested;
+  try {
+    return parseTextScale(localStorage.getItem(TEXT_SCALE_KEY)) ?? DEFAULT_TEXT_SCALE;
+  } catch {
+    return DEFAULT_TEXT_SCALE; // storage unavailable
+  }
+}
+
+/** Saves the text size and reloads, since row heights and iframe styles are sized at load. */
+export function setTextScale(scale: TextScale): void {
+  try {
+    localStorage.setItem(TEXT_SCALE_KEY, String(scale));
+  } catch {
+    // storage unavailable: the choice won't persist
+  }
+  const url = new URL(location.href);
+  url.searchParams.delete('textScale');
+  location.replace(url);
+}
+
 /** Multiplies every UI font size: the `--font-scale` CSS variable, and the JS-side sizes below. */
-export const FONT_SCALE = 1.25;
+export const FONT_SCALE: TextScale = activeTextScale();
 
 /**
  * Unscaled UI font sizes in px. Each is the CSS variable `--text-<name>`, defined in `main.tsx`
