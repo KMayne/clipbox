@@ -17,4 +17,5 @@ export const workerLoaders: Partial<Record<ModuleId, () => Promise<WorkerModule>
   mp3encoder: () => import('./mp3encoder/worker'),
   aacencoder: () => import('./aacencoder/worker'),
   sevenzip: () => import('./sevenzip/worker'),
+  wabt: () => import('./wabt/worker'),
 };

@@ -16,6 +16,7 @@ import { presentationActions } from './presentation';
 import { executableActions } from './executable';
 import { playlistActions } from './playlist';
 import { emailActions } from './email';
+import { wasmActions } from './wasm';
 import { spreadsheetActions } from './spreadsheet';
 import { sqliteActions } from './sqlite';
 import { textActions } from './text';
@@ -47,6 +48,7 @@ export const catalog: ActionInfo[] = [
   ...executableActions,
   ...playlistActions,
   ...emailActions,
+  ...wasmActions,
   ...pdfActions,
   ...jwtActions,
   ...timestampActions,

@@ -5,6 +5,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { wav } from '../fixtures/media';
+import { sampleWasm } from '../fixtures/wasm';
 import { dropBytes, paste } from './helpers';
 
 const SW_PATH = path.resolve(import.meta.dirname, '../../dist/sw.js');
@@ -99,7 +100,7 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   );
 
   // Offline again: modules the Repair downloaded work from the cache
-  for (const id of ['heic', 'mp3encoder', 'sevenzip']) {
+  for (const id of ['heic', 'mp3encoder', 'sevenzip', 'wabt']) {
     await expect(settings.getByTestId(`module-${id}`).getByTestId('module-status')).toHaveText(
       /available offline$/,
     );
@@ -136,6 +137,17 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
     .click();
   await expect(page.getByTestId('capture')).toHaveCount(count + 4);
   await expect(newest()).toHaveText(/^MP3 · 0:01/);
+
+  // WebAssembly: wabt's runner worker (nested in the engine worker) comes from the cache too
+  await dropBytes(page, 'sample.wasm', 'application/wasm', sampleWasm());
+  await expect(page.locator('[data-kind=wasm]')).toHaveAttribute('aria-pressed', 'true');
+  await pane.getByRole('button', { name: 'Disassemble to WAT' }).click();
+  await pane
+    .getByRole('form', { name: 'Disassemble to WAT settings' })
+    .getByRole('button', { name: 'Run' })
+    .click();
+  await expect(page.getByTestId('capture')).toHaveCount(count + 6);
+  await expect(page.getByTestId('capture').first()).toContainText('sample.wat');
 });
 
 test('Repair can be cancelled', async ({ page }) => {

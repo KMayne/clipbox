@@ -27,4 +27,5 @@ export const moduleLibraries: Record<string, ModuleLibrary> = {
   mp3encoder: { name: '@mediabunny/mp3-encoder (LAME)', package: '@mediabunny/mp3-encoder' },
   aacencoder: { name: '@mediabunny/aac-encoder (FFmpeg)', package: '@mediabunny/aac-encoder' },
   sevenzip: { name: '7-Zip (7z-wasm)', package: '7z-wasm' },
+  wabt: { name: 'wabt.js', package: 'wabt' },
 };

@@ -31,6 +31,7 @@ const RENDERED: Record<string, string> = {
   executable: 'Details',
   playlist: 'Playlist',
   email: 'Message',
+  wasm: 'Module',
 };
 
 export interface ViewOption {
