@@ -23,6 +23,7 @@ const NAMES: Record<string, string> = {
   archive: 'Archive',
   presentation: 'PowerPoint',
   executable: 'Executable',
+  email: 'Email',
 };
 
 export const kindName = (kind: Kind) => NAMES[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);
