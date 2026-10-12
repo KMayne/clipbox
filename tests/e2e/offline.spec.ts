@@ -83,6 +83,12 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   await page.reload();
   await paste(page, { 'text/plain': TS });
   await expect(page.getByTestId('chip').first()).toHaveText('Text · 4 lines');
+  // Restored captures are ingested one by one after the reload (the HEIC decode takes a while);
+  // let the earlier TypeScript paste settle offline too, or it would load langdetect once online
+  await expect(page.getByTestId('chip').filter({ hasText: '4 lines' })).toHaveText([
+    'Text · 4 lines',
+    'Text · 4 lines',
+  ]);
 
   // Back online, Repair downloads it again
   await context.setOffline(false);
