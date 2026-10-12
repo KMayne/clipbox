@@ -15,9 +15,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "7z-wasm": "1.2.0",
     "@emotion/css": "^11.13.5",
     "@mdi/js": "^7.4.47",
     "@mdi/react": "^1.6.1",
+    "@mediabunny/aac-encoder": "1.61.3",
+    "@mediabunny/mp3-encoder": "1.61.3",
     "@peculiar/x509": "^2.1.0",
     "@tanstack/react-virtual": "^3.14.14",
     "@vscode/vscode-languagedetection": "^1.0.23",
@@ -30,6 +33,7 @@
     "jq-wasm": "3.0.0-jq-1.8.2",
     "jsqr": "1.4.0",
     "libarchive.js": "^2.0.2",
+    "libheif-js": "1.23.5",
     "marked": "^18.1.0",
     "mediabunny": "1.61.3",
     "monaco-editor": "^0.57.0",
@@ -42,6 +46,7 @@
     "reflect-metadata": "^0.2.2",
     "sql.js": "^1.14.2",
     "utif2": "4.1.0",
+    "wabt": "1.0.39",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "yaml": "^2.9.1",
     "zod": "^4.6.5",
