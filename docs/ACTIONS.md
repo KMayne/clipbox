@@ -216,6 +216,21 @@ forwarded `message/rfc822` part opens as another email. Actions in the `email` a
   from, by, with, id, for) as CSV (a records table) or JSON
 - Later: verify DKIM signatures (needs the DNS key) · Outlook `.msg` and mbox
 
+### WebAssembly (.wasm)
+
+Parsed in core (`src/core/wasm/`: every core-module section, the name, producers,
+target_features, sourceMappingURL, external_debug_info, dylink and `.debug_*` custom sections;
+component-model binaries list their top-level sections only). Actions in the `wasm` area files:
+
+- **Disassemble to WAT** ✅ (wabt module, `wabt` npm package, Apache-2.0: `readWasm` with every
+  feature wabt supports and the name section's names → `toText`; settings: fold expressions,
+  inline exports, and Allow large modules, without which modules over 8 MB are refused because the
+  text is often ten times the binary). Runs in a runner worker nested in the engine worker, like
+  jq, so Cancel terminates it. Result: `<name>.wat` as text/plain (detected as text)
+- **Imports/exports as JSON** ✅ (core: module, name, kind, type text, params/results for
+  functions, the name section's function name for exports)
+- Later: WAT → wasm (`parseWat`) · validate · strip custom sections · `wasm-decompile`
+
 ### PEM / X.509
 
 - **Certificate details as JSON** ✅ (x509 module service: names, validity, SANs, key usage, EKU, basic constraints, key ids, extensions, fingerprints; leaf first) · **SHA-256 fingerprint** ✅ (Fingerprint: SHA-256, SHA-1 or both, colon-separated uppercase hex, computed in core) · **Extract public key (PEM)** ✅ (SPKI; the leaf, or every block) · PEM ↔ DER
