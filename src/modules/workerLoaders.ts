@@ -14,4 +14,5 @@ export const workerLoaders: Partial<Record<ModuleId, () => Promise<WorkerModule>
   imageformats: () => import('./imageformats/worker'),
   jq: () => import('./jq/worker'),
   heic: () => import('./heic/worker'),
+  sevenzip: () => import('./sevenzip/worker'),
 };

@@ -24,4 +24,5 @@ export const moduleLibraries: Record<string, ModuleLibrary> = {
   imageformats: { name: 'UTIF.js', package: 'utif2' },
   jq: { name: 'jq-wasm', package: 'jq-wasm' },
   heic: { name: 'libheif', package: 'libheif-js' },
+  sevenzip: { name: '7-Zip (7z-wasm)', package: '7z-wasm' },
 };

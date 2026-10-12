@@ -6,6 +6,7 @@ import { libarchiveDetector } from './libarchive/detect';
 import { pemDetector } from './x509/detect';
 import { imageformatsDetector } from './imageformats/detect';
 import { heicDetector } from './heic/detect';
+import { sevenzipDetector } from './sevenzip/detect';
 import { moduleLibraries } from './libraries';
 import type { Detector, ModuleId, ModuleInfo } from './types';
 
@@ -109,6 +110,14 @@ export const modules: ModuleInfo[] = (
       hasUi: false,
     },
     {
+      id: 'sevenzip',
+      title: 'Disc images',
+      description: 'ISO 9660 (Joliet, Rock Ridge) and UDF disc images (7-Zip, WASM)',
+      approxBytes: 1_710_000,
+      hasWorker: true,
+      hasUi: false,
+    },
+    {
       id: 'jq',
       title: 'jq',
       description: 'Runs jq filters on JSON, YAML, NDJSON and records (jq 1.8, WASM)',
@@ -130,6 +139,7 @@ export const detectors: Detector[] = [
   libarchiveDetector,
   imageformatsDetector,
   heicDetector,
+  sevenzipDetector,
 ];
 
 export const moduleInfo = (id: ModuleId) => modules.find(m => m.id === id);

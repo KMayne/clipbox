@@ -117,8 +117,11 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
 
 ### Archive
 
-- **Open entry** ✓ · **Listing as CSV** ✅ (path, size, compressed size, modified, type; core and
-  libarchive formats) · download an entry · extract all (zip download)
+- **Open entry** ✓ · **Listing as CSV** ✅ (path, size, compressed size, modified, type; core,
+  libarchive and disc image formats) · download an entry · extract all (zip download)
+- Disc images (ISO 9660/Joliet and UDF, `sevenzip` module) are `archive` values with format
+  `iso`: Open entry and Listing as CSV work on them as on any archive. Later, without more code:
+  7-Zip's DMG, VHD(X), WIM, CAB, MSI and CHM handlers, one at a time.
 
 ### PDF
 

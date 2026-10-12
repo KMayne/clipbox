@@ -28,6 +28,7 @@ const EXTENSIONS: Record<string, string> = {
   'application/x-xz': 'xz',
   'application/x-bzip2': 'bz2',
   'application/zstd': 'zst',
+  'application/x-iso9660-image': 'iso',
   'application/wasm': 'wasm',
   'application/x-msdownload': 'exe',
   'application/vnd.microsoft.portable-executable': 'exe',
