@@ -34,6 +34,7 @@ export default defineConfig({
       'fzstd',
       'utif2',
       'libheif-js/libheif-wasm/libheif.js',
+      'wabt',
       'libarchive.js/src/webworker/wasm-module.js',
       'libarchive.js/src/webworker/archive-reader.js',
       'libarchive.js/src/webworker/wasm-gen/libarchive.js',

@@ -16,6 +16,7 @@ import { presentationImpls } from './presentation';
 import { executableImpls } from './executable';
 import { playlistImpls } from './playlist';
 import { emailImpls } from './email';
+import { wasmImpls } from './wasm';
 import { spreadsheetImpls } from './spreadsheet';
 import { sqliteImpls } from './sqlite';
 import { textImpls } from './text';
@@ -46,6 +47,7 @@ export const actionImpls: AnyActionImpl[] = [
   ...executableImpls,
   ...playlistImpls,
   ...emailImpls,
+  ...wasmImpls,
   ...pdfImpls,
   ...jwtImpls,
   ...timestampImpls,

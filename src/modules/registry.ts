@@ -116,6 +116,14 @@ export const modules: ModuleInfo[] = (
       hasWorker: true,
       hasUi: false,
     },
+    {
+      id: 'wabt',
+      title: 'WebAssembly tools',
+      description: 'Disassembles WebAssembly modules to text (WAT) with wabt',
+      approxBytes: 900_000,
+      hasWorker: true,
+      hasUi: false,
+    },
   ] satisfies Omit<ModuleInfo, 'library'>[]
 ).map(m => ({ ...m, library: moduleLibraries[m.id] }));
 
