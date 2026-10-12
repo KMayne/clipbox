@@ -23,4 +23,6 @@ export const moduleLibraries: Record<string, ModuleLibrary> = {
   qr: { name: 'jsQR', package: 'jsqr' },
   imageformats: { name: 'UTIF.js', package: 'utif2' },
   jq: { name: 'jq-wasm', package: 'jq-wasm' },
+  mp3encoder: { name: '@mediabunny/mp3-encoder (LAME)', package: '@mediabunny/mp3-encoder' },
+  aacencoder: { name: '@mediabunny/aac-encoder (FFmpeg)', package: '@mediabunny/aac-encoder' },
 };

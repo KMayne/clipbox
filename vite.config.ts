@@ -12,7 +12,24 @@ export default defineConfig({
   plugins: [react(), pwa(), manifest.main],
   // Shown in Settings → Modules next to the build's version
   define: { __BUILD_DATE__: JSON.stringify(new Date().toISOString()) },
-  worker: { format: 'es', plugins: () => [manifest.worker()] },
+  worker: {
+    format: 'es',
+    plugins: () => [manifest.worker()],
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          // One Mediabunny chunk for audiotools and the encoder modules: the encoders register
+          // into Mediabunny's module state, so they must share its single copy
+          groups: [
+            // Vite's empty stand-in for Node built-ins, which other modules import too; its own
+            // chunk keeps it from pulling them onto the Mediabunny chunk
+            { name: 'browser-external', test: /__vite-browser-external/, priority: 1 },
+            { name: 'mediabunny', test: /[\\/]node_modules[\\/]mediabunny[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
   // Agents' git worktrees live under .claude/worktrees; their builds would reload the page
   server: { watch: { ignored: ['**/.claude/**'] } },
   optimizeDeps: {
@@ -25,6 +42,8 @@ export default defineConfig({
       'reflect-metadata',
       'music-metadata',
       'mediabunny',
+      '@mediabunny/mp3-encoder',
+      '@mediabunny/aac-encoder',
       'jsqr',
       'xlsx',
       'sql.js',

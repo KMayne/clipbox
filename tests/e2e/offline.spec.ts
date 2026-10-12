@@ -2,7 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
-import { paste } from './helpers';
+import { wav } from '../fixtures/media';
+import { dropBytes, paste } from './helpers';
 
 const SW_PATH = path.resolve(import.meta.dirname, '../../dist/sw.js');
 const MANIFEST_PATH = path.resolve(import.meta.dirname, '../../dist/modules-manifest.json');
@@ -70,6 +71,19 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   await expect(page.getByTestId('capture').first().getByTestId('derived-from')).toContainText(
     'jq map(. * 2) | add',
   );
+
+  // MP3 needs the mp3encoder module to register LAME into the Mediabunny chunk audiotools
+  // shares, and LAME runs in a blob worker nested in the engine worker
+  await dropBytes(page, 'tone.wav', 'audio/wav', wav({ seconds: 1, rate: 44100 }));
+  const newest = () => page.getByTestId('capture').first().locator('[data-kind=audio]');
+  await expect(newest()).toHaveAttribute('aria-pressed', 'true');
+  await pane.getByRole('button', { name: 'Convert audio' }).click();
+  await pane
+    .getByRole('form', { name: 'Convert audio settings' })
+    .getByRole('button', { name: 'Run' })
+    .click();
+  await expect(page.getByTestId('capture')).toHaveCount(5);
+  await expect(newest()).toHaveText(/^MP3 · 0:01/);
 
   // Language detection evicted while offline: text still parses, just without a language
   await evictModule(page, 'langdetect');
