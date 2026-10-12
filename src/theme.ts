@@ -316,6 +316,7 @@ export const kindColors: Record<string, string> = {
   pdf: p.hue.red,
   presentation: p.dim.orange,
   executable: p.dim.red,
+  playlist: p.dim.purple,
   jwt: p.dim.red,
   pem: p.hue.aqua,
   timestamp: p.hue.blue,
