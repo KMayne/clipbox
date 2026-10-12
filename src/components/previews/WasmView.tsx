@@ -26,7 +26,7 @@ const styles = {
     align-items: start;
     gap: 10px 16px;
     font-family: ${theme.sans};
-    font-size: 13px;
+    font-size: var(--text-base);
     border-bottom: 1px solid ${theme.subtle};
   `,
   card: css`
@@ -37,7 +37,7 @@ const styles = {
   `,
   title: css`
     margin: 0;
-    font-size: 15px;
+    font-size: var(--text-lg);
     font-weight: 600;
     color: ${theme.text};
     overflow-wrap: anywhere;
@@ -55,8 +55,8 @@ const styles = {
     padding: 0 6px;
     border: 1px solid ${theme.accent};
     border-radius: 3px;
-    font-size: 11px;
-    line-height: 18px;
+    font-size: var(--text-xs);
+    line-height: calc(18px * var(--font-scale));
     color: ${theme.accent};
     white-space: nowrap;
   `,
@@ -77,7 +77,7 @@ const styles = {
     dd {
       margin: 0;
       font-family: ${theme.mono};
-      font-size: 12px;
+      font-size: var(--text-sm);
       overflow-wrap: anywhere;
     }
   `,
@@ -86,7 +86,7 @@ const styles = {
     grid-template-columns: minmax(80px, max-content) 1fr auto;
     align-items: center;
     gap: 2px 10px;
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   barName: css`
     font-family: ${theme.mono};
@@ -145,7 +145,7 @@ const styles = {
   count: css`
     margin-left: 6px;
     color: ${theme.muted};
-    font-size: 11px;
+    font-size: var(--text-xs);
   `,
 };
 
