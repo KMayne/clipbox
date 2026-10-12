@@ -4,12 +4,12 @@ import { Icon } from '@mdi/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JsonChild, JsonPath, ValueHandle } from '../../core/types';
-import { syntax, theme } from '../../theme';
+import { scaled, syntax, theme } from '../../theme';
 import { ui } from '../ui';
 import { useAsync } from '../useAsync';
 import { preview } from './styles';
 
-const ROW = 20;
+const ROW = scaled(20);
 const PAGE = 500;
 const AUTO_EXPAND_MAX = 20;
 

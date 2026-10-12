@@ -286,6 +286,31 @@ export const theme = {
   sans: "system-ui, -apple-system, 'Segoe UI', sans-serif",
 };
 
+/** Multiplies every UI font size: the `--font-scale` CSS variable, and the JS-side sizes below. */
+export const FONT_SCALE = 1.25;
+
+/**
+ * Unscaled UI font sizes in px. Each is the CSS variable `--text-<name>`, defined in `main.tsx`
+ * as `calc(<px> * var(--font-scale))`; components use `font-size: var(--text-sm)` and never a
+ * px size of their own.
+ */
+export const TEXT_SIZES = {
+  '2xs': 10,
+  xs: 11,
+  sm: 12,
+  base: 13,
+  md: 14,
+  lg: 15,
+  xl: 16,
+  '2xl': 18,
+} as const;
+
+/**
+ * A px size multiplied by FONT_SCALE, for what CSS variables can't reach: virtualised row
+ * heights, Monaco's options, and the stylesheets of sandboxed iframes.
+ */
+export const scaled = (px: number) => Math.round(px * FONT_SCALE);
+
 /** Value colours for JSON-like trees. */
 export const syntax = {
   key: p.hue.blue,

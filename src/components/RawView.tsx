@@ -16,7 +16,7 @@ const styles = {
   pre: css`
     margin: 0;
     font-family: ${theme.mono};
-    font-size: 12px;
+    font-size: var(--text-sm);
     white-space: pre-wrap;
     word-break: break-all;
   `,

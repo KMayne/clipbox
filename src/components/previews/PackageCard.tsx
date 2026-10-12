@@ -17,7 +17,7 @@ const styles = {
     background: ${theme.panel};
     border-bottom: 1px solid ${theme.border};
     font-family: ${theme.sans};
-    font-size: 13px;
+    font-size: var(--text-base);
   `,
   head: css`
     display: flex;
@@ -27,14 +27,14 @@ const styles = {
   `,
   title: css`
     margin: 0;
-    font-size: 15px;
+    font-size: var(--text-lg);
     font-weight: 600;
     color: ${theme.text};
     overflow-wrap: anywhere;
   `,
   kind: css`
     color: ${theme.muted};
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   badges: css`
     display: flex;
@@ -45,8 +45,8 @@ const styles = {
     padding: 0 6px;
     border: 1px solid ${theme.border};
     border-radius: 3px;
-    font-size: 11px;
-    line-height: 18px;
+    font-size: var(--text-xs);
+    line-height: calc(18px * var(--font-scale));
     color: ${theme.muted};
     white-space: nowrap;
   `,
@@ -84,7 +84,7 @@ const styles = {
     dd {
       margin: 0;
       font-family: ${theme.mono};
-      font-size: 12px;
+      font-size: var(--text-sm);
       overflow-wrap: anywhere;
       white-space: pre-wrap;
     }
@@ -106,7 +106,7 @@ const styles = {
     margin: 4px 0 2px;
     padding-left: 20px;
     font-family: ${theme.mono};
-    font-size: 12px;
+    font-size: var(--text-sm);
     columns: 280px;
     li {
       overflow-wrap: anywhere;
@@ -118,7 +118,7 @@ const styles = {
   reason: css`
     margin-left: 6px;
     font-family: ${theme.sans};
-    font-size: 11px;
+    font-size: var(--text-xs);
   `,
   pre: css`
     margin: 4px 0 6px;
@@ -129,7 +129,7 @@ const styles = {
     border: 1px solid ${theme.border};
     border-radius: 4px;
     font-family: ${theme.mono};
-    font-size: 12px;
+    font-size: var(--text-sm);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   `,

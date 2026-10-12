@@ -15,7 +15,7 @@ const styles = {
     gap: 4px 16px;
     padding: 6px 12px;
     border-bottom: 1px solid ${theme.subtle};
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   factLabel: css`
     color: ${theme.muted};
@@ -49,7 +49,7 @@ const styles = {
   count: css`
     margin-left: 6px;
     color: ${theme.muted};
-    font-size: 11px;
+    font-size: var(--text-xs);
   `,
 };
 

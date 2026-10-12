@@ -56,7 +56,7 @@ const styles = {
   `,
   value: css`
     font-family: ${theme.mono};
-    font-size: 13px;
+    font-size: var(--text-base);
     word-break: break-all;
     user-select: all;
   `,
@@ -68,7 +68,7 @@ const styles = {
   table: css`
     border-collapse: collapse;
     font-family: ${theme.mono};
-    font-size: 12px;
+    font-size: var(--text-sm);
     td,
     th {
       padding: 3px 12px 3px 0;

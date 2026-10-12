@@ -19,7 +19,7 @@ const styles = {
   wrap: css`
     padding: 12px 16px;
     font-family: ${theme.sans};
-    font-size: 13px;
+    font-size: var(--text-base);
   `,
   badges: css`
     display: flex;
@@ -30,7 +30,7 @@ const styles = {
   badge: css`
     padding: 1px 8px;
     border-radius: 10px;
-    font-size: 12px;
+    font-size: var(--text-sm);
     font-weight: 600;
     color: ${theme.onAccent};
   `,
@@ -53,17 +53,17 @@ const styles = {
     td:first-child {
       color: ${theme.muted};
       font-family: ${theme.mono};
-      font-size: 12px;
+      font-size: var(--text-sm);
     }
   `,
   value: css`
     font-family: ${theme.mono};
-    font-size: 12px;
+    font-size: var(--text-sm);
     word-break: break-all;
   `,
   heading: css`
     margin: 12px 0 4px;
-    font-size: 11px;
+    font-size: var(--text-xs);
     font-weight: 600;
     letter-spacing: 0.06em;
     color: ${theme.muted};
@@ -75,7 +75,7 @@ const styles = {
     border: 1px solid ${theme.subtle};
     border-radius: 4px;
     font-family: ${theme.mono};
-    font-size: 12px;
+    font-size: var(--text-sm);
     white-space: pre-wrap;
     word-break: break-all;
   `,

@@ -7,14 +7,14 @@ import { formatBytes } from '../../core/format';
 import type { ValueHandle } from '../../core/types';
 import { useCaptureStore, type Selection } from '../../state/captureStore';
 import { useUiStore } from '../../state/uiStore';
-import { theme } from '../../theme';
+import { scaled, theme } from '../../theme';
 import { ui } from '../ui';
 import { useAsync } from '../useAsync';
 import { useChunks } from '../useChunks';
 import { PackageCard } from './PackageCard';
 import { preview } from './styles';
 
-const ROW = 26;
+const ROW = scaled(26);
 const COLUMNS = [
   { key: 'size', label: 'Size', width: 90 },
   { key: 'compressed', label: 'Compressed', width: 100 },
@@ -64,7 +64,7 @@ const styles = {
   `,
   open: css`
     padding: 0 6px;
-    font-size: 11px;
+    font-size: var(--text-xs);
   `,
   note: css`
     padding: 16px;

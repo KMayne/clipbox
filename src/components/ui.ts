@@ -71,14 +71,14 @@ export const ui = {
   `,
   mono: css`
     font-family: ${theme.mono};
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   kbd: css`
     padding: 0 4px;
     border: 1px solid ${theme.border};
     border-radius: 3px;
     font-family: ${theme.mono};
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: ${theme.muted};
   `,
   empty: css`

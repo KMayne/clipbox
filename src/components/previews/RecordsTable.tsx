@@ -2,11 +2,11 @@ import { css } from '@emotion/css';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useRef } from 'react';
 import type { ValueHandle } from '../../core/types';
-import { theme } from '../../theme';
+import { scaled, theme } from '../../theme';
 import { useChunks } from '../useChunks';
 import { preview } from './styles';
 
-const ROW = 24;
+const ROW = scaled(24);
 const COL_WIDTH = 160;
 const INDEX_WIDTH = 56;
 
@@ -44,7 +44,7 @@ const styles = {
   `,
   type: css`
     color: ${theme.muted};
-    font-size: 11px;
+    font-size: var(--text-xs);
   `,
   index: css`
     color: ${theme.faint};

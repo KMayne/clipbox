@@ -50,7 +50,7 @@ const styles = {
     border: none;
     border-bottom: 1px solid ${theme.subtle};
     outline: none;
-    font-size: 14px;
+    font-size: var(--text-md);
   `,
   item: css`
     display: flex;

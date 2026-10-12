@@ -49,7 +49,7 @@ const styles = {
   `,
   count: css`
     color: ${theme.muted};
-    font-size: 11px;
+    font-size: var(--text-xs);
   `,
   main: css`
     position: relative;

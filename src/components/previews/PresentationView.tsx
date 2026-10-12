@@ -24,7 +24,7 @@ const styles = {
     flex-direction: column;
     gap: 10px;
     font-family: ${theme.sans};
-    font-size: 13px;
+    font-size: var(--text-base);
   `,
   slide: css`
     display: grid;
@@ -39,13 +39,13 @@ const styles = {
     grid-row: span 4;
     color: ${theme.faint};
     font-family: ${theme.mono};
-    font-size: 12px;
+    font-size: var(--text-sm);
     text-align: right;
     padding-top: 2px;
   `,
   title: css`
     margin: 0;
-    font-size: 14px;
+    font-size: var(--text-md);
     font-weight: 600;
     color: ${theme.text};
     overflow-wrap: anywhere;
@@ -61,7 +61,7 @@ const styles = {
     border: 1px solid ${theme.border};
     border-radius: 3px;
     color: ${theme.muted};
-    font-size: 11px;
+    font-size: var(--text-xs);
     font-weight: normal;
   `,
   text: css`
@@ -92,7 +92,7 @@ const styles = {
     border-radius: 4px;
     overflow: hidden;
     color: ${theme.muted};
-    font-size: 10px;
+    font-size: var(--text-2xs);
     text-align: center;
     img {
       max-width: 100%;

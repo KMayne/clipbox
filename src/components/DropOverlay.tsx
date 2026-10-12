@@ -10,7 +10,7 @@ const overlay = css`
   border: 2px dashed ${theme.accent};
   border-radius: 8px;
   background: ${withAlpha(theme.bg, 0.85)};
-  font-size: 18px;
+  font-size: var(--text-2xl);
   pointer-events: none;
   z-index: 100;
 `;
