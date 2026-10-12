@@ -33,6 +33,7 @@ export default defineConfig({
       'pdfjs-dist/build/pdf.worker.mjs',
       'fzstd',
       'utif2',
+      'libheif-js/libheif-wasm/libheif.js',
       'libarchive.js/src/webworker/wasm-module.js',
       'libarchive.js/src/webworker/archive-reader.js',
       'libarchive.js/src/webworker/wasm-gen/libarchive.js',

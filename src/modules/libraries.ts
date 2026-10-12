@@ -23,4 +23,5 @@ export const moduleLibraries: Record<string, ModuleLibrary> = {
   qr: { name: 'jsQR', package: 'jsqr' },
   imageformats: { name: 'UTIF.js', package: 'utif2' },
   jq: { name: 'jq-wasm', package: 'jq-wasm' },
+  heic: { name: 'libheif', package: 'libheif-js' },
 };
