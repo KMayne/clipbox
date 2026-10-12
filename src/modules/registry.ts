@@ -5,6 +5,7 @@ import { pdfDetector } from './pdf/detect';
 import { libarchiveDetector } from './libarchive/detect';
 import { pemDetector } from './x509/detect';
 import { imageformatsDetector } from './imageformats/detect';
+import { heicDetector } from './heic/detect';
 import { moduleLibraries } from './libraries';
 import type { Detector, ModuleId, ModuleInfo } from './types';
 
@@ -100,6 +101,14 @@ export const modules: ModuleInfo[] = (
       hasUi: false,
     },
     {
+      id: 'heic',
+      title: 'HEIC images',
+      description: 'Previews HEIC/HEIF photos, including bursts (libheif, WASM)',
+      approxBytes: 1_560_000,
+      hasWorker: true,
+      hasUi: false,
+    },
+    {
       id: 'jq',
       title: 'jq',
       description: 'Runs jq filters on JSON, YAML, NDJSON and records (jq 1.8, WASM)',
@@ -120,6 +129,7 @@ export const detectors: Detector[] = [
   sqliteDetector,
   libarchiveDetector,
   imageformatsDetector,
+  heicDetector,
 ];
 
 export const moduleInfo = (id: ModuleId) => modules.find(m => m.id === id);

@@ -78,7 +78,7 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
 
 ### Image
 
-- **Convert** ✅: PNG / JPEG / WebP (re-encoding also strips metadata; quality param; not offered for SVG; works on TIFF/EMF/WMF/PSD/TGA/PCX via their first-page render) · **Pages as PNG** ✅ (every page of a multi-page image, e.g. TIFF, as one collection) · **Resize** ✅ (75/50/25%, or width/height px with keep-aspect; the browser's
+- **Convert** ✅: PNG / JPEG / WebP (re-encoding also strips metadata; quality param; not offered for SVG; works on TIFF/EMF/WMF/PSD/TGA/PCX/HEIC via their first-page render) · **Pages as PNG** ✅ (every page of a multi-page image, e.g. TIFF or a HEIC burst, as one collection) · **Resize** ✅ (75/50/25%, or width/height px with keep-aspect; the browser's
   high-quality resampler) · **Rotate/flip** ✅ (90/180/270, horizontal, vertical; both keep
   PNG/JPEG/WebP, else PNG) · grayscale
 - **To data URL** ✅ (also for SVG) · **Read QR/barcode** ✅ (Chromium's `BarcodeDetector`, every

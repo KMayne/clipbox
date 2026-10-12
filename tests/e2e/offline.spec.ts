@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
-import { paste } from './helpers';
+import { dropBytes, paste } from './helpers';
 
 const SW_PATH = path.resolve(import.meta.dirname, '../../dist/sw.js');
 const MANIFEST_PATH = path.resolve(import.meta.dirname, '../../dist/modules-manifest.json');
@@ -70,6 +71,12 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   await expect(page.getByTestId('capture').first().getByTestId('derived-from')).toContainText(
     'jq map(. * 2) | add',
   );
+
+  // HEIC: libheif's wasm (fetched by the engine worker) comes from the cache too
+  const heic = readFileSync(new URL('../fixtures/heic/halves.heic', import.meta.url));
+  await dropBytes(page, 'photo.heic', 'image/heic', heic);
+  await expect(page.getByTestId('capture')).toHaveCount(4);
+  await expect(page.locator('[data-kind=image]').first()).toHaveText(/HEIC 64×48/);
 
   // Language detection evicted while offline: text still parses, just without a language
   await evictModule(page, 'langdetect');
