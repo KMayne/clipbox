@@ -119,6 +119,14 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
 
 - **Open entry** ✓ · **Listing as CSV** ✅ (path, size, compressed size, modified, type; core and
   libarchive formats) · download an entry · extract all (zip download)
+- **Manifest as JSON** ✅ (`archive.manifest`: the recognised `PackageInfo` of a jar/war/ear,
+  browser extension (CRX/XPI/zip), APK/AAB, wheel, nupkg, vsix, npm tarball, EPUB or RPM;
+  applies only when one was recognised) · **Class versions** ✅ (jar: every `.class` with its
+  major/minor version, Java release and `META-INF/versions/N` release, as CSV; reads only each
+  class's first 8 bytes) · **Scriptlets as text** ✅ (RPM `%pre`/`%post`/`%preun`/`%postun`/
+  `%pretrans`/`%posttrans` and triggers, each headed `# %post (/bin/sh)`)
+- Later: `.deb` (an `ar` of `control.tar.*` + `data.tar.*`) in the same shape as RPM; verify
+  CRX/APK signatures (only the scheme and key ID are read today)
 
 ### PDF
 

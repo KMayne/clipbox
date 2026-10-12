@@ -1,6 +1,7 @@
 import { css } from '@emotion/css';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useRef } from 'react';
+import { packageCardSchema } from '../../core/archive/packages/types';
 import { FORCE_PREFIX, GUARD_MESSAGE } from '../../core/archive/types';
 import { formatBytes } from '../../core/format';
 import type { ValueHandle } from '../../core/types';
@@ -8,7 +9,9 @@ import { useCaptureStore, type Selection } from '../../state/captureStore';
 import { useUiStore } from '../../state/uiStore';
 import { theme } from '../../theme';
 import { ui } from '../ui';
+import { useAsync } from '../useAsync';
 import { useChunks } from '../useChunks';
+import { PackageCard } from './PackageCard';
 import { preview } from './styles';
 
 const ROW = 26;
@@ -109,7 +112,23 @@ async function openArchiveEntry(selection: Selection, path: string, force = fals
   }
 }
 
+/** The file table, with the package's manifest card above it when one was recognised. */
 export function ArchiveView({ handle }: { handle: ValueHandle }) {
+  const card = useAsync('archive-package', async () =>
+    packageCardSchema.nullable().parse(await handle.json()),
+  );
+  if (card.status !== 'ok' || card.value === null) return <ArchiveTable handle={handle} />;
+  return (
+    <div className={preview.column}>
+      <PackageCard card={card.value} />
+      <div className={preview.fill}>
+        <ArchiveTable handle={handle} />
+      </div>
+    </div>
+  );
+}
+
+function ArchiveTable({ handle }: { handle: ValueHandle }) {
   const selection = useCaptureStore(s => s.selection);
   const parentRef = useRef<HTMLDivElement>(null);
   const { ensure, get } = useChunks(handle.rows);

@@ -9,6 +9,8 @@ import { hasKind } from '../guards';
 import { unsupportedSlice, type InterpretContext, type Interpreter } from '../interpreter';
 import type { DerivedContent, StatRow } from '../types';
 import { gunzipCapped } from './gzip';
+import { packageCard, packageLabel, packageStats } from './packages/describe';
+import { extractFromPayload, gunzipStream } from './rpm';
 import {
   basename,
   checkGuard,
@@ -30,7 +32,11 @@ export interface ArchiveParts {
   detect(c: EntryContent): number;
   parse(c: EntryContent, ctx: InterpretContext): MaybePromise<ArchiveValue>;
   /** Extracts entries of an 'external' source; core sources are handled here. */
-  extractExternal?(v: ArchiveValue, index: number): MaybePromise<Uint8Array<ArrayBuffer>>;
+  extractExternal?(
+    v: ArchiveValue,
+    index: number,
+    force: boolean,
+  ): MaybePromise<Uint8Array<ArrayBuffer>>;
   /** Decompresses a 'single' source that wasn't decompressed up front (non-gzip formats). */
   decodeSingle?(v: ArchiveValue, force: boolean): MaybePromise<Uint8Array<ArrayBuffer>>;
 }
@@ -39,6 +45,7 @@ const formatName = (v: ArchiveValue) => v.format.toUpperCase();
 
 export const archiveLabel = (v: ArchiveValue) => {
   if (v.unsupported) return `${formatName(v)} · unsupported`;
+  if (v.package) return packageLabel(v.package, v);
   const files = v.entries.filter(e => !e.isDir);
   const total = files.reduce((n, e) => n + e.size, 0);
   return `${formatName(v)} · ${plural(files.length, 'file')} · ${formatBytes(total)}`;
@@ -65,6 +72,7 @@ export function archiveStats(v: ArchiveValue): StatRow[] {
   }
   const largest = [...files].sort((a, b) => b.size - a.size).slice(0, TOP_FILES);
   return [
+    ...(v.package ? packageStats(v.package) : []),
     { label: 'Format', value: formatName(v) },
     ...(v.unsupported ? [{ label: 'Note', value: v.unsupported }] : []),
     ...(v.note ? [{ label: 'Note', value: v.note }] : []),
@@ -137,9 +145,19 @@ export async function extractEntry(
         return gunzipCapped(src.bytes, entry.path, force);
       if (parts.decodeSingle) return parts.decodeSingle(v, force);
       throw new Error(`Can't decompress ${entry.path}`);
+    case 'cpio': {
+      const name = src.names[index];
+      if (name === undefined) throw new Error(`No cpio name for ${entry.path}`);
+      const payload = src.bytes.subarray(src.payloadOffset);
+      if (!['gzip', 'none', ''].includes(src.compressor)) {
+        throw new Error(`Can't decompress ${src.compressor} RPM payloads`);
+      }
+      const decode = src.compressor === 'gzip' ? gunzipStream : null;
+      return extractFromPayload(payload, name, entry.path, force, decode);
+    }
     case 'external':
       if (!parts.extractExternal) throw new Error(`Can't extract from ${formatName(v)} here`);
-      return parts.extractExternal(v, index);
+      return parts.extractExternal(v, index, force);
   }
 }
 
@@ -172,6 +190,8 @@ export function archiveInterpreter(parts: ArchiveParts): Interpreter<ArchiveValu
           isDir: e.isDir,
         }));
       }
+      // The manifest card, when a package was recognised
+      if (req.type === 'json') return v.package ? packageCard(v.package) : null;
       return unsupportedSlice('archive', req);
     },
     export: v => ({ text: v.entries.map(e => e.path).join('\n') }),
