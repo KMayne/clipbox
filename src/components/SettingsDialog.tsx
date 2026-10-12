@@ -409,7 +409,14 @@ function ModuleRow({ info, built }: { info: ModuleInfo; built: BuiltModule | und
         {info.title}
         <div className={styles.description}>{info.description}</div>
       </td>
-      <td data-testid="module-library">{library || '—'}</td>
+      <td>
+        <span data-testid="module-library">{library || '—'}</span>
+        {info.library && (
+          <div className={styles.description} data-testid="module-license">
+            {info.library.license}
+          </div>
+        )}
+      </td>
       <td className={styles.nowrap}>{formatBytes(built?.bytes ?? info.approxBytes)}</td>
       <td className={styles.nowrap} data-testid="module-status">
         {statusText(loaded, cache)}
