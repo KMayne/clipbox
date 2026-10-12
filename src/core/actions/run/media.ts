@@ -1,15 +1,24 @@
 import { isRecord } from '../../guards';
 import type { MediaContainer } from '../../../modules/media/detect';
 import {
+  isAudioConverter,
   isAudioTools,
+  isEncoderExtension,
   isVideoFrameTool,
+  type ExtensionCodec,
   type FrameOptions,
   type NormaliseResult,
 } from '../../../modules/audiotools/service';
 import { isMediaService } from '../../../modules/media/service';
-import { mediaMetadata, mediaNormalise, mediaVideoFrame } from '../catalog/media';
-import { implement } from '../types';
-import { textResult } from './util';
+import {
+  mediaConvert,
+  mediaExtractAudio,
+  mediaMetadata,
+  mediaNormalise,
+  mediaVideoFrame,
+} from '../catalog/media';
+import { implement, type ActionContext } from '../types';
+import { textResult, withExtension } from './util';
 
 /**
  * The fields of the media module's value these actions read. A light guard rather than the
@@ -71,6 +80,22 @@ export function normalisedName(
   return `${stem} (${what}; was ${fmt(result.before.integrated)} LUFS, ${signed(result.gainDb)} dB).${ext}`;
 }
 
+/** "clip.mp4" → "clip (audio).m4a". */
+export function extractedName(name: string | undefined, extension: string): string {
+  const stem = (name ? name.replace(/\.[^./\\]*$/, '') : '') || 'video';
+  return `${stem} (audio).${extension}`;
+}
+
+/** Registers an encoder module's encoder with Mediabunny; false when the module can't load. */
+const encoderLoader = (ctx: ActionContext) => async (codec: ExtensionCodec) => {
+  const extension = await ctx.service(
+    codec === 'mp3' ? 'mp3encoder' : 'aacencoder',
+    isEncoderExtension,
+  );
+  extension?.register();
+  return !!extension;
+};
+
 export const mediaImpls = [
   implement(mediaNormalise, {
     value: isMediaInfo,
@@ -89,6 +114,44 @@ export const mediaImpls = [
       return {
         mime: result.mime,
         name: normalisedName(content.name, value.kind, result, target),
+        bytes: result.bytes,
+      };
+    },
+  }),
+  implement(mediaConvert, {
+    value: isMediaInfo,
+    applies: ({ value }) => NORMALISABLE.has(value.container),
+    async run({ content }, { format, bitrate }, ctx) {
+      const tools = await ctx.service('audiotools', isAudioConverter);
+      if (!tools) throw new Error('The audio tools module is unavailable');
+      const result = await tools.convert(content.bytes, {
+        format,
+        bitrate: Number(bitrate),
+        loadEncoder: encoderLoader(ctx),
+        signal: ctx.signal,
+        progress: ctx.progress,
+      });
+      return {
+        mime: result.mime,
+        name: withExtension(content.name, result.extension, 'audio'),
+        bytes: result.bytes,
+        ...(result.copied && { note: 'copied, not re-encoded' }),
+      };
+    },
+  }),
+  implement(mediaExtractAudio, {
+    value: isMediaInfo,
+    applies: ({ value }) => value.hasVideo && NORMALISABLE.has(value.container),
+    async run({ content }, _params, ctx) {
+      const tools = await ctx.service('audiotools', isAudioConverter);
+      if (!tools) throw new Error('The audio tools module is unavailable');
+      const result = await tools.extractAudio(content.bytes, {
+        signal: ctx.signal,
+        progress: ctx.progress,
+      });
+      return {
+        mime: result.mime,
+        name: extractedName(content.name, result.extension),
         bytes: result.bytes,
       };
     },

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
+import { wav } from '../fixtures/media';
 import { dropBytes, paste } from './helpers';
 
 const SW_PATH = path.resolve(import.meta.dirname, '../../dist/sw.js');
@@ -78,12 +79,25 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   await expect(page.getByTestId('capture')).toHaveCount(4);
   await expect(page.locator('[data-kind=image]').first()).toHaveText(/HEIC 64×48/);
 
+  // MP3 needs the mp3encoder module to register LAME into the Mediabunny chunk audiotools
+  // shares, and LAME runs in a blob worker nested in the engine worker
+  await dropBytes(page, 'tone.wav', 'audio/wav', wav({ seconds: 1, rate: 44100 }));
+  const newest = () => page.getByTestId('capture').first().locator('[data-kind=audio]');
+  await expect(newest()).toHaveAttribute('aria-pressed', 'true');
+  await pane.getByRole('button', { name: 'Convert audio' }).click();
+  await pane
+    .getByRole('form', { name: 'Convert audio settings' })
+    .getByRole('button', { name: 'Run' })
+    .click();
+  await expect(page.getByTestId('capture')).toHaveCount(6);
+  await expect(newest()).toHaveText(/^MP3 · 0:01/);
+
   // Language detection evicted while offline: text still parses, just without a language
   await evictModule(page, 'langdetect');
   await page.reload();
   await paste(page, { 'text/plain': TS });
   await expect(page.getByTestId('chip').first()).toHaveText('Text · 4 lines');
-  // Restored captures are ingested one by one after the reload (the HEIC decode takes a while);
+  // Restored captures are ingested one by one after the reload (HEIC and audio take a while);
   // let the earlier TypeScript paste settle offline too, or it would load langdetect once online
   await expect(page.getByTestId('chip').filter({ hasText: '4 lines' })).toHaveText([
     'Text · 4 lines',
