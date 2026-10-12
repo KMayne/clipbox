@@ -185,6 +185,22 @@ Parsed in core (`src/core/executable/`), no dependency. Actions in the `executab
   x509 module then decodes as usual (so no `ctx.service` call is needed; the signer's subject and
   issuer are read by a small DER walker in core, never verified)
 
+### Email (.eml)
+
+Parsed in core (`src/core/email/`: headers with RFC 2047 words and RFC 2231 parameters, the MIME
+tree built with an explicit stack and capped at 500 parts and 16 levels, Authentication-Results,
+the Received chain). Each attachment is also in the Open group (and a tile in the preview); a
+forwarded `message/rfc822` part opens as another email. Actions in the `email` area files:
+
+- **Attachments** ✅: every attached file as one collection capture (one file: a single capture),
+  names made unique with `core/filenames.ts`; setting: include inline (`cid:`) images
+- **Body as text** ✅ (the text part, else the HTML converted) · **Body as Markdown** ✅ (the HTML
+  part converted, else the text) · **Headers as JSON** ✅ (`[{ name, value }]` in order, encoded
+  words decoded)
+- **Received chain** ✅: one row per hop, oldest first (hop, date, delay in seconds and readable,
+  from, by, with, id, for) as CSV (a records table) or JSON
+- Later: verify DKIM signatures (needs the DNS key) · Outlook `.msg` and mbox
+
 ### PEM / X.509
 
 - **Certificate details as JSON** ✅ (x509 module service: names, validity, SANs, key usage, EKU, basic constraints, key ids, extensions, fingerprints; leaf first) · **SHA-256 fingerprint** ✅ (Fingerprint: SHA-256, SHA-1 or both, colon-separated uppercase hex, computed in core) · **Extract public key (PEM)** ✅ (SPKI; the leaf, or every block) · PEM ↔ DER
