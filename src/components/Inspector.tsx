@@ -28,6 +28,7 @@ import { PemView } from './previews/PemView';
 import { PresentationView } from './previews/PresentationView';
 import { ExecutableView } from './previews/ExecutableView';
 import { PlaylistView } from './previews/PlaylistView';
+import { EmailView } from './previews/EmailView';
 import { SpreadsheetView } from './previews/SpreadsheetView';
 import { SqliteView } from './previews/SqliteView';
 import { TextView } from './previews/TextView';
@@ -323,6 +324,8 @@ function Preview({ handle, selection }: { handle: ValueHandle; selection: Select
       return <ExecutableView handle={handle} />;
     case 'playlist':
       return <PlaylistView handle={handle} />;
+    case 'email':
+      return <EmailView handle={handle} />;
     default:
       return <HexView handle={handle} />;
   }

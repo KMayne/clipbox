@@ -12,6 +12,7 @@ const EXTENSIONS: Record<string, string> = {
   'text/xml': 'xml',
   'text/yaml': 'yaml',
   'text/uri-list': 'txt',
+  'message/rfc822': 'eml',
   'application/json': 'json',
   'application/geo+json': 'geojson',
   'application/x-ndjson': 'ndjson',

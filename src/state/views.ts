@@ -30,6 +30,7 @@ const RENDERED: Record<string, string> = {
   presentation: 'Slides',
   executable: 'Details',
   playlist: 'Playlist',
+  email: 'Message',
 };
 
 export interface ViewOption {
