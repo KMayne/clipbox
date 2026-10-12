@@ -2,7 +2,7 @@ import { css } from '@emotion/css';
 import { useEffect, useRef } from 'react';
 import { MOBILE_QUERY } from '../../components/ui';
 import { useUiStore } from '../../state/uiStore';
-import { theme } from '../../theme';
+import { scaled, theme } from '../../theme';
 import { monaco } from './monaco';
 
 const container = css`
@@ -27,7 +27,7 @@ export function MonacoView({ text, language }: { text: string; language: string 
       theme: 'clipbox-dark',
       automaticLayout: true,
       fontFamily: theme.mono,
-      fontSize: 12,
+      fontSize: scaled(12),
       // No room for the minimap on a phone
       minimap: { enabled: !matchMedia(MOBILE_QUERY).matches },
       scrollBeyondLastLine: false,

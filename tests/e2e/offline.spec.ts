@@ -1,8 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
+import { gunzipSync } from 'fflate';
 import { readFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
+import { wav } from '../fixtures/media';
 import { dropBytes, paste } from './helpers';
 
 const SW_PATH = path.resolve(import.meta.dirname, '../../dist/sw.js');
@@ -72,12 +74,6 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
     'jq map(. * 2) | add',
   );
 
-  // HEIC: libheif's wasm (fetched by the engine worker) comes from the cache too
-  const heic = readFileSync(new URL('../fixtures/heic/halves.heic', import.meta.url));
-  await dropBytes(page, 'photo.heic', 'image/heic', heic);
-  await expect(page.getByTestId('capture')).toHaveCount(4);
-  await expect(page.locator('[data-kind=image]').first()).toHaveText(/HEIC 64×48/);
-
   // Language detection evicted while offline: text still parses, just without a language
   await evictModule(page, 'langdetect');
   await page.reload();
@@ -96,10 +92,50 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   await expect(settings.getByTestId('update-status')).toHaveText('Offline cache repaired', {
     timeout: 60_000,
   });
-  await expect(status).toHaveText('available offline');
+  // Back online, text parsed from here on can load it again ("loaded · available offline")
+  await expect(status).toHaveText(/available offline$/);
   await expect(settings.getByTestId('module-pdf').getByTestId('module-status')).toHaveText(
     'available offline',
   );
+
+  // Offline again: modules the Repair downloaded work from the cache
+  for (const id of ['heic', 'mp3encoder', 'sevenzip']) {
+    await expect(settings.getByTestId(`module-${id}`).getByTestId('module-status')).toHaveText(
+      /available offline$/,
+    );
+  }
+  await page.keyboard.press('Escape');
+  await context.setOffline(true);
+  const count = await page.getByTestId('capture').count();
+
+  // HEIC: libheif's wasm (fetched by the engine worker) comes from the cache too
+  const heic = readFileSync(new URL('../fixtures/heic/halves.heic', import.meta.url));
+  await dropBytes(page, 'photo.heic', 'image/heic', heic);
+  await expect(page.getByTestId('capture')).toHaveCount(count + 1);
+  await expect(page.locator('[data-kind=image]').first()).toHaveText(/HEIC 64×48/);
+
+  // Disc images: 7-Zip's wasm too
+  const iso = gunzipSync(
+    new Uint8Array(readFileSync(new URL('../fixtures/iso/iso9660.iso.gz', import.meta.url))),
+  );
+  await dropBytes(page, 'disc.iso', 'application/x-iso9660-image', iso);
+  await expect(page.getByTestId('capture')).toHaveCount(count + 2);
+  await expect(page.locator('[data-kind=archive]').first()).toHaveText(
+    'ISO 9660 · CLIPBOX_DISC · 2 files · 61 B',
+  );
+
+  // MP3 needs the mp3encoder module to register LAME into the Mediabunny chunk audiotools
+  // shares, and LAME runs in a blob worker nested in the engine worker
+  await dropBytes(page, 'tone.wav', 'audio/wav', wav({ seconds: 1, rate: 44100 }));
+  const newest = () => page.getByTestId('capture').first().locator('[data-kind=audio]');
+  await expect(newest()).toHaveAttribute('aria-pressed', 'true');
+  await pane.getByRole('button', { name: 'Convert audio' }).click();
+  await pane
+    .getByRole('form', { name: 'Convert audio settings' })
+    .getByRole('button', { name: 'Run' })
+    .click();
+  await expect(page.getByTestId('capture')).toHaveCount(count + 4);
+  await expect(newest()).toHaveText(/^MP3 · 0:01/);
 });
 
 test('Repair can be cancelled', async ({ page }) => {

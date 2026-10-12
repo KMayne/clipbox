@@ -61,7 +61,7 @@ const styles = {
     border-radius: 3px;
     background: ${theme.raised};
     font-family: ${theme.mono};
-    font-size: 11px;
+    font-size: var(--text-xs);
     white-space: nowrap;
   `,
   name: css`
@@ -73,7 +73,7 @@ const styles = {
     margin: 2px 0 4px;
     color: ${theme.muted};
     font-family: ${theme.mono};
-    font-size: 11px;
+    font-size: var(--text-xs);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -101,7 +101,7 @@ const styles = {
     border: 1px solid ${theme.subtle};
     border-radius: 10px;
     background: none;
-    font-size: 12px;
+    font-size: var(--text-sm);
     cursor: pointer;
     &:hover {
       background: ${theme.hover};
@@ -127,7 +127,7 @@ const styles = {
   `,
   error: css`
     color: ${theme.error};
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
 };
 

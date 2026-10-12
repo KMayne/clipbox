@@ -10,7 +10,7 @@ const pre = css`
   padding: 4px 10px 10px;
   overflow: auto;
   font-family: ${theme.mono};
-  font-size: 12px;
+  font-size: var(--text-sm);
 `;
 
 export function SchemaView({ schema }: { schema?: Schema }) {

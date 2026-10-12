@@ -1,4 +1,9 @@
-/** Archive values shared by the core `archive` interpreter (zip/gzip/tar) and the `libarchive` module. */
+/**
+ * Archive values shared by the core `archive` interpreter (zip/gzip/tar) and the `libarchive` and
+ * `sevenzip` (disc images) modules.
+ */
+
+import type { PackageInfo } from './packages/types';
 
 export type ArchiveFormat =
   | 'zip'
@@ -12,7 +17,12 @@ export type ArchiveFormat =
   | 'bz2'
   | 'tar.bz2'
   | 'zstd'
-  | 'tar.zst';
+  | 'tar.zst'
+  /** A zip behind a Chrome extension header. */
+  | 'crx'
+  | 'rpm'
+  /** A disc image (ISO 9660 or UDF), through the sevenzip module. */
+  | 'iso';
 
 export interface ArchiveEntry {
   /** Directories end with '/'. */
@@ -42,7 +52,19 @@ export type ArchiveSource =
    * big to decompress up front (extraction then needs confirmation).
    */
   | { type: 'single'; bytes: Uint8Array<ArrayBuffer>; data: Uint8Array<ArrayBuffer> | null }
-  /** Extracted by the owning module (libarchive) from the original bytes, by the entry's raw name. */
+  /**
+   * An RPM payload: a cpio archive, gzip-compressed or not (core); `names` are the cpio paths
+   * ("./usr/bin/x"). RPMs with xz/zstd/bzip2 payloads belong to libarchive ('external').
+   */
+  | {
+      type: 'cpio';
+      bytes: Uint8Array<ArrayBuffer>;
+      payloadOffset: number;
+      /** From the header: core reads 'gzip' and 'none' (or ''). */
+      compressor: string;
+      names: string[];
+    }
+  /** Extracted by the owning module (libarchive, sevenzip) from the original bytes, by the entry's raw name. */
   | { type: 'external'; bytes: Uint8Array<ArrayBuffer>; names: string[] };
 
 export interface ArchiveValue {
@@ -56,6 +78,19 @@ export interface ArchiveValue {
   unsupported?: string;
   /** Extra information shown in stats, e.g. why a gzip wasn't decompressed up front. */
   note?: string;
+  /** A package manifest recognised inside (jar, browser extension, APK, wheel, npm, RPM, …). */
+  package?: PackageInfo;
+  /** Disc images only. */
+  disc?: DiscInfo;
+}
+
+export interface DiscInfo {
+  /** The file system read, for the label: "ISO 9660" or "UDF". */
+  filesystem: string;
+  /** More about it, for Info: "ISO 9660 with Joliet", "UDF 2.01". */
+  detail?: string;
+  /** The volume label. */
+  volume?: string;
 }
 
 /** Refuse to extract (without confirmation) entries bigger than this… */

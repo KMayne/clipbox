@@ -117,8 +117,19 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
 
 ### Archive
 
-- **Open entry** ✓ · **Listing as CSV** ✅ (path, size, compressed size, modified, type; core and
-  libarchive formats) · download an entry · extract all (zip download)
+- **Open entry** ✓ · **Listing as CSV** ✅ (path, size, compressed size, modified, type; core,
+  libarchive and disc image formats) · download an entry · extract all (zip download)
+- **Manifest as JSON** ✅ (`archive.manifest`: the recognised `PackageInfo` of a jar/war/ear,
+  browser extension (CRX/XPI/zip), APK/AAB, wheel, nupkg, vsix, npm tarball, EPUB or RPM;
+  applies only when one was recognised) · **Class versions** ✅ (jar: every `.class` with its
+  major/minor version, Java release and `META-INF/versions/N` release, as CSV; reads only each
+  class's first 8 bytes) · **Scriptlets as text** ✅ (RPM `%pre`/`%post`/`%preun`/`%postun`/
+  `%pretrans`/`%posttrans` and triggers, each headed `# %post (/bin/sh)`)
+- Later: `.deb` (an `ar` of `control.tar.*` + `data.tar.*`) in the same shape as RPM; verify
+  CRX/APK signatures (only the scheme and key ID are read today)
+- Disc images (ISO 9660/Joliet and UDF, `sevenzip` module) are `archive` values with format
+  `iso`: Open entry and Listing as CSV work on them as on any archive. Later, without more code:
+  7-Zip's DMG, VHD(X), WIM, CAB, MSI and CHM handlers, one at a time.
 
 ### PDF
 
@@ -157,6 +168,18 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
   Reports progress per pass ("Pass 1 of 2 · measuring loudness", "Pass 2 of 2 · encoding", by
   decoded time over the duration) and cancels at the next decoded chunk; not offered for AVI or
   Ogg Theora.
+- **Convert audio** ✅ (`media.convert`, `audiotools` module; audio only): the primary audio track
+  to MP3, M4A (AAC), Ogg (Opus), WebM (Opus), FLAC or WAV (16-bit, or 24-bit for deeper PCM
+  sources). Settings: format (MP3), bitrate (96–320 kbps, 192; ignored for FLAC and WAV). MP3
+  comes from the `mp3encoder` module (LAME) and AAC from WebCodecs or, where it has none (Linux),
+  the `aacencoder` module (FFmpeg); both register into audiotools' Mediabunny on first use. Opus
+  is encoded at 48 kHz; MP3/AAC move an unsupported sample rate to a supported one and LAME
+  downmixes more than two channels. A source that already has the codec is copied ("copied, not
+  re-encoded" in the label). Tags and cover art are kept. Named `song.ogg` → `song.mp3`; progress
+  "Encoding", cancellable.
+- **Extract audio track** ✅ (`media.extractAudio`, `audiotools` module; video with a container
+  Mediabunny reads): copies the primary audio track without re-encoding, into M4A (AAC), MP3, Ogg
+  (Opus, Vorbis), FLAC, WAV (PCM) or else Matroska audio (`.mka`); named `clip (audio).m4a`.
 
 ### Spreadsheet
 

@@ -5,17 +5,12 @@
  */
 import {
   ADTS,
-  ALL_FORMATS,
   AdtsOutputFormat,
   AudioSample,
   AudioSampleSink,
-  BufferSource,
-  BufferTarget,
   canEncodeAudio,
-  Conversion,
   FLAC,
   FlacOutputFormat,
-  Input,
   MATROSKA,
   MkvOutputFormat,
   MovOutputFormat,
@@ -25,7 +20,6 @@ import {
   Mp4OutputFormat,
   OGG,
   OggOutputFormat,
-  Output,
   QTFF,
   WAVE,
   WavOutputFormat,
@@ -37,6 +31,7 @@ import {
   type OutputFormat,
 } from 'mediabunny';
 import { throwIfAborted } from '../../core/progress';
+import { convertInto, outputMime, withInput } from './conversion';
 import { GainCurve, planGain, planLimited } from './limiter';
 import { LoudnessMeter, type SubBlocks } from './loudness';
 import type { NormaliseOptions, NormaliseResult } from './service';
@@ -195,8 +190,7 @@ export async function normalise(
   options: NormaliseOptions,
 ): Promise<NormaliseResult> {
   const { target, ceiling, limit, signal, progress } = options;
-  const input = new Input({ source: new BufferSource(bytes), formats: ALL_FORMATS });
-  try {
+  return withInput(bytes, async input => {
     const track = await input.getPrimaryAudioTrack();
     if (!track) throw new Error('No audio track');
     if (!(await track.canDecode()))
@@ -238,7 +232,6 @@ export async function normalise(
 
     const destination = await chooseTarget(await input.getFormat(), track, hasVideo);
     const format = destination.makeFormat();
-    const output = new Output({ format, target: new BufferTarget() });
 
     // Pass 2: scale and re-measure each chunk before it goes to the encoder
     // An object, so TypeScript doesn't narrow these to null across the callback
@@ -269,33 +262,17 @@ export async function normalise(
       });
     };
 
-    const conversion = await Conversion.init({
+    const out = await convertInto(
       input,
-      output,
-      showWarnings: false,
+      format,
       // Only the measured track is re-encoded; other audio tracks are copied as they are
-      audio: t => (t.id === track.id ? { codec: destination.codec, process } : {}),
-    });
-    const dropped = conversion.discardedTracks.filter(d => d.reason !== 'discarded_by_user');
-    if (!conversion.isValid || dropped.length) {
-      const what = dropped.map(d => `${d.track.type} (${d.reason.replace(/_/g, ' ')})`).join(', ');
-      throw new Error(`Can't write this file${what ? `: ${what}` : ''}`);
-    }
-    const abort = () => void conversion.cancel();
-    signal?.addEventListener('abort', abort);
-    try {
-      await conversion.execute();
-    } finally {
-      signal?.removeEventListener('abort', abort);
-    }
-    const buffer = output.target.buffer;
-    if (!buffer) throw new Error('The encoder produced no output');
-
+      { audio: t => (t.id === track.id ? { codec: destination.codec, process } : {}) },
+      { signal },
+    );
     after.peak?.flush();
-    const mime = hasVideo ? format.mimeType : format.mimeType.replace(/^video\//, 'audio/');
     return {
-      bytes: new Uint8Array(buffer),
-      mime,
+      bytes: out,
+      mime: outputMime(format, hasVideo),
       extension: format.fileExtension.replace(/^\./, ''),
       sameContainer: destination.sameContainer,
       codec: destination.codec,
@@ -309,7 +286,5 @@ export async function normalise(
       capped: plan.capped,
       limited: needsLimiter,
     };
-  } finally {
-    input.dispose();
-  }
+  });
 }

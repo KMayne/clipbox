@@ -65,7 +65,7 @@ const styles = {
     border-radius: 3px;
     color: ${theme.onAccent};
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--text-sm);
     text-transform: uppercase;
   `,
   label: css`
@@ -109,7 +109,7 @@ const styles = {
     background: none;
     border: none;
     color: ${theme.muted};
-    font-size: 12px;
+    font-size: var(--text-sm);
     cursor: pointer;
     & + & {
       border-left: 1px solid ${theme.border};

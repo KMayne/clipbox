@@ -58,7 +58,7 @@ const styles = {
     background: none;
     border: none;
     color: ${theme.muted};
-    font-size: 11px;
+    font-size: var(--text-xs);
     font-weight: 600;
     letter-spacing: 0.06em;
     text-align: left;

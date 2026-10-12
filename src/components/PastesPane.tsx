@@ -40,7 +40,7 @@ const styles = {
     gap: 2px;
     min-height: 32px;
     padding: 2px 6px 2px 10px;
-    font-size: 11px;
+    font-size: var(--text-xs);
     font-weight: 600;
     letter-spacing: 0.06em;
     color: ${theme.muted};
@@ -117,7 +117,7 @@ const styles = {
     border: none;
     color: ${theme.muted};
     text-align: left;
-    font-size: 12px;
+    font-size: var(--text-sm);
     cursor: pointer;
     &:hover {
       color: ${theme.text};

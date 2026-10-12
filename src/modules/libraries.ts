@@ -24,5 +24,8 @@ export const moduleLibraries: Record<string, ModuleLibrary> = {
   imageformats: { name: 'UTIF.js', package: 'utif2' },
   jq: { name: 'jq-wasm', package: 'jq-wasm' },
   heic: { name: 'libheif', package: 'libheif-js' },
+  mp3encoder: { name: '@mediabunny/mp3-encoder (LAME)', package: '@mediabunny/mp3-encoder' },
+  aacencoder: { name: '@mediabunny/aac-encoder (FFmpeg)', package: '@mediabunny/aac-encoder' },
+  sevenzip: { name: '7-Zip (7z-wasm)', package: '7z-wasm' },
   wabt: { name: 'wabt.js', package: 'wabt' },
 };

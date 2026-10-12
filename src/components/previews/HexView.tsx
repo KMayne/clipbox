@@ -14,7 +14,7 @@ const styles = {
   pre: css`
     margin: 0;
     padding: 12px;
-    line-height: 18px;
+    line-height: calc(18px * var(--font-scale));
   `,
   offset: css`
     color: ${theme.faint};

@@ -5,7 +5,7 @@ import { formatBytes } from '../../core/format';
 import type { ValueHandle } from '../../core/types';
 import { runDerivation } from '../../state/actions';
 import { useCaptureStore, type Selection } from '../../state/captureStore';
-import { theme } from '../../theme';
+import { scaled, theme } from '../../theme';
 import { ui } from '../ui';
 import { useAsync } from '../useAsync';
 import { SandboxedHtml } from './SandboxedHtml';
@@ -17,7 +17,7 @@ const THUMB = 64;
 
 /** Email HTML is written for a light page; this only sets a readable default and fits images. */
 const STYLESHEET = `
-body { margin: 12px 16px; font: 14px/1.5 ${theme.sans}; overflow-wrap: break-word; }
+body { margin: 12px 16px; font: ${scaled(14)}px/1.5 ${theme.sans}; overflow-wrap: break-word; }
 img { max-width: 100%; height: auto; }
 table { max-width: 100%; }
 `;
@@ -29,7 +29,7 @@ const styles = {
     background: ${theme.panel};
     border-bottom: 1px solid ${theme.border};
     font-family: ${theme.sans};
-    font-size: 13px;
+    font-size: var(--text-base);
     max-height: 40%;
     overflow: auto;
   `,
@@ -49,7 +49,7 @@ const styles = {
   `,
   subject: css`
     margin: 0 0 6px;
-    font-size: 15px;
+    font-size: var(--text-lg);
     font-weight: 600;
     color: ${theme.text};
     overflow-wrap: anywhere;
@@ -60,7 +60,7 @@ const styles = {
     border-bottom: 1px solid ${theme.subtle};
     color: ${theme.muted};
     font-family: ${theme.sans};
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   text: css`
     margin: 0;
@@ -92,7 +92,7 @@ const styles = {
     border-radius: 4px;
     color: ${theme.text};
     font: inherit;
-    font-size: 12px;
+    font-size: var(--text-sm);
     text-align: left;
     cursor: pointer;
     &:hover {
@@ -110,7 +110,7 @@ const styles = {
     border-radius: 3px;
     overflow: hidden;
     color: ${theme.muted};
-    font-size: 10px;
+    font-size: var(--text-2xs);
     text-transform: uppercase;
     img {
       max-width: 100%;

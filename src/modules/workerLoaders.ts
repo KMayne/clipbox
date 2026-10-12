@@ -14,5 +14,8 @@ export const workerLoaders: Partial<Record<ModuleId, () => Promise<WorkerModule>
   imageformats: () => import('./imageformats/worker'),
   jq: () => import('./jq/worker'),
   heic: () => import('./heic/worker'),
+  mp3encoder: () => import('./mp3encoder/worker'),
+  aacencoder: () => import('./aacencoder/worker'),
+  sevenzip: () => import('./sevenzip/worker'),
   wabt: () => import('./wabt/worker'),
 };

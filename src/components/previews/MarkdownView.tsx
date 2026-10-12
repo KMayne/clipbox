@@ -1,5 +1,5 @@
 import type { ValueHandle } from '../../core/types';
-import { theme, withAlpha } from '../../theme';
+import { scaled, theme, withAlpha } from '../../theme';
 import { useAsync } from '../useAsync';
 import { SandboxedHtml } from './SandboxedHtml';
 import { preview } from './styles';
@@ -11,7 +11,7 @@ const STYLESHEET = `
 body {
   margin: 0 auto; padding: 16px 24px 48px; max-width: 760px;
   background: ${theme.bg}; color: ${theme.text};
-  font: 15px/1.6 ${theme.sans};
+  font: ${scaled(15)}px/1.6 ${theme.sans};
   overflow-wrap: break-word;
 }
 h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin: 1.4em 0 0.6em; }

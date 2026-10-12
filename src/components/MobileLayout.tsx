@@ -40,7 +40,7 @@ const styles = {
     border: none;
     border-top: 2px solid transparent;
     color: ${theme.muted};
-    font-size: 11px;
+    font-size: var(--text-xs);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   `,
@@ -57,8 +57,8 @@ const styles = {
     border-radius: 8px;
     background: ${theme.raised};
     color: ${theme.text};
-    font-size: 10px;
-    line-height: 16px;
+    font-size: var(--text-2xs);
+    line-height: calc(16px * var(--font-scale));
   `,
 };
 

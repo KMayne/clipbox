@@ -3,11 +3,11 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useRef } from 'react';
 import type { ValueHandle } from '../../core/types';
 import { useUiStore } from '../../state/uiStore';
-import { theme } from '../../theme';
+import { scaled, theme } from '../../theme';
 import { useChunks } from '../useChunks';
 import { preview } from './styles';
 
-const ROW = 18;
+const ROW = scaled(18);
 
 const styles = {
   line: css`

@@ -60,7 +60,7 @@ const styles = {
   `,
   type: css`
     color: ${theme.muted};
-    font-size: 11px;
+    font-size: var(--text-xs);
     text-transform: uppercase;
     letter-spacing: 0.04em;
   `,
@@ -73,7 +73,7 @@ const styles = {
     padding: 1px 8px;
     border-radius: 10px;
     color: ${theme.onAccent};
-    font-size: 12px;
+    font-size: var(--text-sm);
     font-weight: 600;
     white-space: nowrap;
   `,
@@ -81,7 +81,7 @@ const styles = {
     display: grid;
     grid-template-columns: minmax(100px, max-content) 1fr;
     gap: 3px 16px;
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   label: css`
     color: ${theme.muted};

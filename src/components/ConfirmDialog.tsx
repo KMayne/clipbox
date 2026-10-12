@@ -28,7 +28,7 @@ const styles = {
   `,
   title: css`
     margin: 0 0 8px;
-    font-size: 15px;
+    font-size: var(--text-lg);
   `,
   message: css`
     margin: 0 0 16px;

@@ -36,11 +36,11 @@ const GROUPS: { title: string; keys: [string, string][] }[] = [
 const styles = {
   list: css`
     padding: 2px 10px 10px;
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   group: css`
     margin: 8px 0 4px;
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: ${theme.faint};
     text-transform: uppercase;
     letter-spacing: 0.06em;

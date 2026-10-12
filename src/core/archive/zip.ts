@@ -157,3 +157,53 @@ export function extractZipEntry(
     return s;
   });
 }
+
+/** Offset of the central directory (zip64-aware), or null when there's no EOCD record. */
+export function zipCentralDirectoryOffset(b: Uint8Array): number | null {
+  const dv = view(b);
+  const eocd = findEocd(dv);
+  if (eocd < 0) return null;
+  const offset = dv.getUint32(eocd + 16, true);
+  if (offset !== 0xffffffff) return offset;
+  const loc = eocd - 20;
+  if (loc < 0 || dv.getUint32(loc, true) !== ZIP64_LOCATOR) return null;
+  const z = Number(dv.getBigUint64(loc + 8, true));
+  if (z + 56 > b.length || dv.getUint32(z, true) !== ZIP64_EOCD) return null;
+  return Number(dv.getBigUint64(z + 48, true));
+}
+
+/**
+ * The first `n` bytes of an entry (fewer if it's shorter), inflating only as much as needed;
+ * null when the entry can't be read (encrypted, unknown method, corrupt).
+ */
+export function readZipPrefix(
+  b: Uint8Array,
+  entry: ArchiveEntry,
+  record: ZipRecord,
+  n: number,
+): Uint8Array<ArrayBuffer> | null {
+  if (record.flags & 1) return null;
+  const dv = view(b);
+  const at = record.localOffset;
+  if (at + 30 > b.length || dv.getUint32(at, true) !== LOCAL) return null;
+  const start = at + 30 + dv.getUint16(at + 26, true) + dv.getUint16(at + 28, true);
+  const data = b.subarray(start, Math.min(b.length, start + (entry.compressedSize ?? 0)));
+  if (record.method === 0) return data.slice(0, n);
+  if (record.method !== 8) return null;
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const s = new Inflate();
+  s.ondata = chunk => {
+    chunks.push(chunk);
+    total += chunk.byteLength;
+  };
+  const STEP = 256;
+  try {
+    for (let i = 0; i < data.byteLength && total < n; i += STEP) {
+      s.push(data.subarray(i, i + STEP), i + STEP >= data.byteLength);
+    }
+  } catch {
+    return null;
+  }
+  return concat(chunks, total).slice(0, n);
+}

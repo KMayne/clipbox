@@ -57,7 +57,9 @@ test('Normalise audio shows its progress in the sidebar and cancels cleanly', as
   await expect
     .poll(async () => Number(await bar(page).getAttribute('aria-valuenow')))
     .toBeGreaterThan(first);
-  // Shown in the sidebar, so not repeated in the running-actions strip
+  // Shown in the sidebar (scrolled into view: below the fold the strip takes over), so not
+  // repeated in the running-actions strip
+  await bar(page).scrollIntoViewIfNeeded();
   await expect(page.getByRole('group', { name: 'Running actions' })).toHaveCount(0);
 
   await actionsPane(page).getByRole('button', { name: 'Cancel Normalise audio' }).click();
