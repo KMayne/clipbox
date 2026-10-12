@@ -22,7 +22,7 @@ const styles = {
     min-width: 0;
   `,
   title: css`
-    font-size: 12px;
+    font-size: var(--text-sm);
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -30,7 +30,7 @@ const styles = {
   `,
   text: css`
     grid-column: 1;
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: ${theme.muted};
     overflow: hidden;
     text-overflow: ellipsis;
@@ -72,7 +72,7 @@ const styles = {
     border: 1px solid ${theme.border};
     border-radius: 4px;
     color: ${theme.muted};
-    font-size: 12px;
+    font-size: var(--text-sm);
     cursor: pointer;
     &:hover:not(:disabled) {
       color: ${theme.text};

@@ -80,7 +80,7 @@ const styles = {
     background: ${theme.accent};
     color: ${theme.onAccent};
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--text-sm);
     text-transform: uppercase;
   `,
   count: css`
@@ -146,13 +146,13 @@ const styles = {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   meta: css`
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: ${theme.muted};
     white-space: nowrap;
   `,

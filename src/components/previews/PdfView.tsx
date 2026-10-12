@@ -35,7 +35,7 @@ const styles = {
   pageError: css`
     padding: 12px;
     color: ${palette.dim.red};
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   active: css`
     border-color: ${theme.accent};

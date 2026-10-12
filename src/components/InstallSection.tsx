@@ -15,14 +15,14 @@ const styles = {
   `,
   h3: css`
     margin: 0;
-    font-size: 11px;
+    font-size: var(--text-xs);
     letter-spacing: 0.06em;
     color: ${theme.muted};
   `,
   text: css`
     flex: 1 1 240px;
     color: ${theme.muted};
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
 };
 

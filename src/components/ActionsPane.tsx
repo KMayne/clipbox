@@ -33,7 +33,7 @@ const styles = {
   `,
   group: css`
     padding: 8px 10px 2px;
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: ${theme.faint};
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -76,7 +76,7 @@ const styles = {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    font-size: 12px;
+    font-size: var(--text-sm);
     color: ${theme.muted};
     & input:not([type='checkbox']),
     & select,
@@ -86,7 +86,7 @@ const styles = {
       color: ${theme.text};
       border: 1px solid ${theme.border};
       border-radius: 3px;
-      font-size: 13px;
+      font-size: var(--text-base);
     }
     & input:focus,
     & select:focus,
@@ -103,11 +103,11 @@ const styles = {
   `,
   hint: css`
     color: ${theme.faint};
-    font-size: 11px;
+    font-size: var(--text-xs);
   `,
   error: css`
     color: ${theme.error};
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   run: css`
     align-self: flex-start;

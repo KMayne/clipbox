@@ -1,5 +1,6 @@
 import { Decompress, decompress } from 'fzstd';
 import { archiveInterpreter } from '../../core/archive/interpreter';
+import { extractFromPayload, parseRpm, type StreamDecoder } from '../../core/archive/rpm';
 import { isTar, tarValue } from '../../core/archive/tar';
 import {
   ExtractionGuardError,
@@ -69,7 +70,35 @@ const TAR_FORMAT: Record<LibarchiveFormat, ArchiveFormat> = {
   xz: 'tar.xz',
   bz2: 'tar.bz2',
   zstd: 'tar.zst',
+  rpm: 'rpm',
 };
+
+const zstdStream: StreamDecoder = ondata => {
+  const s = new Decompress(chunk => ondata(chunk));
+  return { push: (chunk, final) => s.push(chunk, final) };
+};
+
+/**
+ * RPMs with non-gzip payloads: the header (parsed in core) lists the files without decompressing;
+ * extraction goes through libarchive, which reads RPM natively, except zstd (its build lacks it),
+ * which streams through fzstd into core's cpio reader.
+ */
+function rpmValue(c: EntryContent): ArchiveValue {
+  let listing;
+  try {
+    listing = parseRpm(c.bytes);
+  } catch (err) {
+    return unsupported('rpm', c, errorMessage(err));
+  }
+  return {
+    kind: 'archive',
+    format: 'rpm',
+    archiveBytes: c.size,
+    entries: listing.entries,
+    source: { type: 'external', bytes: c.bytes, names: listing.names },
+    package: listing.info,
+  };
+}
 
 async function libarchiveValue(
   c: EntryContent,
@@ -110,11 +139,17 @@ export function createLibarchiveInterpreter(load: () => Promise<Libarchive>) {
       const format = sniffLibarchive(c.bytes);
       if (!format) throw new Error('Not a libarchive format');
       if (format === 'zstd') return zstdValue(c);
+      if (format === 'rpm') return rpmValue(c);
       return libarchiveValue(c, format, await load());
     },
-    async extractExternal(v, index) {
+    async extractExternal(v, index, force) {
       const name = v.source.type === 'external' ? v.source.names[index] : undefined;
       if (name === undefined) throw new Error(`No entry ${index}`);
+      if (v.package?.type === 'rpm' && v.package.payloadCompressor === 'zstd') {
+        const offset = parseRpm(v.source.bytes).payloadOffset;
+        const path = v.entries[index]?.path ?? name;
+        return extractFromPayload(v.source.bytes.subarray(offset), name, path, force, zstdStream);
+      }
       return (await load()).extract(v.source.bytes, name);
     },
     decodeSingle(v, force) {

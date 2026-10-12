@@ -78,7 +78,7 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
 
 ### Image
 
-- **Convert** ✅: PNG / JPEG / WebP (re-encoding also strips metadata; quality param; not offered for SVG; works on TIFF/EMF/WMF/PSD/TGA/PCX via their first-page render) · **Pages as PNG** ✅ (every page of a multi-page image, e.g. TIFF, as one collection) · **Resize** ✅ (75/50/25%, or width/height px with keep-aspect; the browser's
+- **Convert** ✅: PNG / JPEG / WebP (re-encoding also strips metadata; quality param; not offered for SVG; works on TIFF/EMF/WMF/PSD/TGA/PCX/HEIC via their first-page render) · **Pages as PNG** ✅ (every page of a multi-page image, e.g. TIFF or a HEIC burst, as one collection) · **Resize** ✅ (75/50/25%, or width/height px with keep-aspect; the browser's
   high-quality resampler) · **Rotate/flip** ✅ (90/180/270, horizontal, vertical; both keep
   PNG/JPEG/WebP, else PNG) · grayscale
 - **To data URL** ✅ (also for SVG) · **Read QR/barcode** ✅ (Chromium's `BarcodeDetector`, every
@@ -117,8 +117,19 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
 
 ### Archive
 
-- **Open entry** ✓ · **Listing as CSV** ✅ (path, size, compressed size, modified, type; core and
-  libarchive formats) · download an entry · extract all (zip download)
+- **Open entry** ✓ · **Listing as CSV** ✅ (path, size, compressed size, modified, type; core,
+  libarchive and disc image formats) · download an entry · extract all (zip download)
+- **Manifest as JSON** ✅ (`archive.manifest`: the recognised `PackageInfo` of a jar/war/ear,
+  browser extension (CRX/XPI/zip), APK/AAB, wheel, nupkg, vsix, npm tarball, EPUB or RPM;
+  applies only when one was recognised) · **Class versions** ✅ (jar: every `.class` with its
+  major/minor version, Java release and `META-INF/versions/N` release, as CSV; reads only each
+  class's first 8 bytes) · **Scriptlets as text** ✅ (RPM `%pre`/`%post`/`%preun`/`%postun`/
+  `%pretrans`/`%posttrans` and triggers, each headed `# %post (/bin/sh)`)
+- Later: `.deb` (an `ar` of `control.tar.*` + `data.tar.*`) in the same shape as RPM; verify
+  CRX/APK signatures (only the scheme and key ID are read today)
+- Disc images (ISO 9660/Joliet and UDF, `sevenzip` module) are `archive` values with format
+  `iso`: Open entry and Listing as CSV work on them as on any archive. Later, without more code:
+  7-Zip's DMG, VHD(X), WIM, CAB, MSI and CHM handlers, one at a time.
 
 ### PDF
 
@@ -157,6 +168,18 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
   Reports progress per pass ("Pass 1 of 2 · measuring loudness", "Pass 2 of 2 · encoding", by
   decoded time over the duration) and cancels at the next decoded chunk; not offered for AVI or
   Ogg Theora.
+- **Convert audio** ✅ (`media.convert`, `audiotools` module; audio only): the primary audio track
+  to MP3, M4A (AAC), Ogg (Opus), WebM (Opus), FLAC or WAV (16-bit, or 24-bit for deeper PCM
+  sources). Settings: format (MP3), bitrate (96–320 kbps, 192; ignored for FLAC and WAV). MP3
+  comes from the `mp3encoder` module (LAME) and AAC from WebCodecs or, where it has none (Linux),
+  the `aacencoder` module (FFmpeg); both register into audiotools' Mediabunny on first use. Opus
+  is encoded at 48 kHz; MP3/AAC move an unsupported sample rate to a supported one and LAME
+  downmixes more than two channels. A source that already has the codec is copied ("copied, not
+  re-encoded" in the label). Tags and cover art are kept. Named `song.ogg` → `song.mp3`; progress
+  "Encoding", cancellable.
+- **Extract audio track** ✅ (`media.extractAudio`, `audiotools` module; video with a container
+  Mediabunny reads): copies the primary audio track without re-encoding, into M4A (AAC), MP3, Ogg
+  (Opus, Vorbis), FLAC, WAV (PCM) or else Matroska audio (`.mka`); named `clip (audio).m4a`.
 
 ### Spreadsheet
 
@@ -184,6 +207,52 @@ Parsed in core (`src/core/executable/`), no dependency. Actions in the `executab
 - **Extract signing certificates** ✅: the Authenticode / Mach-O CMS certificates as PEM, which the
   x509 module then decodes as usual (so no `ctx.service` call is needed; the signer's subject and
   issuer are read by a small DER walker in core, never verified)
+
+### Playlist (M3U, HLS)
+
+Parsed in core (`src/core/playlist/m3u.ts`), no dependency; nothing a playlist names is ever
+fetched (no backend, and CORS usually blocks it). Actions in the `playlist` area files:
+
+- **Resolve URLs** ✅: URI lines and `URI="…"` attributes in tags (keys, maps, renditions, I-frame
+  streams, parts, unknown tags) made absolute against a Base URL setting (http(s) only; empty
+  leaves the playlist unchanged). Absolute URIs, comments, other tags and line endings stay as they are
+- **Segments as CSV** ✅ · **Segments as JSON** ✅ (media playlists: sequence, duration, start,
+  byte range, discontinuity, program date-time, key method and URI, init section)
+- **Variants as JSON** ✅ (master playlists, source order, with every attribute)
+- **URL list** ✅: variant, I-frame, rendition, init-section, segment and track URIs (not key
+  URIs), de-duplicated
+- Later: Open a variant in a new tab (an `open-url` effect)
+
+### Email (.eml)
+
+Parsed in core (`src/core/email/`: headers with RFC 2047 words and RFC 2231 parameters, the MIME
+tree built with an explicit stack and capped at 500 parts and 16 levels, Authentication-Results,
+the Received chain). Each attachment is also in the Open group (and a tile in the preview); a
+forwarded `message/rfc822` part opens as another email. Actions in the `email` area files:
+
+- **Attachments** ✅: every attached file as one collection capture (one file: a single capture),
+  names made unique with `core/filenames.ts`; setting: include inline (`cid:`) images
+- **Body as text** ✅ (the text part, else the HTML converted) · **Body as Markdown** ✅ (the HTML
+  part converted, else the text) · **Headers as JSON** ✅ (`[{ name, value }]` in order, encoded
+  words decoded)
+- **Received chain** ✅: one row per hop, oldest first (hop, date, delay in seconds and readable,
+  from, by, with, id, for) as CSV (a records table) or JSON
+- Later: verify DKIM signatures (needs the DNS key) · Outlook `.msg` and mbox
+
+### WebAssembly (.wasm)
+
+Parsed in core (`src/core/wasm/`: every core-module section, the name, producers,
+target_features, sourceMappingURL, external_debug_info, dylink and `.debug_*` custom sections;
+component-model binaries list their top-level sections only). Actions in the `wasm` area files:
+
+- **Disassemble to WAT** ✅ (wabt module, `wabt` npm package, Apache-2.0: `readWasm` with every
+  feature wabt supports and the name section's names → `toText`; settings: fold expressions,
+  inline exports, and Allow large modules, without which modules over 8 MB are refused because the
+  text is often ten times the binary). Runs in a runner worker nested in the engine worker, like
+  jq, so Cancel terminates it. Result: `<name>.wat` as text/plain (detected as text)
+- **Imports/exports as JSON** ✅ (core: module, name, kind, type text, params/results for
+  functions, the name section's function name for exports)
+- Later: WAT → wasm (`parseWat`) · validate · strip custom sections · `wasm-decompile`
 
 ### PEM / X.509
 

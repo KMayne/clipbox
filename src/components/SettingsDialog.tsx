@@ -14,7 +14,16 @@ import { useModuleStore } from '../state/moduleStore';
 import { storageUsed, useHistoryStore, type KeepFor } from '../state/persistence';
 import { useUiStore } from '../state/uiStore';
 import { sw, type CacheState, type ModulesManifest } from '../swClient';
-import { type SchemeId, schemeId, schemes, setScheme, theme } from '../theme';
+import {
+  FONT_SCALE,
+  type SchemeId,
+  schemeId,
+  schemes,
+  setScheme,
+  setTextScale,
+  TEXT_SCALES,
+  theme,
+} from '../theme';
 import { InstallSection } from './InstallSection';
 import { media, ui } from './ui';
 import { SiteLinks } from './SiteLinks';
@@ -62,11 +71,11 @@ const styles = {
   `,
   h2: css`
     margin: 0;
-    font-size: 15px;
+    font-size: var(--text-lg);
   `,
   h3: css`
     margin: 0;
-    font-size: 11px;
+    font-size: var(--text-xs);
     letter-spacing: 0.06em;
     color: ${theme.muted};
   `,
@@ -100,7 +109,7 @@ const styles = {
   `,
   description: css`
     color: ${theme.muted};
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   segmented: css`
     display: inline-flex;
@@ -400,7 +409,14 @@ function ModuleRow({ info, built }: { info: ModuleInfo; built: BuiltModule | und
         {info.title}
         <div className={styles.description}>{info.description}</div>
       </td>
-      <td data-testid="module-library">{library || '—'}</td>
+      <td>
+        <span data-testid="module-library">{library || '—'}</span>
+        {info.library && (
+          <div className={styles.description} data-testid="module-license">
+            {info.library.license}
+          </div>
+        )}
+      </td>
       <td className={styles.nowrap}>{formatBytes(built?.bytes ?? info.approxBytes)}</td>
       <td className={styles.nowrap} data-testid="module-status">
         {statusText(loaded, cache)}
@@ -561,8 +577,24 @@ function AppearanceSection() {
           );
         })}
       </div>
+      <div className={styles.row}>
+        <span className={styles.rowLabel}>Text size</span>
+        <span className={styles.segmented} role="radiogroup" aria-label="Text size">
+          {TEXT_SCALES.map(scale => (
+            <button
+              key={scale}
+              role="radio"
+              aria-checked={scale === FONT_SCALE}
+              className={cx(scale === FONT_SCALE && styles.activeOption)}
+              onClick={() => scale !== FONT_SCALE && setTextScale(scale)}
+            >
+              {Math.round(scale * 100)}%
+            </button>
+          ))}
+        </span>
+      </div>
       <p className={styles.description}>
-        Changing the scheme reloads the page; your pastes are kept.
+        Changing the scheme or text size reloads the page; your pastes are kept.
       </p>
     </section>
   );

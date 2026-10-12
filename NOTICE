@@ -42,6 +42,11 @@ Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0):
   Copyright Microsoft Corporation
   https://github.com/rbuckton/reflect-metadata
 
+- wabt.js (wabt, the WebAssembly Binary Toolkit built to JavaScript), used by
+  the WebAssembly tools module
+  Copyright WebAssembly Community Group participants
+  https://github.com/WebAssembly/wabt
+
 This product includes third-party software licensed under the Mozilla Public
 License, Version 2.0 (https://mozilla.org/MPL/2.0/):
 
@@ -49,6 +54,50 @@ License, Version 2.0 (https://mozilla.org/MPL/2.0/):
   Copyright (c) 2026-present, Vanilagy and contributors
   Source code: https://github.com/Vanilagy/mediabunny (also published on npm
   as "mediabunny", with its sources included in the package)
+
+- @mediabunny/mp3-encoder and @mediabunny/aac-encoder, used unmodified by the
+  MP3 encoder and AAC encoder modules
+  Copyright (c) 2026-present, Vanilagy and contributors
+  Source code: https://github.com/Vanilagy/mediabunny (packages/mp3-encoder,
+  packages/aac-encoder)
+
+This product includes third-party software licensed under the GNU Lesser
+General Public License (https://www.gnu.org/licenses/lgpl.html). Each is used
+unmodified, compiled to WebAssembly and loaded at runtime as a separate,
+lazily-downloaded module file (its own chunk and .wasm in the build), so it can
+be replaced with a modified build of the same library. Clipbox's own code
+stays under the MIT License.
+
+- LAME 3.100, the MP3 encoder inside @mediabunny/mp3-encoder (MP3 encoder
+  module). LGPL-2.0. Copyright the LAME developers.
+  Thanks to the LAME project: https://lame.sourceforge.io
+  Source code: https://sourceforge.net/projects/lame/files/lame/
+
+- FFmpeg's AAC encoder (libavcodec and libavutil), inside
+  @mediabunny/aac-encoder (AAC encoder module). LGPL-2.1 or later.
+  Copyright the FFmpeg developers.
+  Source code: https://ffmpeg.org/download.html
+
+- libheif, with libde265 for HEVC decoding, as built by libheif-js 1.23.5
+  (HEIC images module). LGPL-3.0. Copyright struktur AG and contributors.
+  Source code: https://github.com/strukturag/libheif,
+  https://github.com/strukturag/libde265,
+  https://github.com/catdad-experiments/libheif-js
+
+- 7-Zip 24.09, as built by 7z-wasm 1.2.0 (Disc images module). GNU LGPL 2.1
+  or later, plus the unRAR restriction. Copyright (C) 1999-2024 Igor Pavlov.
+  Upstream 7-Zip's License.txt also lists BSD-licensed parts (3-clause for
+  the LZFSE code, 2-clause for the Zstandard code).
+  Source code: https://www.7-zip.org, https://github.com/use-strict/7z-wasm
+
+  unRAR restriction: The decompression engine for RAR archives was developed
+  using source code of unRAR program. All copyrights to original unRAR code
+  are owned by Alexander Roshal. The unRAR sources cannot be used to re-create
+  the RAR compression algorithm, which is proprietary. Distribution of
+  modified unRAR sources in separate form or as a part of other software is
+  permitted, provided that it is clearly stated in the documentation and
+  source comments that the code may not be used to develop a RAR (WinRAR)
+  compatible archiver.
 
 The colour schemes are based on these palettes, all under the MIT License:
 - Nord (default), Arctic Ice Studio, https://www.nordtheme.com

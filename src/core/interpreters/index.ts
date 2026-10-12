@@ -4,6 +4,9 @@ import type { Kind } from '../types';
 import { archiveCoreInterpreter } from './archive';
 import { presentationInterpreter } from './presentation';
 import { executableInterpreter } from './executable';
+import { playlistInterpreter } from './playlist';
+import { emailInterpreter } from './email';
+import { wasmInterpreter } from './wasm';
 import { base64Interpreter } from './base64';
 import { binaryInterpreter } from './binary';
 import { colourInterpreter } from './colour';
@@ -34,6 +37,9 @@ export const interpreters: AnyInterpreter[] = [
   register(imageInterpreter),
   register(presentationInterpreter),
   register(executableInterpreter),
+  register(playlistInterpreter),
+  register(emailInterpreter),
+  register(wasmInterpreter),
   register(archiveCoreInterpreter),
   register(timestampInterpreter),
   register(uuidInterpreter),

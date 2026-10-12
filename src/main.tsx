@@ -10,15 +10,21 @@ import { startMobileNavigation } from './state/mobileNav';
 import { useModuleStore } from './state/moduleStore';
 import { startPersistence } from './state/persistence';
 import { sw } from './swClient';
-import { theme, withAlpha } from './theme';
+import { FONT_SCALE, TEXT_SIZES, theme, withAlpha } from './theme';
 
 injectGlobal`
+  :root {
+    --font-scale: ${FONT_SCALE};
+    ${Object.entries(TEXT_SIZES)
+      .map(([name, px]) => `--text-${name}: calc(${px}px * var(--font-scale));`)
+      .join('\n    ')}
+  }
   *, *::before, *::after { box-sizing: border-box; }
   html, body, #root { height: 100%; margin: 0; }
   body {
     background: ${theme.bg};
     color: ${theme.text};
-    font: 13px/1.4 ${theme.sans};
+    font: var(--text-base)/1.4 ${theme.sans};
     color-scheme: dark;
     /* App-like on phones: no pull-to-refresh or rubber-banding, no grey tap flashes */
     overscroll-behavior: none;

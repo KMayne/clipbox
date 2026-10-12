@@ -20,7 +20,7 @@ const styles = {
     & [data-testid='stats'] {
       grid-template-columns: minmax(72px, 40%) 1fr;
       gap: 3px 10px;
-      font-size: 12px;
+      font-size: var(--text-sm);
     }
   `,
   label: css`
@@ -28,7 +28,7 @@ const styles = {
   `,
   value: css`
     font-family: ${theme.mono};
-    font-size: 12px;
+    font-size: var(--text-sm);
     word-break: break-word;
   `,
   nested: css`

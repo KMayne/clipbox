@@ -5,6 +5,8 @@ import { pdfDetector } from './pdf/detect';
 import { libarchiveDetector } from './libarchive/detect';
 import { pemDetector } from './x509/detect';
 import { imageformatsDetector } from './imageformats/detect';
+import { heicDetector } from './heic/detect';
+import { sevenzipDetector } from './sevenzip/detect';
 import { moduleLibraries } from './libraries';
 import type { Detector, ModuleId, ModuleInfo } from './types';
 
@@ -70,7 +72,8 @@ export const modules: ModuleInfo[] = (
     {
       id: 'libarchive',
       title: 'More archives',
-      description: '7z, RAR, tar.xz, tar.bz2 and zstd archives (WASM, plus fzstd)',
+      description:
+        '7z, RAR, tar.xz, tar.bz2, zstd, and RPMs with xz/zstd/bzip2 payloads (WASM, plus fzstd)',
       approxBytes: 1_100_000,
       hasWorker: true,
       hasUi: false,
@@ -79,7 +82,7 @@ export const modules: ModuleInfo[] = (
       id: 'audiotools',
       title: 'Audio tools',
       description: 'Loudness normalisation and video frame grabs (decode, re-encode and remux)',
-      approxBytes: 630_000,
+      approxBytes: 640_000,
       hasWorker: true,
       hasUi: false,
     },
@@ -100,10 +103,50 @@ export const modules: ModuleInfo[] = (
       hasUi: false,
     },
     {
+      id: 'heic',
+      title: 'HEIC images',
+      description: 'Previews HEIC/HEIF photos, including bursts (libheif, WASM)',
+      approxBytes: 1_560_000,
+      hasWorker: true,
+      hasUi: false,
+    },
+    {
+      id: 'sevenzip',
+      title: 'Disc images',
+      description: 'ISO 9660 (Joliet, Rock Ridge) and UDF disc images (7-Zip, WASM)',
+      approxBytes: 1_710_000,
+      hasWorker: true,
+      hasUi: false,
+    },
+    {
       id: 'jq',
       title: 'jq',
       description: 'Runs jq filters on JSON, YAML, NDJSON and records (jq 1.8, WASM)',
       approxBytes: 1_060_000,
+      hasWorker: true,
+      hasUi: false,
+    },
+    {
+      id: 'mp3encoder',
+      title: 'MP3 encoder',
+      description: 'Encodes MP3 for Convert audio (LAME, WASM)',
+      approxBytes: 940_000,
+      hasWorker: true,
+      hasUi: false,
+    },
+    {
+      id: 'aacencoder',
+      title: 'AAC encoder',
+      description: "Encodes AAC for Convert audio where the browser can't (FFmpeg, WASM)",
+      approxBytes: 1_620_000,
+      hasWorker: true,
+      hasUi: false,
+    },
+    {
+      id: 'wabt',
+      title: 'WebAssembly tools',
+      description: 'Disassembles WebAssembly modules to text (WAT) with wabt',
+      approxBytes: 900_000,
       hasWorker: true,
       hasUi: false,
     },
@@ -120,6 +163,8 @@ export const detectors: Detector[] = [
   sqliteDetector,
   libarchiveDetector,
   imageformatsDetector,
+  heicDetector,
+  sevenzipDetector,
 ];
 
 export const moduleInfo = (id: ModuleId) => modules.find(m => m.id === id);

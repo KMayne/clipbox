@@ -29,6 +29,9 @@ const RENDERED: Record<string, string> = {
   archive: 'Files',
   presentation: 'Slides',
   executable: 'Details',
+  playlist: 'Playlist',
+  email: 'Message',
+  wasm: 'Module',
 };
 
 export interface ViewOption {

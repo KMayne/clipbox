@@ -27,6 +27,9 @@ import { PdfView } from './previews/PdfView';
 import { PemView } from './previews/PemView';
 import { PresentationView } from './previews/PresentationView';
 import { ExecutableView } from './previews/ExecutableView';
+import { PlaylistView } from './previews/PlaylistView';
+import { EmailView } from './previews/EmailView';
+import { WasmView } from './previews/WasmView';
 import { SpreadsheetView } from './previews/SpreadsheetView';
 import { SqliteView } from './previews/SqliteView';
 import { TextView } from './previews/TextView';
@@ -62,7 +65,7 @@ const styles = {
     border-radius: 3px;
     color: ${theme.onAccent};
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--text-sm);
     text-transform: uppercase;
   `,
   label: css`
@@ -106,7 +109,7 @@ const styles = {
     background: none;
     border: none;
     color: ${theme.muted};
-    font-size: 12px;
+    font-size: var(--text-sm);
     cursor: pointer;
     & + & {
       border-left: 1px solid ${theme.border};
@@ -320,6 +323,12 @@ function Preview({ handle, selection }: { handle: ValueHandle; selection: Select
       return <PresentationView handle={handle} />;
     case 'executable':
       return <ExecutableView handle={handle} />;
+    case 'playlist':
+      return <PlaylistView handle={handle} />;
+    case 'email':
+      return <EmailView handle={handle} />;
+    case 'wasm':
+      return <WasmView handle={handle} selection={selection} />;
     default:
       return <HexView handle={handle} />;
   }

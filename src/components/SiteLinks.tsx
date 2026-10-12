@@ -17,7 +17,7 @@ const styles = {
     display: inline-flex;
     align-items: center;
     gap: 2px;
-    font-size: 11px;
+    font-size: var(--text-xs);
     white-space: nowrap;
     /* Subtle but at least 4.5:1 against the panel in every scheme. */
     color: color-mix(in srgb, ${theme.muted}, ${theme.text} 30%);

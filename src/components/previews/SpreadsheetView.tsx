@@ -38,7 +38,7 @@ const styles = {
   dims: css`
     margin-left: 6px;
     color: ${theme.muted};
-    font-size: 11px;
+    font-size: var(--text-xs);
   `,
 };
 

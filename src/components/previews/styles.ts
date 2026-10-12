@@ -7,7 +7,7 @@ export const preview = {
     inset: 0;
     overflow: auto;
     font-family: ${theme.mono};
-    font-size: 12px;
+    font-size: var(--text-sm);
   `,
   toolbar: css`
     display: flex;
