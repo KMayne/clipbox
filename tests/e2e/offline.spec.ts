@@ -92,7 +92,8 @@ test('with Everything now, the app works offline; evicted modules degrade gracef
   await expect(settings.getByTestId('update-status')).toHaveText('Offline cache repaired', {
     timeout: 60_000,
   });
-  await expect(status).toHaveText('available offline');
+  // Back online, text parsed from here on can load it again ("loaded · available offline")
+  await expect(status).toHaveText(/available offline$/);
   await expect(settings.getByTestId('module-pdf').getByTestId('module-status')).toHaveText(
     'available offline',
   );
