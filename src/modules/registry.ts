@@ -70,7 +70,8 @@ export const modules: ModuleInfo[] = (
     {
       id: 'libarchive',
       title: 'More archives',
-      description: '7z, RAR, tar.xz, tar.bz2 and zstd archives (WASM, plus fzstd)',
+      description:
+        '7z, RAR, tar.xz, tar.bz2, zstd, and RPMs with xz/zstd/bzip2 payloads (WASM, plus fzstd)',
       approxBytes: 1_100_000,
       hasWorker: true,
       hasUi: false,

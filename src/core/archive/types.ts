@@ -1,5 +1,7 @@
 /** Archive values shared by the core `archive` interpreter (zip/gzip/tar) and the `libarchive` module. */
 
+import type { PackageInfo } from './packages/types';
+
 export type ArchiveFormat =
   | 'zip'
   | 'gzip'
@@ -12,7 +14,10 @@ export type ArchiveFormat =
   | 'bz2'
   | 'tar.bz2'
   | 'zstd'
-  | 'tar.zst';
+  | 'tar.zst'
+  /** A zip behind a Chrome extension header. */
+  | 'crx'
+  | 'rpm';
 
 export interface ArchiveEntry {
   /** Directories end with '/'. */
@@ -42,6 +47,18 @@ export type ArchiveSource =
    * big to decompress up front (extraction then needs confirmation).
    */
   | { type: 'single'; bytes: Uint8Array<ArrayBuffer>; data: Uint8Array<ArrayBuffer> | null }
+  /**
+   * An RPM payload: a cpio archive, gzip-compressed or not (core); `names` are the cpio paths
+   * ("./usr/bin/x"). RPMs with xz/zstd/bzip2 payloads belong to libarchive ('external').
+   */
+  | {
+      type: 'cpio';
+      bytes: Uint8Array<ArrayBuffer>;
+      payloadOffset: number;
+      /** From the header: core reads 'gzip' and 'none' (or ''). */
+      compressor: string;
+      names: string[];
+    }
   /** Extracted by the owning module (libarchive) from the original bytes, by the entry's raw name. */
   | { type: 'external'; bytes: Uint8Array<ArrayBuffer>; names: string[] };
 
@@ -56,6 +73,8 @@ export interface ArchiveValue {
   unsupported?: string;
   /** Extra information shown in stats, e.g. why a gzip wasn't decompressed up front. */
   note?: string;
+  /** A package manifest recognised inside (jar, browser extension, APK, wheel, npm, RPM, …). */
+  package?: PackageInfo;
 }
 
 /** Refuse to extract (without confirmation) entries bigger than this… */

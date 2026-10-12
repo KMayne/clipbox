@@ -1,6 +1,7 @@
+import { LIBARCHIVE_RPM_COMPRESSORS, rpmPayloadCompressor } from '../../core/archive/rpmHeader';
 import type { Detector } from '../types';
 
-export type LibarchiveFormat = '7z' | 'rar' | 'xz' | 'bz2' | 'zstd';
+export type LibarchiveFormat = '7z' | 'rar' | 'xz' | 'bz2' | 'zstd' | 'rpm';
 
 const startsWith = (b: Uint8Array, sig: number[], offset = 0) =>
   b.length >= offset + sig.length && sig.every((v, i) => b[offset + i] === v);
@@ -8,6 +9,11 @@ const startsWith = (b: Uint8Array, sig: number[], offset = 0) =>
 /** Formats handled by the lazily-loaded libarchive module, from their signatures. */
 export function sniffLibarchive(b: Uint8Array): LibarchiveFormat | null {
   if (startsWith(b, [0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c])) return '7z';
+  // RPMs with xz/zstd/bzip2/lzma payloads; core lists and extracts gzip ones itself
+  if (startsWith(b, [0xed, 0xab, 0xee, 0xdb])) {
+    const compressor = rpmPayloadCompressor(b);
+    return compressor !== null && LIBARCHIVE_RPM_COMPRESSORS.has(compressor) ? 'rpm' : null;
+  }
   // RAR 4 (Rar!\x1a\x07\x00) and RAR 5 (Rar!\x1a\x07\x01\x00)
   if (startsWith(b, [0x52, 0x61, 0x72, 0x21, 0x1a, 0x07])) return 'rar';
   if (startsWith(b, [0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00])) return 'xz';
