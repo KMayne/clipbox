@@ -29,6 +29,7 @@ const RENDERED: Record<string, string> = {
   archive: 'Files',
   presentation: 'Slides',
   executable: 'Details',
+  email: 'Message',
 };
 
 export interface ViewOption {
