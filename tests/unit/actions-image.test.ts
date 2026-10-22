@@ -90,6 +90,7 @@ describe('image actions in the engine', () => {
       'any.hash',
       'any.openAsText',
       'any.hexDump',
+      'any.toBase64',
     ]);
     const [out] = await engine.runAction('en-1', 'image', 'image.dataUrl', {});
     expect(out?.name).toBe('a.txt');

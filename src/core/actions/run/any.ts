@@ -1,8 +1,10 @@
 import { formatBytes } from '../../format';
 import { digestHex } from '../../hash';
 import { hexDump } from '../../hexdump';
-import { anyHash, anyHexDump, anyOpenAsText } from '../catalog/any';
+import { hasKind } from '../../guards';
+import { anyHash, anyHexDump, anyOpenAsText, anyToBase64 } from '../catalog/any';
 import { anyValue, implement } from '../types';
+import { rebase64 } from './base64';
 import { textResult } from './util';
 
 /** Decodes bytes; a BOM for the chosen encoding is dropped. Invalid bytes become U+FFFD. */
@@ -33,5 +35,14 @@ export const anyImpls = [
     value: anyValue,
     applies: ({ content }) => content.size > 0,
     run: ({ content }, { bytesPerRow }) => textResult(hexDump(content.bytes, Number(bytesPerRow))),
+  }),
+  implement(anyToBase64, {
+    value: anyValue,
+    // Base64 is already encoded; its own actions switch the alphabet
+    applies: ({ value, content }) => !hasKind(value, 'base64') && content.size > 0,
+    run({ content }, { alphabet, wrap }) {
+      const b64 = rebase64(content.bytes, alphabet, true);
+      return textResult(wrap ? `${(b64.match(/.{1,76}/g) ?? []).join('\n')}\n` : b64);
+    },
   }),
 ];

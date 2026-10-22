@@ -147,6 +147,7 @@ describe('Engine actions', () => {
       'query.jq',
       'any.hash',
       'any.hexDump',
+      'any.toBase64',
     ]);
     const text = await engine.actions('en-1', 'text');
     expect(text).toContain('text.replace');
@@ -339,6 +340,7 @@ describe('Image convert', () => {
       'image.dataUrl',
       'any.hash',
       'any.hexDump',
+      'any.toBase64',
     ]);
   });
 });

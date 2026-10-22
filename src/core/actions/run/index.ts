@@ -1,7 +1,6 @@
 import type { AnyActionImpl } from '../types';
 import { anyImpls } from './any';
 import { base64Impls } from './base64';
-import { binaryImpls } from './binary';
 import { colourImpls } from './colour';
 import { imageImpls } from './image';
 import { jsonImpls } from './json';
@@ -55,7 +54,6 @@ export const actionImpls: AnyActionImpl[] = [
   ...urlImpls,
   ...colourImpls,
   ...base64Impls,
-  ...binaryImpls,
   ...pemImpls,
   ...htmlImpls,
   ...markdownImpls,

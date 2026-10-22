@@ -56,4 +56,23 @@ export const anyHexDump = defineAction({
   label: p => (p.bytesPerRow === '16' ? 'Hex dump' : `Hex dump (${p.bytesPerRow} per row)`),
 });
 
-export const anyActions = [anyHash, anyOpenAsText, anyHexDump];
+/** Base64 of the raw bytes; offered for every kind but base64 itself. */
+export const anyToBase64 = defineAction({
+  id: 'any.toBase64',
+  title: 'To base64',
+  group: 'Encode',
+  kinds: '*',
+  params: z.object({
+    alphabet: z
+      .enum(['standard', 'url'])
+      .default('standard')
+      .meta({ title: 'Alphabet', optionLabels: { standard: 'Standard', url: 'URL-safe' } }),
+    wrap: z
+      .boolean()
+      .default(false)
+      .meta({ title: 'Wrap at 76 columns', description: 'As MIME does' }),
+  }),
+  label: p => `To base64${p.alphabet === 'url' ? ' (URL-safe)' : ''}`,
+});
+
+export const anyActions = [anyHash, anyOpenAsText, anyHexDump, anyToBase64];

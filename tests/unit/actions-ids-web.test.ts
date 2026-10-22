@@ -621,9 +621,9 @@ describe('Binary and any-kind actions', () => {
     );
   });
 
-  it('encodes binary as base64', async () => {
+  it('encodes any kind as base64', async () => {
     const b64 = async (params: unknown, input: Uint8Array<ArrayBuffer> = bytes) =>
-      (await run(input, 'binary', 'binary.toBase64', params, 'application/octet-stream')).text;
+      (await run(input, 'binary', 'any.toBase64', params, 'application/octet-stream')).text;
     expect(await b64({})).toBe(toBase64(bytes));
     expect(await b64({ alphabet: 'url' })).toBe(
       toBase64(bytes).replace(/\//g, '_').replace(/\+/g, '-'),
@@ -633,6 +633,19 @@ describe('Binary and any-kind actions', () => {
     const wrapped = await b64({ wrap: true }, big);
     expect(wrapped.split('\n')[0]).toHaveLength(76);
     expect(wrapped.replace(/\n/g, '')).toBe(toBase64(big));
+  });
+
+  it('encodes the raw bytes of other kinds as base64, but not base64 itself', async () => {
+    const json = '{"a": [1, 2]}';
+    expect((await run(json, 'json', 'any.toBase64', {}, 'application/json')).text).toBe(
+      toBase64(new TextEncoder().encode(json)),
+    );
+    expect((await run('héllo', 'text', 'any.toBase64', { alphabet: 'url' })).text).toBe(
+      'aMOpbGxv',
+    );
+    const engine = await engineWith('aGVsbG8gd29ybGQ=');
+    expect(await engine.actions('en-1', 'base64')).not.toContain('any.toBase64');
+    expect(await engine.actions('en-1', 'text')).toContain('any.toBase64');
   });
 
   it('opens bytes as text in a chosen encoding', async () => {

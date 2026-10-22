@@ -12,7 +12,7 @@ Legend:
 
 ### Every kind
 
-- **Copy** ✓ · **Download** (raw bytes, sensible filename and extension) · **Hash**: SHA-256/SHA-1/SHA-512 of the raw bytes (`core/hash.ts`) ✅ (also SHA-384) · **Open as text** ✅ (UTF-8, Latin-1/Windows-1252, UTF-16 LE/BE; offered when the bytes aren't already UTF-8 text) / **Open as hex dump** ✅ (`any.hexDump`, `hexdump -C` style, 8/16/32 bytes per row, first 16 MiB)
+- **Copy** ✓ · **Download** (raw bytes, sensible filename and extension) · **Hash**: SHA-256/SHA-1/SHA-512 of the raw bytes (`core/hash.ts`) ✅ (also SHA-384) · **Open as text** ✅ (UTF-8, Latin-1/Windows-1252, UTF-16 LE/BE; offered when the bytes aren't already UTF-8 text) / **Open as hex dump** ✅ (`any.hexDump`, `hexdump -C` style, 8/16/32 bytes per row, first 16 MiB) · **To base64** ✅ (`any.toBase64`, standard or URL-safe, optional 76-column wrap; every kind except base64)
 
 ### Text
 
@@ -89,7 +89,7 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
 
 ### Binary
 
-- **Hex dump** ✅ (the any-kind Hex dump) · **To base64** ✅ (standard or URL-safe; optional 76-column wrap)
+- **Hex dump** ✅ (the any-kind Hex dump) · **To base64** ✅ (the any-kind To base64)
 
 ### Base64
 
