@@ -1,7 +1,6 @@
 import type { ActionInfo } from '../types';
 import { anyActions } from './any';
 import { base64Actions } from './base64';
-import { binaryActions } from './binary';
 import { colourActions } from './colour';
 import { imageActions } from './image';
 import { jsonActions } from './json';
@@ -56,7 +55,6 @@ export const catalog: ActionInfo[] = [
   ...urlActions,
   ...colourActions,
   ...base64Actions,
-  ...binaryActions,
   ...pemActions,
   ...htmlActions,
   ...markdownActions,
