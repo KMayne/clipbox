@@ -1,15 +1,23 @@
 import { css } from '@emotion/css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ValueHandle } from '../../core/types';
+import type { Selection } from '../../state/captureStore';
 import { theme } from '../../theme';
 import { ui } from '../ui';
 import { useAsync } from '../useAsync';
+import { TrimBar } from './TrimBar';
 import { channelData, computePeaks, decodeAudio } from './waveform';
 
 const styles = {
   audio: css`
     position: absolute;
     inset: 0;
+    display: flex;
+    flex-direction: column;
+  `,
+  audioBody: css`
+    flex: 1;
+    min-height: 0;
     overflow: auto;
     display: flex;
     flex-direction: column;
@@ -46,11 +54,13 @@ const styles = {
     position: absolute;
     inset: 0;
     display: flex;
+    flex-direction: column;
     min-height: 0;
   `,
   stage: css`
     flex: 1;
     min-width: 0;
+    min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -77,15 +87,15 @@ function useObjectUrl(blob: Blob | null): string | null {
   return blob ? url : null;
 }
 
-export function MediaView({ handle }: { handle: ValueHandle }) {
+export function MediaView({ handle, selection }: { handle: ValueHandle; selection: Selection }) {
   const media = useAsync('media', () => handle.media());
   if (media.status === 'loading') return <div className={ui.empty}>Loading…</div>;
   if (media.status === 'error') return <div className={ui.empty}>{media.error}</div>;
   const { bytes, mime } = media.value;
   return mime.startsWith('video/') ? (
-    <VideoPane bytes={bytes} mime={mime} />
+    <VideoPane bytes={bytes} mime={mime} selection={selection} />
   ) : (
-    <AudioPane handle={handle} bytes={bytes} mime={mime} />
+    <AudioPane handle={handle} bytes={bytes} mime={mime} selection={selection} />
   );
 }
 
@@ -93,15 +103,17 @@ interface PaneProps {
   handle: ValueHandle;
   bytes: Uint8Array<ArrayBuffer>;
   mime: string;
+  selection: Selection;
 }
 
 function useBlob(bytes: Uint8Array<ArrayBuffer> | null, mime: string): Blob | null {
   return useMemo(() => (bytes ? new Blob([bytes], { type: mime }) : null), [bytes, mime]);
 }
 
-function VideoPane({ bytes, mime }: Omit<PaneProps, 'handle'>) {
+function VideoPane({ bytes, mime, selection }: Omit<PaneProps, 'handle'>) {
   const url = useObjectUrl(useBlob(bytes, mime));
   const [failed, setFailed] = useState(false);
+  const [video, setVideo] = useState<HTMLVideoElement | null>(null);
   return (
     <div className={styles.video}>
       <div className={styles.stage}>
@@ -110,6 +122,7 @@ function VideoPane({ bytes, mime }: Omit<PaneProps, 'handle'>) {
         ) : (
           url && (
             <video
+              ref={setVideo}
               data-testid="media-video"
               className={styles.videoEl}
               src={url}
@@ -120,11 +133,12 @@ function VideoPane({ bytes, mime }: Omit<PaneProps, 'handle'>) {
           )
         )}
       </div>
+      {!failed && <TrimBar selection={selection} player={video} />}
     </div>
   );
 }
 
-function AudioPane({ handle, bytes, mime }: PaneProps) {
+function AudioPane({ handle, bytes, mime, selection }: PaneProps) {
   const url = useObjectUrl(useBlob(bytes, mime));
   const hasCover = handle.summary.derivations?.some(d => d.id === 'cover') ?? false;
   const cover = useAsync('cover', () => (hasCover ? handle.image() : Promise.resolve(null)));
@@ -137,24 +151,32 @@ function AudioPane({ handle, bytes, mime }: PaneProps) {
 
   return (
     <div className={styles.audio}>
-      <div className={styles.head}>
-        {coverUrl && (
-          <img data-testid="media-cover" className={styles.cover} src={coverUrl} alt="Cover art" />
-        )}
-        {url && (
-          <audio
-            ref={setAudio}
-            data-testid="media-audio"
-            className={styles.player}
-            src={url}
-            controls
-            preload="metadata"
-            onError={() => setFailed(true)}
-          />
-        )}
+      <div className={styles.audioBody}>
+        <div className={styles.head}>
+          {coverUrl && (
+            <img
+              data-testid="media-cover"
+              className={styles.cover}
+              src={coverUrl}
+              alt="Cover art"
+            />
+          )}
+          {url && (
+            <audio
+              ref={setAudio}
+              data-testid="media-audio"
+              className={styles.player}
+              src={url}
+              controls
+              preload="metadata"
+              onError={() => setFailed(true)}
+            />
+          )}
+        </div>
+        {failed && <div className={styles.note}>Chromium can't play this file ({mime}).</div>}
+        <Waveform bytes={bytes} audio={audio} />
       </div>
-      {failed && <div className={styles.note}>Chromium can't play this file ({mime}).</div>}
-      <Waveform bytes={bytes} audio={audio} />
+      {!failed && <TrimBar selection={selection} player={audio} />}
     </div>
   );
 }

@@ -4,10 +4,11 @@ import {
   isAudioConverter,
   isAudioTools,
   isEncoderExtension,
+  isTrimmer,
   isVideoFrameTool,
   type ExtensionCodec,
-  type FrameOptions,
   type NormaliseResult,
+  type TrimResult,
 } from '../../../modules/audiotools/service';
 import { isMediaService } from '../../../modules/media/service';
 import {
@@ -15,10 +16,14 @@ import {
   mediaExtractAudio,
   mediaMetadata,
   mediaNormalise,
+  mediaTrim,
   mediaVideoFrame,
 } from '../catalog/media';
 import { implement, type ActionContext } from '../types';
+import { clock, parseFrameTime, parseTrimPoint } from '../../mediaTime';
 import { textResult, withExtension } from './util';
+
+export { parseFrameTime };
 
 /**
  * The fields of the media module's value these actions read. A light guard rather than the
@@ -48,6 +53,9 @@ const NORMALISABLE = new Set<string>([
   'webm',
   'mkv',
 ]);
+
+/** "0.3 s". */
+const seconds = (n: number) => `${Math.round(n * 10) / 10} s`;
 
 /** One decimal, without "-0.0". */
 const fmt = (n: number) => {
@@ -156,6 +164,33 @@ export const mediaImpls = [
       };
     },
   }),
+  implement(mediaTrim, {
+    value: isMediaInfo,
+    applies: ({ value }) => NORMALISABLE.has(value.container),
+    async run({ value, content }, { start, end, mode }, ctx) {
+      const from = parseTrimPoint(start);
+      if (!from) throw new Error('Enter a start time');
+      const to = parseTrimPoint(end);
+      const tools = await ctx.service('audiotools', isTrimmer);
+      if (!tools) throw new Error('The audio tools module is unavailable');
+      const result = await tools.trim(content.bytes, {
+        start: from,
+        ...(to && { end: to }),
+        exact: mode === 'exact',
+        loadEncoder: encoderLoader(ctx),
+        signal: ctx.signal,
+        progress: ctx.progress,
+      });
+      const extra = result.duration - (result.end - result.start);
+      return {
+        mime: result.mime,
+        name: trimmedName(content.name, value.kind, result),
+        bytes: result.bytes,
+        ...(mode === 'fast' &&
+          extra >= 0.05 && { note: `cut at keyframes, ${seconds(extra)} longer` }),
+      };
+    },
+  }),
   implement(mediaMetadata, {
     value: isMediaInfo,
     async run({ value, content }, _params, ctx) {
@@ -194,17 +229,9 @@ export const mediaImpls = [
   }),
 ];
 
-/** "12.5" → 12.5 s, "1:02:03.5" → 3723.5 s, "10%" → a tenth of the way through. */
-export function parseFrameTime(text: string): FrameOptions['at'] {
-  const t = text.trim().replace(/\s*s$/, '');
-  if (t.endsWith('%')) {
-    const pct = Number(t.slice(0, -1).trim());
-    if (!Number.isFinite(pct) || pct > 100) throw new Error(`Invalid percentage '${text.trim()}'`);
-    return { fraction: pct / 100 };
-  }
-  const parts = t.split(':').map(Number);
-  if (!parts.length || parts.some(n => !Number.isFinite(n))) {
-    throw new Error(`Invalid time '${text.trim()}'`);
-  }
-  return { seconds: parts.reduce((acc, n) => acc * 60 + n, 0) };
+/** "clip.mp4" → "clip (0:05–1:23).mp4"; Matroska when the container can't be written. */
+export function trimmedName(name: string | undefined, fallback: string, result: TrimResult) {
+  const stem = (name ? name.replace(/\.[^./\\]*$/, '') : '') || fallback;
+  const keepExt = result.sameContainer && name ? /\.([^./\\]+)$/.exec(name)?.[1] : undefined;
+  return `${stem} (${clock(result.start)}–${clock(result.end)}).${keepExt ?? result.extension}`;
 }
