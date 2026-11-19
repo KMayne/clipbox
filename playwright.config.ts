@@ -23,7 +23,10 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `pnpm exec vite --port ${DEV_PORT} --strictPort`,
+      // Node 26.13's V8 can abort ("Lazy deopt after a fast API call with return value is
+      // unsupported") in Buffer.byteLength while Vite sends a large module, killing the server
+      // mid-run. Without TurboFan fast API calls that path can't be taken.
+      command: `node --no-turbo-fast-api-calls node_modules/vite/bin/vite.js --port ${DEV_PORT} --strictPort`,
       url: DEV,
       reuseExistingServer: !process.env.CI,
     },
