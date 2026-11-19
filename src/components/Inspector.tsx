@@ -310,7 +310,7 @@ function Preview({ handle, selection }: { handle: ValueHandle; selection: Select
       return <PemView handle={handle} />;
     case 'audio':
     case 'video':
-      return <MediaView handle={handle} />;
+      return <MediaView handle={handle} selection={selection} />;
     case 'spreadsheet':
       return <SpreadsheetView handle={handle} selection={selection} />;
     case 'sqlite':

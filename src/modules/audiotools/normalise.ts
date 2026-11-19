@@ -4,34 +4,19 @@
  * and re-encodes only that audio track, scaling each decoded chunk on the way through.
  */
 import {
-  ADTS,
-  AdtsOutputFormat,
   AudioSample,
   AudioSampleSink,
   canEncodeAudio,
-  FLAC,
-  FlacOutputFormat,
-  MATROSKA,
   MkvOutputFormat,
-  MovOutputFormat,
-  MP3,
-  Mp3OutputFormat,
-  MP4,
-  Mp4OutputFormat,
-  OGG,
   OggOutputFormat,
-  QTFF,
-  WAVE,
   WavOutputFormat,
-  WEBM,
-  WebMOutputFormat,
   type AudioCodec,
   type InputAudioTrack,
   type InputFormat,
   type OutputFormat,
 } from 'mediabunny';
 import { throwIfAborted } from '../../core/progress';
-import { convertInto, outputMime, withInput } from './conversion';
+import { convertInto, outputMime, sameFormat, withInput } from './conversion';
 import { GainCurve, planGain, planLimited } from './limiter';
 import { LoudnessMeter, type SubBlocks } from './loudness';
 import type { NormaliseOptions, NormaliseResult } from './service';
@@ -136,20 +121,6 @@ interface Target {
   makeFormat: () => OutputFormat;
   codec: AudioCodec;
   sameContainer: boolean;
-}
-
-/** An output format like the input's, or null for inputs Mediabunny can read but not write. */
-function sameFormat(input: InputFormat): (() => OutputFormat) | null {
-  if (input === MP4) return () => new Mp4OutputFormat({ fastStart: 'in-memory' });
-  if (input === QTFF) return () => new MovOutputFormat({ fastStart: 'in-memory' });
-  if (input === WEBM) return () => new WebMOutputFormat();
-  if (input === MATROSKA) return () => new MkvOutputFormat();
-  if (input === WAVE) return () => new WavOutputFormat();
-  if (input === OGG) return () => new OggOutputFormat();
-  if (input === FLAC) return () => new FlacOutputFormat();
-  if (input === MP3) return () => new Mp3OutputFormat();
-  if (input === ADTS) return () => new AdtsOutputFormat();
-  return null;
 }
 
 /**

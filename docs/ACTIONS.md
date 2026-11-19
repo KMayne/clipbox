@@ -180,6 +180,17 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
 - **Extract audio track** ✅ (`media.extractAudio`, `audiotools` module; video with a container
   Mediabunny reads): copies the primary audio track without re-encoding, into M4A (AAC), MP3, Ogg
   (Opus, Vorbis), FLAC, WAV (PCM) or else Matroska audio (`.mka`); named `clip (audio).m4a`.
+- **Trim** ✅ (`media.trim`, `audiotools` module; audio and video in containers Mediabunny reads):
+  keeps one time range, every track included, in the same container (Matroska when Mediabunny
+  can't write it). Settings: start (`0`), end (empty for the end), each as seconds, m:ss, a
+  percentage or `-5` for 5 s before the end; cut: Fast (default; packets copied, video from the
+  keyframe at or before the start, which MP4 keeps before zero with an edit list so it plays from
+  the start mark; lossless audio is re-encoded so it's still cut to the sample) or Exact
+  (re-encodes the tracks whose packets don't line up; MP3/AAC through the encoder modules).
+  Named `clip (0:05–1:23).mp4`; when a fast cut had to widen, the label says "cut at keyframes,
+  0.4 s longer". The player has a trim bar (`components/previews/TrimBar.tsx`): Set start /
+  Set end at the playhead (`[` / `]`), editable times, a strip showing the kept range (click to
+  seek), Play range, Fast/Exact and Trim, which runs this action.
 
 ### Spreadsheet
 

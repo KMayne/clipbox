@@ -31,6 +31,10 @@ const GROUPS: { title: string; keys: [string, string][] }[] = [
       ['I', 'Show / hide Info'],
     ],
   },
+  {
+    title: 'Audio and video',
+    keys: [['[ / ]', 'Set the trim start / end at the playhead']],
+  },
 ];
 
 const styles = {

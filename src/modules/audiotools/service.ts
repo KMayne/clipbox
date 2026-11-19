@@ -143,3 +143,44 @@ export interface EncoderExtension {
 
 export const isEncoderExtension = (s: unknown): s is EncoderExtension =>
   isRecord(s) && typeof s.register === 'function';
+
+// --- Trim ("Trim") ---
+
+/** A point in the media: seconds from the start, a fraction (0–1) of it, or seconds before the end. */
+export type TimePoint = { seconds: number } | { fraction: number } | { beforeEnd: number };
+
+export interface TrimOptions {
+  start: TimePoint;
+  /** Omitted: to the end. */
+  end?: TimePoint;
+  /**
+   * False copies the packets (fast and lossless), from the keyframe at or before `start`; where
+   * the container can (MP4's edit lists), the frames before `start` are kept but not shown.
+   * True cuts exactly, re-encoding tracks whose packets don't line up with the cut.
+   */
+  exact: boolean;
+  /** Registers an MP3 or AAC encoder when an exact cut must re-encode one (see ConvertOptions). */
+  loadEncoder?(codec: ExtensionCodec): Promise<boolean>;
+  signal?: AbortSignal;
+  progress?(fraction: number | undefined, message?: string): void;
+}
+
+export interface TrimResult {
+  bytes: Uint8Array<ArrayBuffer>;
+  mime: string;
+  /** File extension for the output, without the dot. */
+  extension: string;
+  /** Whether the output keeps the input's container. */
+  sameContainer: boolean;
+  /** The requested range in the input, seconds. */
+  start: number;
+  end: number;
+  /** How long the output plays, seconds: longer than `end - start` when a fast cut had to widen. */
+  duration: number;
+}
+
+export interface Trimmer {
+  trim(bytes: Uint8Array<ArrayBuffer>, options: TrimOptions): Promise<TrimResult>;
+}
+
+export const isTrimmer = (s: unknown): s is Trimmer => isRecord(s) && typeof s.trim === 'function';

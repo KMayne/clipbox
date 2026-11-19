@@ -1,16 +1,35 @@
 /**
- * The Mediabunny plumbing that Normalise, Convert and Extract share: open the input, run one
+ * The Mediabunny plumbing that Normalise, Convert, Extract and Trim share: open the input, run one
  * Conversion into an in-memory file, refuse a result that lost a track it needed, and cancel on
  * the run's signal.
  */
 import {
+  ADTS,
+  AdtsOutputFormat,
   ALL_FORMATS,
   BufferSource,
   BufferTarget,
   Conversion,
+  FLAC,
+  FlacOutputFormat,
   Input,
+  MATROSKA,
+  MkvOutputFormat,
+  MovOutputFormat,
+  MP3,
+  Mp3OutputFormat,
+  MP4,
+  Mp4OutputFormat,
+  OGG,
+  OggOutputFormat,
   Output,
+  QTFF,
+  WAVE,
+  WavOutputFormat,
+  WEBM,
+  WebMOutputFormat,
   type ConversionOptions,
+  type InputFormat,
   type InputTrack,
   type OutputFormat,
 } from 'mediabunny';
@@ -84,3 +103,17 @@ export function asM4a(bytes: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
 /** The format's MIME type, as audio/… when the file holds no video (Mediabunny says video/…). */
 export const outputMime = (format: OutputFormat, hasVideo: boolean) =>
   hasVideo ? format.mimeType : format.mimeType.replace(/^video\//, 'audio/');
+
+/** An output format like the input's, or null for inputs Mediabunny can read but not write. */
+export function sameFormat(input: InputFormat): (() => OutputFormat) | null {
+  if (input === MP4) return () => new Mp4OutputFormat({ fastStart: 'in-memory' });
+  if (input === QTFF) return () => new MovOutputFormat({ fastStart: 'in-memory' });
+  if (input === WEBM) return () => new WebMOutputFormat();
+  if (input === MATROSKA) return () => new MkvOutputFormat();
+  if (input === WAVE) return () => new WavOutputFormat();
+  if (input === OGG) return () => new OggOutputFormat();
+  if (input === FLAC) return () => new FlacOutputFormat();
+  if (input === MP3) return () => new Mp3OutputFormat();
+  if (input === ADTS) return () => new AdtsOutputFormat();
+  return null;
+}

@@ -117,10 +117,56 @@ export const mediaExtractAudio = defineAction({
   params: z.object({}),
 });
 
+/** "0", "12.5", "1:23", "10%", or with a leading minus, time before the end ("-5", "-0:30"). */
+export const TRIM_TIME = /^\s*(-?\s*(\d+:){0,2}\d+(\.\d+)?\s*s?|\d+(\.\d+)?\s*%)\s*$/;
+const TRIM_HINT =
+  'Use seconds (12.5), m:ss (1:23), a percentage (10%), or -5 for 5 s before the end';
+
+/** "-0:05" → "0:05 before the end"; "" → "end". */
+const pointLabel = (text: string, empty: string) => {
+  const t = text.trim();
+  if (!t) return empty;
+  return t.startsWith('-') ? `${t.slice(1).trim()} before the end` : t;
+};
+
+/** Keeps one time range ("top and tail"); every track comes along. */
+export const mediaTrim = defineAction({
+  id: 'media.trim',
+  title: 'Trim',
+  group: 'Convert',
+  kinds: ['audio', 'video'],
+  module: 'audiotools',
+  params: z.object({
+    start: z
+      .string()
+      .regex(TRIM_TIME, TRIM_HINT)
+      .default('0')
+      .meta({ title: 'Start', description: 'Seconds, m:ss, a percentage, or -s before the end' }),
+    end: z
+      .string()
+      .regex(new RegExp(`${TRIM_TIME.source}|^\\s*$`), TRIM_HINT)
+      .default('')
+      .meta({ title: 'End', description: 'Empty for the end; -5 for 5 s before it' }),
+    mode: z
+      .enum(['fast', 'exact'])
+      .default('fast')
+      .meta({
+        title: 'Cut',
+        optionLabels: {
+          fast: 'Fast (no re-encode; video may start at a keyframe)',
+          exact: 'Exact (re-encodes when needed)',
+        },
+      }),
+  }),
+  label: p =>
+    `Trim ${pointLabel(p.start, '0')} → ${pointLabel(p.end, 'end')}${p.mode === 'exact' ? ', exact' : ''}`,
+});
+
 export const mediaActions = [
   mediaNormalise,
   mediaMetadata,
   mediaVideoFrame,
   mediaConvert,
   mediaExtractAudio,
+  mediaTrim,
 ];
