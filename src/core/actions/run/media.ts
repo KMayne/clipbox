@@ -3,16 +3,19 @@ import type { MediaContainer } from '../../../modules/media/detect';
 import {
   isAudioConverter,
   isAudioTools,
+  isCropper,
   isEncoderExtension,
   isTrimmer,
   isVideoFrameTool,
   type ExtensionCodec,
   type NormaliseResult,
+  type CropResult,
   type TrimResult,
 } from '../../../modules/audiotools/service';
 import { isMediaService } from '../../../modules/media/service';
 import {
   mediaConvert,
+  mediaCrop,
   mediaExtractAudio,
   mediaMetadata,
   mediaNormalise,
@@ -191,6 +194,23 @@ export const mediaImpls = [
       };
     },
   }),
+  implement(mediaCrop, {
+    value: isMediaInfo,
+    // Ogg video is Theora, which WebCodecs can't decode
+    applies: ({ value }) =>
+      value.hasVideo && NORMALISABLE.has(value.container) && value.container !== 'ogg',
+    async run({ content }, { left, top, width, height, quality }, ctx) {
+      const tools = await ctx.service('audiotools', isCropper);
+      if (!tools) throw new Error('The audio tools module is unavailable');
+      const result = await tools.crop(content.bytes, {
+        rect: { left, top, width, height },
+        quality,
+        signal: ctx.signal,
+        progress: ctx.progress,
+      });
+      return { mime: result.mime, name: croppedName(content.name, result), bytes: result.bytes };
+    },
+  }),
   implement(mediaMetadata, {
     value: isMediaInfo,
     async run({ value, content }, _params, ctx) {
@@ -228,6 +248,14 @@ export const mediaImpls = [
     },
   }),
 ];
+
+/** "clip.mp4" → "clip (cropped 640×360).mp4"; Matroska when the container can't be written. */
+export function croppedName(name: string | undefined, result: CropResult) {
+  const stem = (name ? name.replace(/\.[^./\\]*$/, '') : '') || 'video';
+  const keepExt = result.sameContainer && name ? /\.([^./\\]+)$/.exec(name)?.[1] : undefined;
+  const { width, height } = result.rect;
+  return `${stem} (cropped ${width}×${height}).${keepExt ?? result.extension}`;
+}
 
 /** "clip.mp4" → "clip (0:05–1:23).mp4"; Matroska when the container can't be written. */
 export function trimmedName(name: string | undefined, fallback: string, result: TrimResult) {

@@ -1,10 +1,13 @@
 import { css } from '@emotion/css';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ValueHandle } from '../../core/types';
 import type { Selection } from '../../state/captureStore';
 import { theme } from '../../theme';
 import { ui } from '../ui';
 import { useAsync } from '../useAsync';
+import { CropBar, CropOverlay } from './CropOverlay';
+import { aspectRatio, type AspectId, type Rect } from './cropGeometry';
+import { useFrameSize } from './useFrameSize';
 import { TrimBar } from './TrimBar';
 import { channelData, computePeaks, decodeAudio } from './waveform';
 
@@ -66,6 +69,7 @@ const styles = {
     justify-content: center;
     padding: 16px;
     background: #000;
+    position: relative;
   `,
   videoEl: css`
     max-width: 100%;
@@ -114,6 +118,16 @@ function VideoPane({ bytes, mime, selection }: Omit<PaneProps, 'handle'>) {
   const url = useObjectUrl(useBlob(bytes, mime));
   const [failed, setFailed] = useState(false);
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
+  const frame = useFrameSize(video);
+  // Crop mode, and its box in video pixels (null until one is drawn)
+  const [cropMode, setCropMode] = useState(false);
+  const [crop, setCrop] = useState<Rect | null>(null);
+  const [aspect, setAspect] = useState<AspectId>('free');
+  const cropping = cropMode && !!frame && !!video;
+  const close = useCallback(() => {
+    setCropMode(false);
+    setCrop(null);
+  }, []);
   return (
     <div className={styles.video}>
       <div className={styles.stage}>
@@ -126,14 +140,41 @@ function VideoPane({ bytes, mime, selection }: Omit<PaneProps, 'handle'>) {
               data-testid="media-video"
               className={styles.videoEl}
               src={url}
-              controls
+              controls={!cropping}
               preload="metadata"
               onError={() => setFailed(true)}
             />
           )
         )}
+        {cropping && frame && video && (
+          <CropOverlay
+            video={video}
+            frame={frame}
+            rect={crop}
+            aspect={aspectRatio(aspect, frame)}
+            onChange={setCrop}
+          />
+        )}
       </div>
-      {!failed && <TrimBar selection={selection} player={video} />}
+      {!failed &&
+        (cropping && frame && video ? (
+          <CropBar
+            selection={selection}
+            video={video}
+            frame={frame}
+            rect={crop}
+            aspect={aspect}
+            onRect={setCrop}
+            onAspect={setAspect}
+            onClose={close}
+          />
+        ) : (
+          <TrimBar
+            selection={selection}
+            player={video}
+            onCrop={frame ? () => setCropMode(true) : undefined}
+          />
+        ))}
     </div>
   );
 }

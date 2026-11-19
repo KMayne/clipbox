@@ -3,11 +3,11 @@
  * Trim runs the `media.trim` action with those settings and adds the result as a new capture.
  */
 import { css, cx } from '@emotion/css';
-import { mdiContentCut, mdiPlay, mdiRayEndArrow, mdiRayStartArrow } from '@mdi/js';
+import { mdiContentCut, mdiCrop, mdiPlay, mdiRayEndArrow, mdiRayStartArrow } from '@mdi/js';
 import { Icon } from '@mdi/react';
 import { useEffect, useState } from 'react';
 import { isEditable } from '../../capture/sources';
-import { mediaTrim } from '../../core/actions/catalog/media';
+import { mediaCrop, mediaTrim } from '../../core/actions/catalog/media';
 import { clock, parseTrimPoint, pointSeconds } from '../../core/mediaTime';
 import { engine } from '../../engine/engineClient';
 import { runAction } from '../../state/actions';
@@ -113,6 +113,8 @@ interface Props {
   selection: Selection;
   /** The player the marks are read from. */
   player: HTMLMediaElement | null;
+  /** Shows a Crop button (video only), when Crop video applies. */
+  onCrop?(): void;
 }
 
 /** The player's duration and playhead, following its events. */
@@ -150,15 +152,22 @@ function seconds(text: string, fallback: number, duration: number): number | nul
 }
 
 /** Shown only where the Trim action applies (containers Mediabunny reads). */
-export function TrimBar({ selection, player }: Props) {
+export function TrimBar({ selection, player, onCrop }: Props) {
   const applies = useAsync(`trim:${selection.entryId}:${selection.kind}`, () =>
     engine.actions(selection.entryId, selection.kind),
   );
   if (applies.status !== 'ok' || !applies.value.includes(mediaTrim.id)) return null;
-  return <TrimControls key={selection.entryId} selection={selection} player={player} />;
+  return (
+    <TrimControls
+      key={selection.entryId}
+      selection={selection}
+      player={player}
+      onCrop={applies.value.includes(mediaCrop.id) ? onCrop : undefined}
+    />
+  );
 }
 
-function TrimControls({ selection, player }: Props) {
+function TrimControls({ selection, player, onCrop }: Props) {
   const [start, setStart] = useState('0');
   const [end, setEnd] = useState('');
   const [mode, setMode] = useState<'fast' | 'exact'>('fast');
@@ -337,6 +346,18 @@ function TrimControls({ selection, player }: Props) {
           </span>
         )}
         <span className={styles.spacer} />
+        {onCrop && (
+          <button
+            type="button"
+            className={ui.button}
+            onClick={onCrop}
+            disabled={!player}
+            title="Draw a box on the video and keep just that area"
+          >
+            <Icon path={mdiCrop} size={0.65} />
+            Crop
+          </button>
+        )}
         <button
           type="button"
           className={ui.button}

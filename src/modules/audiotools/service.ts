@@ -184,3 +184,38 @@ export interface Trimmer {
 }
 
 export const isTrimmer = (s: unknown): s is Trimmer => isRecord(s) && typeof s.trim === 'function';
+
+// --- Crop ("Crop video") ---
+
+/** A region of the video in display pixels (after rotation), from the top left. */
+export interface CropRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export interface CropOptions {
+  rect: CropRect;
+  /** Encoder quality for the re-encoded video. */
+  quality: 'medium' | 'high' | 'very-high';
+  signal?: AbortSignal;
+  progress?(fraction: number | undefined, message?: string): void;
+}
+
+export interface CropResult {
+  bytes: Uint8Array<ArrayBuffer>;
+  mime: string;
+  /** File extension for the output, without the dot. */
+  extension: string;
+  /** Whether the output keeps the input's container. */
+  sameContainer: boolean;
+  /** The region used: clamped to the frame and rounded to even pixels. */
+  rect: CropRect;
+}
+
+export interface Cropper {
+  crop(bytes: Uint8Array<ArrayBuffer>, options: CropOptions): Promise<CropResult>;
+}
+
+export const isCropper = (s: unknown): s is Cropper => isRecord(s) && typeof s.crop === 'function';
