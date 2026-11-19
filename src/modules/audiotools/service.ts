@@ -219,3 +219,27 @@ export interface Cropper {
 }
 
 export const isCropper = (s: unknown): s is Cropper => isRecord(s) && typeof s.crop === 'function';
+
+// --- WebM ("Convert to WebM") ---
+
+export interface WebmOptions {
+  codec: 'vp9' | 'av1' | 'vp8';
+  /** Encoder quality for the re-encoded video. */
+  quality: 'medium' | 'high' | 'very-high';
+  signal?: AbortSignal;
+  progress?(fraction: number | undefined, message?: string): void;
+}
+
+export interface WebmResult {
+  bytes: Uint8Array<ArrayBuffer>;
+  mime: string;
+  /** The video's packets were copied: the source already had the chosen codec. */
+  videoCopied: boolean;
+}
+
+export interface WebmConverter {
+  toWebm(bytes: Uint8Array<ArrayBuffer>, options: WebmOptions): Promise<WebmResult>;
+}
+
+export const isWebmConverter = (s: unknown): s is WebmConverter =>
+  isRecord(s) && typeof s.toWebm === 'function';

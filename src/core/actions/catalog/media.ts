@@ -199,6 +199,31 @@ export const mediaCrop = defineAction({
   label: cropLabel,
 });
 
+const WEBM_CODECS = { vp9: 'VP9', av1: 'AV1', vp8: 'VP8' } as const;
+
+/** The video re-encoded to VP9, AV1 or VP8 with Opus audio in WebM; matching tracks are copied. */
+export const mediaToWebm = defineAction({
+  id: 'media.toWebm',
+  title: 'Convert to WebM',
+  group: 'Convert',
+  kinds: ['video'],
+  module: 'audiotools',
+  params: z.object({
+    codec: z
+      .enum(['vp9', 'av1', 'vp8'])
+      .default('vp9')
+      .meta({ title: 'Video codec', optionLabels: WEBM_CODECS }),
+    quality: z
+      .enum(['medium', 'high', 'very-high'])
+      .default('high')
+      .meta({
+        title: 'Quality',
+        optionLabels: { medium: 'Medium', high: 'High', 'very-high': 'Very high' },
+      }),
+  }),
+  label: p => `Convert to WebM (${WEBM_CODECS[p.codec]})`,
+});
+
 export const mediaActions = [
   mediaNormalise,
   mediaMetadata,
@@ -207,4 +232,5 @@ export const mediaActions = [
   mediaExtractAudio,
   mediaTrim,
   mediaCrop,
+  mediaToWebm,
 ];

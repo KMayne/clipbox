@@ -203,6 +203,12 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
   fields, aspect presets (Free, Original, 16:9, 9:16, 4:3, 1:1, 4:5), Full frame, a seek
   slider, Quality and Crop; Esc cancels. Image cropping is a planned follow-up that can reuse the
   geometry.
+- **Convert to WebM** ✅ (`media.toWebm`, `audiotools` module; video in containers Mediabunny
+  reads, not Ogg Theora): the primary video track in VP9 (default), AV1 or VP8 and the primary
+  audio track in Opus (48 kHz, 128 kbps stereo), in WebM. A video track already in the chosen
+  codec, and Opus or Vorbis audio, are copied (the label says "video copied, not re-encoded").
+  Settings: video codec, quality (Medium / High / Very high). Named `clip.webm`; progress
+  "Encoding", cancellable; refuses a codec or size the browser can't encode.
 
 ### Spreadsheet
 

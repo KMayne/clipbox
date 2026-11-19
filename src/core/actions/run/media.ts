@@ -7,6 +7,7 @@ import {
   isEncoderExtension,
   isTrimmer,
   isVideoFrameTool,
+  isWebmConverter,
   type ExtensionCodec,
   type NormaliseResult,
   type CropResult,
@@ -19,6 +20,7 @@ import {
   mediaExtractAudio,
   mediaMetadata,
   mediaNormalise,
+  mediaToWebm,
   mediaTrim,
   mediaVideoFrame,
 } from '../catalog/media';
@@ -209,6 +211,28 @@ export const mediaImpls = [
         progress: ctx.progress,
       });
       return { mime: result.mime, name: croppedName(content.name, result), bytes: result.bytes };
+    },
+  }),
+  implement(mediaToWebm, {
+    value: isMediaInfo,
+    // Ogg video is Theora, which WebCodecs can't decode
+    applies: ({ value }) =>
+      value.hasVideo && NORMALISABLE.has(value.container) && value.container !== 'ogg',
+    async run({ content }, { codec, quality }, ctx) {
+      const tools = await ctx.service('audiotools', isWebmConverter);
+      if (!tools) throw new Error('The audio tools module is unavailable');
+      const result = await tools.toWebm(content.bytes, {
+        codec,
+        quality,
+        signal: ctx.signal,
+        progress: ctx.progress,
+      });
+      return {
+        mime: result.mime,
+        name: withExtension(content.name, 'webm', 'video'),
+        bytes: result.bytes,
+        ...(result.videoCopied && { note: 'video copied, not re-encoded' }),
+      };
     },
   }),
   implement(mediaMetadata, {
