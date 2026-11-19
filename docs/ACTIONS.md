@@ -191,6 +191,24 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
   0.4 s longer". The player has a trim bar (`components/previews/TrimBar.tsx`): Set start /
   Set end at the playhead (`[` / `]`), editable times, a strip showing the kept range (click to
   seek), Play range, Fast/Exact and Trim, which runs this action.
+- **Crop video** ✅ (`media.crop`, `audiotools` module; video in containers Mediabunny reads, not
+  Ogg Theora): re-encodes the primary video track to one region of the frame (display pixels,
+  after rotation), copying the primary audio track, in the same container (Matroska when
+  Mediabunny can't write it). Settings: left, top, width, height (px; 0 width or height runs to
+  the frame's edge), quality (Medium / High / Very high). The region is clamped to the frame and
+  rounded down to even pixels for 4:2:0 encoders. Named `clip (cropped 640×360).mp4`; progress
+  "Encoding", cancellable. In the player, the trim bar's **Crop** button opens crop mode
+  (`components/previews/CropOverlay.tsx`, geometry in `cropGeometry.ts`): drag on the video to
+  draw a box (inside moves it, the handles resize it, outside draws a new one), with X/Y/W/H
+  fields, aspect presets (Free, Original, 16:9, 9:16, 4:3, 1:1, 4:5), Full frame, a seek
+  slider, Quality and Crop; Esc cancels. Image cropping is a planned follow-up that can reuse the
+  geometry.
+- **Convert to WebM** ✅ (`media.toWebm`, `audiotools` module; video in containers Mediabunny
+  reads, not Ogg Theora): the primary video track in VP9 (default), AV1 or VP8 and the primary
+  audio track in Opus (48 kHz, 128 kbps stereo), in WebM. A video track already in the chosen
+  codec, and Opus or Vorbis audio, are copied (the label says "video copied, not re-encoded").
+  Settings: video codec, quality (Medium / High / Very high). Named `clip.webm`; progress
+  "Encoding", cancellable; refuses a codec or size the browser can't encode.
 
 ### Spreadsheet
 

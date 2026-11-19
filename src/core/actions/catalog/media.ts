@@ -162,6 +162,68 @@ export const mediaTrim = defineAction({
     `Trim ${pointLabel(p.start, '0')} → ${pointLabel(p.end, 'end')}${p.mode === 'exact' ? ', exact' : ''}`,
 });
 
+/** "640×360 at 100, 50"; 0 width or height runs to the frame's edge. */
+const cropLabel = (p: { left: number; top: number; width: number; height: number }) => {
+  const size = `${p.width || 'full'}×${p.height || 'full'}`;
+  return `Crop ${size} at ${p.left}, ${p.top}`;
+};
+
+const pixels = (title: string, description?: string) =>
+  z
+    .number()
+    .int()
+    .min(0)
+    .default(0)
+    .meta({ title, ...(description && { description }) });
+
+/** Re-encodes the video to one region of the frame; the audio is copied. */
+export const mediaCrop = defineAction({
+  id: 'media.crop',
+  title: 'Crop video',
+  group: 'Convert',
+  kinds: ['video'],
+  module: 'audiotools',
+  params: z.object({
+    left: pixels('Left (px)'),
+    top: pixels('Top (px)'),
+    width: pixels('Width (px)', '0 for the rest of the frame'),
+    height: pixels('Height (px)', '0 for the rest of the frame'),
+    quality: z
+      .enum(['medium', 'high', 'very-high'])
+      .default('high')
+      .meta({
+        title: 'Quality',
+        optionLabels: { medium: 'Medium', high: 'High', 'very-high': 'Very high' },
+      }),
+  }),
+  label: cropLabel,
+});
+
+const WEBM_CODECS = { vp9: 'VP9', av1: 'AV1', vp8: 'VP8' } as const;
+
+/** The video re-encoded to VP9, AV1 or VP8 with Opus audio in WebM; matching tracks are copied. */
+export const mediaToWebm = defineAction({
+  id: 'media.toWebm',
+  title: 'Convert to WebM',
+  group: 'Convert',
+  kinds: ['video'],
+  module: 'audiotools',
+  params: z.object({
+    codec: z
+      .enum(['vp9', 'av1', 'vp8'])
+      .default('vp9')
+      .meta({ title: 'Video codec', optionLabels: WEBM_CODECS }),
+    quality: z
+      .enum(['medium', 'high', 'very-high'])
+      .default('high')
+      .meta({
+        title: 'Quality',
+        optionLabels: { medium: 'Medium', high: 'High', 'very-high': 'Very high' },
+      }),
+  }),
+  label: p => `Convert to WebM (${WEBM_CODECS[p.codec]})`,
+});
+
 export const mediaActions = [
   mediaNormalise,
   mediaMetadata,
@@ -169,4 +231,6 @@ export const mediaActions = [
   mediaConvert,
   mediaExtractAudio,
   mediaTrim,
+  mediaCrop,
+  mediaToWebm,
 ];
