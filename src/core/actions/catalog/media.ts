@@ -224,6 +224,67 @@ export const mediaToWebm = defineAction({
   label: p => `Convert to WebM (${WEBM_CODECS[p.codec]})`,
 });
 
+const GIF_FPS = {
+  '5': '5 fps',
+  '10': '10 fps',
+  '12': '12 fps',
+  '15': '15 fps',
+  '20': '20 fps',
+  '25': '25 fps',
+} as const;
+const GIF_WIDTHS = {
+  '240': '240 px',
+  '320': '320 px',
+  '480': '480 px',
+  '640': '640 px',
+  '800': '800 px',
+  '0': "The video's own",
+} as const;
+const GIF_COLOURS = { '256': '256', '128': '128', '64': '64', '32': '32', '16': '16' } as const;
+
+/** An animated GIF of a time range, sampled at a fixed frame rate; never upscaled. */
+export const mediaToGif = defineAction({
+  id: 'media.toGif',
+  title: 'Video to GIF',
+  group: 'Convert',
+  kinds: ['video'],
+  module: 'audiotools',
+  params: z.object({
+    start: z
+      .string()
+      .regex(TRIM_TIME, TRIM_HINT)
+      .default('0')
+      .meta({ title: 'Start', description: 'Seconds, m:ss, a percentage, or -s before the end' }),
+    end: z
+      .string()
+      .regex(new RegExp(`${TRIM_TIME.source}|^\\s*$`), TRIM_HINT)
+      .default('')
+      .meta({ title: 'End', description: 'Empty for the end; -5 for 5 s before it' }),
+    fps: z
+      .enum(['5', '10', '12', '15', '20', '25'])
+      .default('10')
+      .meta({ title: 'Frame rate', optionLabels: GIF_FPS }),
+    width: z.enum(['240', '320', '480', '640', '800', '0']).default('480').meta({
+      title: 'Width',
+      description: 'Never larger than the video; the height keeps its shape',
+      optionLabels: GIF_WIDTHS,
+    }),
+    colours: z.enum(['256', '128', '64', '32', '16']).default('256').meta({
+      title: 'Colours',
+      description: 'Per frame; fewer makes a smaller file',
+      optionLabels: GIF_COLOURS,
+    }),
+    loop: z.boolean().default(true).meta({ title: 'Loop' }),
+  }),
+  label: p => {
+    const range =
+      p.start.trim() === '0' && !p.end.trim()
+        ? ''
+        : `${pointLabel(p.start, '0')} → ${pointLabel(p.end, 'end')}, `;
+    return `GIF (${range}${p.fps} fps${p.loop ? '' : ', once'})`;
+  },
+});
+
 export const mediaActions = [
   mediaNormalise,
   mediaMetadata,
@@ -233,4 +294,5 @@ export const mediaActions = [
   mediaTrim,
   mediaCrop,
   mediaToWebm,
+  mediaToGif,
 ];

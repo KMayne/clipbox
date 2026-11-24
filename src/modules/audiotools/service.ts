@@ -243,3 +243,38 @@ export interface WebmConverter {
 
 export const isWebmConverter = (s: unknown): s is WebmConverter =>
   isRecord(s) && typeof s.toWebm === 'function';
+
+// --- GIF ("Video to GIF") ---
+
+export interface GifOptions {
+  start: TimePoint;
+  /** Omitted: to the end. */
+  end?: TimePoint;
+  /** Frames per second sampled from the video. */
+  fps: number;
+  /** Output width in px, never upscaled; 0 keeps the video's display width. */
+  maxWidth: number;
+  /** Colours per frame's palette, 2–256. */
+  colours: number;
+  /** Loop forever, or play once. */
+  loop: boolean;
+  signal?: AbortSignal;
+  progress?(fraction: number | undefined, message?: string): void;
+}
+
+export interface GifResult {
+  bytes: Uint8Array<ArrayBuffer>;
+  width: number;
+  height: number;
+  frames: number;
+  /** The range used, seconds in the input. */
+  start: number;
+  end: number;
+}
+
+export interface GifMaker {
+  toGif(bytes: Uint8Array<ArrayBuffer>, options: GifOptions): Promise<GifResult>;
+}
+
+export const isGifMaker = (s: unknown): s is GifMaker =>
+  isRecord(s) && typeof s.toGif === 'function';

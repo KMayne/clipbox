@@ -5,12 +5,14 @@ import {
   isAudioTools,
   isCropper,
   isEncoderExtension,
+  isGifMaker,
   isTrimmer,
   isVideoFrameTool,
   isWebmConverter,
   type ExtensionCodec,
   type NormaliseResult,
   type CropResult,
+  type GifResult,
   type TrimResult,
 } from '../../../modules/audiotools/service';
 import { isMediaService } from '../../../modules/media/service';
@@ -20,6 +22,7 @@ import {
   mediaExtractAudio,
   mediaMetadata,
   mediaNormalise,
+  mediaToGif,
   mediaToWebm,
   mediaTrim,
   mediaVideoFrame,
@@ -235,6 +238,35 @@ export const mediaImpls = [
       };
     },
   }),
+  implement(mediaToGif, {
+    value: isMediaInfo,
+    // Ogg video is Theora, which WebCodecs can't decode
+    applies: ({ value }) =>
+      value.hasVideo && NORMALISABLE.has(value.container) && value.container !== 'ogg',
+    async run({ content }, { start, end, fps, width, colours, loop }, ctx) {
+      const from = parseTrimPoint(start);
+      if (!from) throw new Error('Enter a start time');
+      const to = parseTrimPoint(end);
+      const tools = await ctx.service('audiotools', isGifMaker);
+      if (!tools) throw new Error('The audio tools module is unavailable');
+      const result = await tools.toGif(content.bytes, {
+        start: from,
+        ...(to && { end: to }),
+        fps: Number(fps),
+        maxWidth: Number(width),
+        colours: Number(colours),
+        loop,
+        signal: ctx.signal,
+        progress: ctx.progress,
+      });
+      return {
+        mime: 'image/gif',
+        name: gifName(content.name, result, !!to || !('seconds' in from) || from.seconds > 0),
+        bytes: result.bytes,
+        note: `${result.frames} frames`,
+      };
+    },
+  }),
   implement(mediaMetadata, {
     value: isMediaInfo,
     async run({ value, content }, _params, ctx) {
@@ -286,4 +318,10 @@ export function trimmedName(name: string | undefined, fallback: string, result: 
   const stem = (name ? name.replace(/\.[^./\\]*$/, '') : '') || fallback;
   const keepExt = result.sameContainer && name ? /\.([^./\\]+)$/.exec(name)?.[1] : undefined;
   return `${stem} (${clock(result.start)}–${clock(result.end)}).${keepExt ?? result.extension}`;
+}
+
+/** "clip.mp4" → "clip.gif", or "clip (0:05–0:08).gif" when only part of it was used. */
+export function gifName(name: string | undefined, result: GifResult, ranged: boolean) {
+  const stem = (name ? name.replace(/\.[^./\\]*$/, '') : '') || 'video';
+  return ranged ? `${stem} (${clock(result.start)}–${clock(result.end)}).gif` : `${stem}.gif`;
 }
