@@ -209,6 +209,15 @@ The `query` area files (`catalog/query.ts`, `run/query.ts`). Fields are a dot pa
   codec, and Opus or Vorbis audio, are copied (the label says "video copied, not re-encoded").
   Settings: video codec, quality (Medium / High / Very high). Named `clip.webm`; progress
   "Encoding", cancellable; refuses a codec or size the browser can't encode.
+- **Video to GIF** ✅ (`media.toGif`, `audiotools` module plus gifenc (MIT); video in containers
+  Mediabunny reads, not Ogg Theora): samples the primary video track at a fixed frame rate
+  (Mediabunny's `CanvasSink`, scaled and rotated) and encodes an animated GIF with gifenc, one
+  quantised palette per frame, streaming so only one frame is held. Settings: start and end (as
+  Trim's), frame rate (5–25 fps, default 10), width (240–800 px or the video's own, default 480,
+  never upscaled), colours per frame (16–256) and loop. Delays round on the running total so the
+  length stays true (15 fps alternates 70/60 ms); more than 1,500 frames is refused. Pure
+  planning in `audiotools/gifPlan.ts`. Named `clip.gif`, or `clip (0:05–0:08).gif` for a range;
+  the label notes the frame count; progress "Frame n of N", cancellable.
 
 ### Spreadsheet
 

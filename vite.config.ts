@@ -44,6 +44,7 @@ export default defineConfig({
       'mediabunny',
       '@mediabunny/mp3-encoder',
       '@mediabunny/aac-encoder',
+      'gifenc',
       'jsqr',
       'xlsx',
       'sql.js',
